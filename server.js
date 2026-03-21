@@ -55,14 +55,20 @@ app.all('*', (req, res) => {
   return handle(req, res);
 });
 
-// 6. ЗАПУСК СЕРВЕРА МГНОВЕННО
+// 6. START SERVER IMMEDIATELY
 server.listen(PORT, '0.0.0.0', (err) => {
   if (err) {
-    console.error('> Listen Error:', err);
+    console.error('> Server failed to start:', err);
     process.exit(1);
   }
   console.log(`> App is ONLINE on port ${PORT}`);
   
-  // Инициализация базы данных тоже в фоне
+  // Clean up DATABASE_URL from potential whitespaces
+  if (process.env.DATABASE_URL) {
+    process.env.DATABASE_URL = process.env.DATABASE_URL.trim();
+    const masked = process.env.DATABASE_URL.replace(/\/\/.*@/, '//****@');
+    console.log(`> DB URL cleaned and ready: ${masked}`);
+  }
+  
   initDatabase().catch(err => console.error('> Database Init Error:', err));
 });
