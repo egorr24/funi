@@ -14,11 +14,13 @@ export default function LoginPage() {
     const result = await signIn("credentials", {
       email,
       password,
-      redirect: true,
+      redirect: false,
       callbackUrl: "/",
-    });
+    }) as any;
     if (result?.error) {
       setError("Invalid credentials");
+    } else {
+      window.location.href = "/";
     }
   };
 
