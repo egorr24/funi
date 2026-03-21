@@ -1,0 +1,72 @@
+import { FluxChat, FluxMessage } from "@/src/types/flux";
+
+export const mockChats: FluxChat[] = [
+  {
+    id: "chat_1",
+    title: "Product Council",
+    avatar: "PC",
+    folder: "WORK",
+    unreadCount: 8,
+    pinned: true,
+    typing: false,
+    participants: ["Ari", "Noa", "Mika", "You"],
+    lastMessagePreview: "Ship the adaptive glass call controls today.",
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "chat_2",
+    title: "Inner Circle",
+    avatar: "IC",
+    folder: "PERSONAL",
+    unreadCount: 3,
+    pinned: false,
+    typing: true,
+    participants: ["Kai", "Lena", "You"],
+    lastMessagePreview: "Voice memo sent",
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "chat_3",
+    title: "Flux AI Lab",
+    avatar: "AI",
+    folder: "AI",
+    unreadCount: 16,
+    pinned: true,
+    typing: false,
+    participants: ["Assistant", "You"],
+    lastMessagePreview: "I summarized 41 unread messages.",
+    updatedAt: new Date().toISOString(),
+  },
+];
+
+export const mockMessages: FluxMessage[] = [
+  {
+    id: "msg_1",
+    chatId: "chat_1",
+    senderId: "u1",
+    senderName: "Ari",
+    encryptedBody: "encrypted",
+    decryptedBody: "Finalizing realtime read sync. Need sign-off.",
+    encryptedAes: "encryptedAes",
+    iv: "iv",
+    createdAt: new Date(Date.now() - 1000 * 60 * 9).toISOString(),
+    status: "READ",
+    reactions: [
+      { emoji: "🔥", count: 3, reacted: true },
+      { emoji: "✅", count: 2, reacted: false },
+    ],
+  },
+  {
+    id: "msg_2",
+    chatId: "chat_1",
+    senderId: "u_me",
+    senderName: "You",
+    encryptedBody: "encrypted",
+    decryptedBody: "Greenlight. Push after we merge audio waveform.",
+    encryptedAes: "encryptedAes",
+    iv: "iv",
+    createdAt: new Date(Date.now() - 1000 * 60 * 4).toISOString(),
+    status: "DELIVERED",
+    reactions: [],
+  },
+];
