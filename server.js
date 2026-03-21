@@ -22,6 +22,14 @@ app.get('/health', (req, res) => {
   res.status(200).send('OK');
 });
 
+app.get('/', (req, res, next) => {
+  if (req.url === '/health') return next();
+  if (!nextReady) {
+    return res.status(200).send('Server is starting, please wait...');
+  }
+  next();
+});
+
 // 2. SOCKET.IO SETUP
 const io = socketIo(server, {
   path: '/api/socket',
