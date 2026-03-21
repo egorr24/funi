@@ -8,7 +8,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+# Use the internal DATABASE_URL from your screenshot for the build step
+ENV DATABASE_URL="postgresql://postgres:yZZwZLoTfylFhbuMzoHLBLUgvLYldBp@postgres.railway.internal:5432/railway"
 RUN npx prisma generate && npm run build
 
 FROM node:22-alpine AS runner
@@ -16,6 +17,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV AUTH_TRUST_HOST=true
+# Use the public DATABASE_URL for runtime to be safe, or internal if within the same project
+ENV DATABASE_URL="postgresql://postgres:yZZwZLoTfylFhbuMzoHLBLUgvLYldBp@autorack.proxy.rlwy.net:16454/railway"
 
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
@@ -28,4 +31,5 @@ COPY --from=builder /app/models ./models
 COPY --from=builder /app/routes ./routes
 
 EXPOSE 3000
-CMD ["sh", "-c", "if [ -z \"$DATABASE_URL\" ]; then echo 'DATABASE_URL is not set!'; else npx prisma db push; fi && node server.js"]
+# Run prisma db push on every start to ensure tables exist
+CMD ["sh", "-c", "npx prisma db push && node server.js"]
