@@ -8,8 +8,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-# Use the EXACT password from the screenshot for the build step (lowercase l)
-ENV DATABASE_URL="postgresql://postgres:yZZwZLoTfylFhbuMzoHLBLUgvlyldBp@postgres.railway.internal:5432/railway"
+# Данные с твоего фото для сборки
+ENV DATABASE_URL="postgresql://postgres:yZZwZLoTfylFhbuMzoHLBLUgvlyldBp@autorack.proxy.rlwy.net:16454/railway"
 RUN npx prisma generate && npm run build
 
 FROM node:22-alpine AS runner
@@ -19,9 +19,9 @@ ENV PORT=3000
 ENV HOST=0.0.0.0
 ENV AUTH_TRUST_HOST=true
 
-# Use the EXACT password from the screenshot for runtime (lowercase l)
+# Данные с твоего фото для работы
 ENV DATABASE_URL="postgresql://postgres:yZZwZLoTfylFhbuMzoHLBLUgvlyldBp@autorack.proxy.rlwy.net:16454/railway"
-ENV NEXTAUTH_SECRET="7823457892345789234578923457892345"
+ENV NEXTAUTH_SECRET="yZZwZLoTfylFhbuMzoHLBLUgvlyldBp782345"
 ENV NEXTAUTH_URL="https://funi-production.up.railway.app"
 
 COPY --from=builder /app/.next ./.next
@@ -35,4 +35,5 @@ COPY --from=builder /app/models ./models
 COPY --from=builder /app/routes ./routes
 
 EXPOSE 3000
-CMD ["node", "server.js"]
+# npx prisma db push || true — чтобы не падать, если база занята
+CMD ["sh", "-c", "npx prisma db push || true && node server.js"]

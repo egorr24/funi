@@ -91,5 +91,9 @@ server.listen(PORT, '0.0.0.0', (err) => {
     process.exit(1);
   }
   console.log(`> Server listening on http://0.0.0.0:${PORT}`);
+  
+  const maskedDbUrl = (process.env.DATABASE_URL || '').replace(/:([^@]+)@/, ':****@');
+  console.log(`> Connecting to DB: ${maskedDbUrl}`);
+  
   initDatabase().catch(err => console.error('DB Init Error:', err));
 });
