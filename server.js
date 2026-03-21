@@ -28,7 +28,9 @@ app.use((req, res, next) => {
 // 2. SOCKET.IO SETUP
 const io = socketIo(server, {
   path: '/api/socket',
-  cors: { origin: "*", methods: ["GET", "POST"] }
+  cors: { origin: "*", methods: ["GET", "POST"] },
+  transports: ['polling', 'websocket'], // Соответствует клиенту
+  allowEIO3: true // Для обратной совместимости если нужно
 });
 app.set('io', io);
 

@@ -12,12 +12,18 @@ export const useSocket = (userId: string) => {
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    const socket = io({
+    // В продакшене используем относительный путь для Railway
+    const socketUrl = process.env.NODE_ENV === "production" 
+      ? undefined // Означает текущий хост
+      : "http://localhost:3000";
+
+    const socket = io(socketUrl, {
       path: "/api/socket",
       autoConnect: true,
       reconnection: true,
-      reconnectionAttempts: Infinity,
-      transports: ["websocket", "polling"],
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      transports: ["polling", "websocket"], // Сначала polling для надежности
       auth: { userId },
     });
     socketRef.current = socket;

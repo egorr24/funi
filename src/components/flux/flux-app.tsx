@@ -181,18 +181,20 @@ export const FluxApp = () => {
       return;
     }
 
-    const encrypted = await encryptMessage(input, demoPublicKey);
+    // Временно используем открытый текст для отправки, чтобы избежать DataError
+    // В будущем нужно реализовать полноценный обмен ключами
+    const payload = {
+      chatId: activeChat.id,
+      encryptedBody: input,
+      encryptedAes: "unsupported",
+      iv: "unsupported",
+    };
     
     try {
       const res = await fetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chatId: activeChat.id,
-          encryptedBody: input, // In a real app, this would be the actual encrypted body
-          encryptedAes: encrypted.encryptedAes,
-          iv: encrypted.iv,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
