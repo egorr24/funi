@@ -135,13 +135,15 @@ export const FluxApp = () => {
         if (res.ok) {
           const data = await res.json();
           setMessages(data);
+          // Присоединяемся к комнате чата в сокетах
+          socket.emit("chat:join", { chatId });
         }
       } catch (error) {
         console.error("Failed to fetch messages:", error);
       }
     };
     fetchMessages();
-  }, [chatId]);
+  }, [chatId, socket]);
 
   // Handle incoming socket messages
   useEffect(() => {
@@ -244,6 +246,7 @@ export const FluxApp = () => {
 
         if (res.ok) {
           const newMessage = await res.json();
+          // Уведомляем сокет о новом медиа-сообщении
           socket.emit("message:queue", newMessage);
           setMessages((current) => [...current, newMessage]);
         }
@@ -391,8 +394,11 @@ export const FluxApp = () => {
                   }
                 />
                 <PinnedBanner message="Tomorrow 09:00 UTC — ship candidate freeze with encrypted calls." />
-                <div className="px-4 pt-3">
+                <div className="px-4 pt-3 flex items-center justify-between">
                   <ConnectionBadge online={socket.connected} queued={socket.queuedCount} />
+                  <div className={`text-[10px] uppercase font-bold tracking-widest ${socket.connected ? "text-emerald-500" : "text-red-500"}`}>
+                    {socket.connected ? "Realtime Active" : "Connecting..."}
+                  </div>
                 </div>
                 <MessageScroll>
                   {visibleMessages.map((message) => (

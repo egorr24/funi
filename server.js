@@ -61,15 +61,30 @@ io.on('connection', (socket) => {
   const userId = socket.handshake.auth.userId;
   if (userId) {
     socket.join(userId);
-    console.log(`> User connected: ${userId}`);
+    console.log(`> User connected: ${userId} (Socket ID: ${socket.id})`);
   }
+
+  // Обработка сообщений в реальном времени
+  socket.on('message:queue', async (message) => {
+    console.log(`> Message from ${message.senderId} in chat ${message.chatId}`);
+    // Рассылаем всем в комнате чата (нужно чтобы клиенты джойнились в chatId)
+    socket.to(message.chatId).emit('new_message', message);
+  });
+
+  // Вход в комнату чата
+  socket.on('chat:join', ({ chatId }) => {
+    socket.join(chatId);
+    console.log(`> Socket ${socket.id} joined chat room: ${chatId}`);
+  });
 
   // Сигналинг для звонков
   socket.on('call:offer', ({ targetId, offer, mode }) => {
+    console.log(`> Call offer from ${userId} to ${targetId}`);
     io.to(targetId).emit('call:offer', { from: userId, offer, mode });
   });
 
   socket.on('call:answer', ({ targetId, answer }) => {
+    console.log(`> Call answer from ${userId} to ${targetId}`);
     io.to(targetId).emit('call:answer', { answer });
   });
 
@@ -78,10 +93,12 @@ io.on('connection', (socket) => {
   });
 
   socket.on('call:end', ({ targetId }) => {
+    console.log(`> Call end by ${userId} for ${targetId}`);
     io.to(targetId).emit('call:end');
   });
 
   socket.on('chat:new', ({ targetId, chat }) => {
+    console.log(`> New chat created for ${targetId}`);
     io.to(targetId).emit('chat:new', chat);
   });
 
