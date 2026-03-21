@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    return NextResponse.json({
+    const chatResponse = {
       id: chat.id,
       title: chat.title,
       avatar: chat.title.slice(0, 2).toUpperCase(),
@@ -108,7 +108,9 @@ export async function POST(request: NextRequest) {
       participants: chat.members.map(m => m.user.name || "Unknown"),
       lastMessagePreview: "No messages yet",
       updatedAt: chat.updatedAt.toISOString(),
-    });
+    };
+
+    return NextResponse.json(chatResponse);
   } catch (error) {
     console.error("Chat creation error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

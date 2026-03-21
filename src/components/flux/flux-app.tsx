@@ -22,6 +22,7 @@ import {
   FluxShell,
   FolderTabs,
   GlobalSearchPanel,
+  IncomingCallModal,
   MediaPicker,
   MessageBubble,
   MessagePane,
@@ -115,13 +116,15 @@ export const FluxApp = () => {
       if (res.ok) {
         const newChat = await res.json();
         setIsCreateChatOpen(false);
+        // Уведомляем другого пользователя через сокет
+        socket.emit("chat:new", { targetId: userId, chat: newChat });
         await fetchChats(); // Refresh the list
         setChatId(newChat.id); // Select the new chat
       }
     } catch (error) {
       console.error("Failed to create chat:", error);
     }
-  }, [fetchChats]);
+  }, [fetchChats, socket]);
 
   // Fetch messages when chatId changes
   useEffect(() => {
@@ -166,9 +169,19 @@ export const FluxApp = () => {
       }));
     };
 
+    const handleNewChat = (chat: FluxChat) => {
+      setChatsData(current => {
+        if (current.some(c => c.id === chat.id)) return current;
+        return [chat, ...current];
+      });
+    };
+
     socket.socket.on("new_message", handleNewMessage);
+    socket.socket.on("chat:new", handleNewChat);
+    
     return () => {
       socket.socket?.off("new_message", handleNewMessage);
+      socket.socket?.off("chat:new", handleNewChat);
     };
   }, [socket.socket, chatId]);
 
@@ -331,6 +344,14 @@ export const FluxApp = () => {
   return (
     <div style={{ background: variables.background, boxShadow: `inset 0 0 160px ${variables.glow}` }} className="min-h-screen">
       <PhotoViewer url={viewingPhoto} onClose={() => setViewingPhoto(null)} />
+      {call.incomingCall && (
+        <IncomingCallModal 
+          from={call.incomingCall.from}
+          mode={call.incomingCall.mode}
+          onAccept={call.acceptCall}
+          onReject={call.rejectCall}
+        />
+      )}
       <CreateChatModal
         isOpen={isCreateChatOpen}
         onClose={() => setIsCreateChatOpen(false)}

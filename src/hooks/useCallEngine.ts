@@ -7,6 +7,7 @@ type CallMode = "audio" | "video" | "screen";
 
 export const useCallEngine = (socket: Socket | null, userId: string) => {
   const [inCall, setInCall] = useState(false);
+  const [incomingCall, setIncomingCall] = useState<{ from: string; offer: any; mode: CallMode } | null>(null);
   const [muted, setMuted] = useState(false);
   const [cameraOff, setCameraOff] = useState(false);
   const [mode, setMode] = useState<CallMode>("video");
@@ -64,20 +65,7 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
     if (!socket) return;
 
     socket.on("call:offer", async ({ from, offer, mode: offerMode }) => {
-      const constraints = { audio: true, video: offerMode !== "audio" };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      setLocalStream(stream);
-      
-      const peer = createPeer(from);
-      stream.getTracks().forEach((track) => peer.addTrack(track, stream));
-      
-      await peer.setRemoteDescription(new RTCSessionDescription(offer));
-      const answer = await peer.createAnswer();
-      await peer.setLocalDescription(answer);
-      
-      socket.emit("call:answer", { targetId: from, answer });
-      setMode(offerMode);
-      setInCall(true);
+      setIncomingCall({ from, offer, mode: offerMode });
     });
 
     socket.on("call:answer", async ({ answer }) => {
@@ -116,6 +104,37 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
     }
   }, []);
 
+  const acceptCall = useCallback(async () => {
+    if (!incomingCall || !socket) return;
+    
+    const constraints = { audio: true, video: incomingCall.mode !== "audio" };
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      setLocalStream(stream);
+      
+      const peer = createPeer(incomingCall.from);
+      stream.getTracks().forEach((track) => peer.addTrack(track, stream));
+      
+      await peer.setRemoteDescription(new RTCSessionDescription(incomingCall.offer));
+      const answer = await peer.createAnswer();
+      await peer.setLocalDescription(answer);
+      
+      socket.emit("call:answer", { targetId: incomingCall.from, answer });
+      setMode(incomingCall.mode);
+      setInCall(true);
+      setIncomingCall(null);
+    } catch (err) {
+      console.error("Accept call failed:", err);
+    }
+  }, [incomingCall, socket, createPeer]);
+
+  const rejectCall = useCallback(() => {
+    if (incomingCall && socket) {
+      socket.emit("call:end", { targetId: incomingCall.from });
+    }
+    setIncomingCall(null);
+  }, [incomingCall, socket]);
+
   const end = useCallback(() => {
     if (targetIdRef.current) {
       socket?.emit("call:end", { targetId: targetIdRef.current });
@@ -153,7 +172,8 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
   }, [localStream, cameraOff]);
 
   return { 
-    inCall, muted, cameraOff, mode, 
+    inCall, incomingCall, acceptCall, rejectCall,
+    muted, cameraOff, mode, 
     start, end, shareScreen, 
     localStream, remoteStream,
     toggleMute, toggleCamera 

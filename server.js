@@ -7,7 +7,15 @@ const path = require('path');
 const next = require('next');
 const multer = require('multer');
 const fs = require('fs');
+const cloudinary = require('cloudinary').v2;
 require('dotenv').config();
+
+// Настройка Cloudinary для постоянного хранения
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 // Настройка Multer для хранения файлов на Railway (в папке uploads)
 const storage = multer.diskStorage({
@@ -73,6 +81,10 @@ io.on('connection', (socket) => {
     io.to(targetId).emit('call:end');
   });
 
+  socket.on('chat:new', ({ targetId, chat }) => {
+    io.to(targetId).emit('chat:new', chat);
+  });
+
   socket.on('disconnect', () => {
     console.log(`> User disconnected: ${userId}`);
   });
@@ -84,15 +96,38 @@ app.use(cors());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // API для загрузки медиа
-app.post('/api/upload', upload.single('file'), (req, res) => {
+app.post('/api/upload', upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-  const url = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-  res.json({ 
-    url, 
-    type: req.file.mimetype.startsWith('image/') ? 'image' : 
-          req.file.mimetype.startsWith('video/') ? 'video' : 
-          req.file.mimetype.startsWith('audio/') ? 'audio' : 'file'
-  });
+  
+  try {
+    // Если есть ключи Cloudinary, грузим туда
+    if (process.env.CLOUDINARY_CLOUD_NAME) {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        resource_type: "auto",
+        folder: "flux_uploads"
+      });
+      // Удаляем временный файл
+      fs.unlinkSync(req.file.path);
+      return res.json({ 
+        url: result.secure_url, 
+        type: req.file.mimetype.startsWith('image/') ? 'image' : 
+              req.file.mimetype.startsWith('video/') ? 'video' : 
+              req.file.mimetype.startsWith('audio/') ? 'audio' : 'file'
+      });
+    }
+
+    // Если нет Cloudinary, грузим локально (сотрется при деплое)
+    const url = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    res.json({ 
+      url, 
+      type: req.file.mimetype.startsWith('image/') ? 'image' : 
+            req.file.mimetype.startsWith('video/') ? 'video' : 
+            req.file.mimetype.startsWith('audio/') ? 'audio' : 'file'
+    });
+  } catch (err) {
+    console.error('Upload error:', err);
+    res.status(500).json({ error: 'Upload failed' });
+  }
 });
 
 // 4. NEXT.JS ПРЕПАРАЦИЯ (В ФОНЕ)
