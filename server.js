@@ -37,8 +37,7 @@ nextApp.prepare().then(() => {
     contentSecurityPolicy: false, // Required for Next.js in some cases
   }));
   app.use(cors());
-  app.use(express.json({ limit: '50mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+  // Removed express.json and express.urlencoded because they conflict with Next.js 16+ body parsing
 
   // Static files
   app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
