@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useCallEngine } from "@/src/hooks/useCallEngine";
@@ -43,7 +44,8 @@ const demoPublicKey =
   "MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAqghxAI+v2OZcRmM4QfM2HAi2YThzM8mimS/93Dx7Ug9lbBfPdD9LNZz6uhRUsjRx3wQ2toKRP5PQxqjqrybq8qQso3g3x6E9x8SWgq4rE8WP4riQ7nTM+xxRp4aK2vBzMCAH4O8lRJgxd9f5nRhh3fkS5z2gsfO9T3rq3pP3vVn3aL9wzNPNR9xWqdXfMbkCz9q2rmjkQYO4QVj7jE5H4Q4qO8ViVw3o0yWcduAF6xLk8yYxKj0o2Q4F2r0K7FG9xjS9WnZl2stx0qjR6HDzH0ncz3UrJkJCAd3M2LNg9D9oT6lGvo5JkQv2Q9N7iBtfI8M6xY4JrV0nI9RjNfW6D7RkGm0z7f3xMXiXfQ3j8j0d8B4e2y6UQpOJ3Jp7WQh4sMSQktj9Kp0hc1nlmW5mZy2mQfxWw3uFv2o7fWFLxH8mE2b+4L22jY8mW2FfNnM3v7x8Ka5noNoQ2b4kzFg9sGf3pLs9s3fI+WQ0k6U2L+IhJQ2Y46p7S4o7kU6wY0yG+1xYzF1L8nABr9Cz7M5C3x6Am5nYQ8P0+f4lsZBf7f3q9N+J5hN8vS9dD4lG5H0h3B6D7J3S6GqYkLx3sQ1E+lQAvJ4E4JQ8sKbVWuYxYp5PR7Lgj7o3gJeWmmkCAwEAAQ==";
 
 export const FluxApp = () => {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [folder, setFolder] = useState("ALL");
   const [search, setSearch] = useState("");
   const [chatId, setChatId] = useState<string | null>(null);
@@ -59,6 +61,13 @@ export const FluxApp = () => {
   const socket = useSocket(session?.user?.id || "u_me");
   const call = useCallEngine();
   const waveform = useWaveform(`${chatId}-${messages.length}`);
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login");
+    }
+  }, [status, router]);
 
   // Fetch chats on mount
   useEffect(() => {
@@ -183,25 +192,23 @@ export const FluxApp = () => {
     setAiSummary(payload.summary);
   };
 
+  if (status === "loading") {
+    return (
+      <div className="grid h-screen place-items-center bg-black text-zinc-100">
+        <div className="text-xl font-medium animate-pulse">FLUX IS LOADING...</div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return null;
+  }
+
   return (
     <div style={{ background: variables.background, boxShadow: `inset 0 0 160px ${variables.glow}` }} className="min-h-screen">
       <FluxShell showRightPanel={showRightPanel}>
         <Sidebar>
           <SidebarHeader title="FLUX" />
-          <div className="mx-4 mb-4 grid grid-cols-2 gap-2">
-            <Link
-              href="/login"
-              className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-center text-xs font-medium"
-            >
-              Вход
-            </Link>
-            <Link
-              href="/register"
-              className="rounded-xl bg-violet-500/75 px-3 py-2 text-center text-xs font-medium"
-            >
-              Регистрация
-            </Link>
-          </div>
           <SearchBar value={search} onChange={setSearch} />
           <FolderTabs active={folder} onSelect={setFolder} />
           <NeonDivider />
