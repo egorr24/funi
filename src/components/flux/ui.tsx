@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Mic, Paperclip, Phone, Pin, Search, SendHorizontal, Shield, Video, Plus, X } from "lucide-react";
+import { Mic, Paperclip, Phone, Pin, Search, SendHorizontal, Shield, Video, Plus, X, MessageSquare, Settings, User, Bell, Check, CheckCheck } from "lucide-react";
 import { PropsWithChildren, ReactNode, useState, useEffect } from "react";
 import { FluxChat, FluxMessage } from "@/src/types/flux";
 
@@ -10,7 +10,7 @@ type BaseProps = {
 };
 
 export const GlassCard = ({ children, className = "" }: PropsWithChildren<BaseProps>) => (
-  <div className={`rounded-3xl border border-white/15 bg-white/10 backdrop-blur-3xl ${className}`}>{children}</div>
+  <div className={`rounded-none border-x border-white/5 bg-zinc-950/40 backdrop-blur-3xl ${className}`}>{children}</div>
 );
 
 export const NeonDivider = () => <div className="h-px bg-gradient-to-r from-transparent via-violet-400/70 to-transparent" />;
@@ -34,12 +34,81 @@ export const FluxShell = ({
   showRightPanel = true,
 }: PropsWithChildren<{ showRightPanel?: boolean }>) => (
   <div
-    className={`mx-auto grid h-screen max-w-[1600px] gap-5 p-6 text-zinc-100 ${
-      showRightPanel ? "grid-cols-[360px_1fr_340px]" : "grid-cols-[360px_1fr]"
+    className={`mx-auto grid h-screen max-w-[1600px] gap-0 p-0 text-zinc-100 ${
+      showRightPanel ? "grid-cols-[72px_360px_1fr_340px]" : "grid-cols-[72px_360px_1fr]"
     }`}
   >
     {children}
   </div>
+);
+
+export const NavSidebar = ({
+  activeTab,
+  onTabChange,
+}: {
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+}) => (
+  <div className="flex flex-col items-center py-6 bg-black/40 border-r border-white/5 gap-4">
+    <div className="mb-4">
+      <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-violet-600 to-fuchsia-600 grid place-items-center shadow-lg shadow-violet-500/20">
+        <span className="font-bold text-lg italic">F</span>
+      </div>
+    </div>
+    <NavIcon
+      active={activeTab === "chats"}
+      onClick={() => onTabChange("chats")}
+      icon={<MessageSquare className="h-6 w-6" />}
+      label="Чаты"
+    />
+    <NavIcon
+      active={activeTab === "profile"}
+      onClick={() => onTabChange("profile")}
+      icon={<User className="h-6 w-6" />}
+      label="Профиль"
+    />
+    <NavIcon
+      active={activeTab === "notifications"}
+      onClick={() => onTabChange("notifications")}
+      icon={<Bell className="h-6 w-6" />}
+      label="Уведомления"
+    />
+    <div className="mt-auto" />
+    <NavIcon
+      active={activeTab === "settings"}
+      onClick={() => onTabChange("settings")}
+      icon={<Settings className="h-6 w-6" />}
+      label="Настройки"
+    />
+  </div>
+);
+
+const NavIcon = ({
+  active,
+  onClick,
+  icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: ReactNode;
+  label: string;
+}) => (
+  <button
+    onClick={onClick}
+    className={`group relative p-3 rounded-2xl transition-all ${
+      active ? "bg-violet-500/20 text-violet-400" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+    }`}
+    title={label}
+  >
+    {icon}
+    {active && (
+      <motion.div
+        layoutId="nav-active"
+        className="absolute left-0 top-1/4 bottom-1/4 w-1 bg-violet-500 rounded-r-full"
+      />
+    )}
+  </button>
 );
 
 export const Sidebar = ({ children }: PropsWithChildren) => (
@@ -293,16 +362,22 @@ export const MessageScroll = ({ children }: PropsWithChildren) => (
 
 export const MessageBubble = ({ message, mine }: { message: FluxMessage; mine: boolean }) => (
   <motion.div
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    className={`max-w-[70%] rounded-2xl px-4 py-3 ${mine ? "ml-auto bg-violet-500/35" : "bg-white/8"}`}
+    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+    animate={{ opacity: 1, y: 0, scale: 1 }}
+    className={`max-w-[70%] rounded-2xl px-4 py-2 shadow-lg shadow-black/5 ${
+      mine ? "ml-auto bg-violet-600/90 text-white rounded-tr-none" : "bg-zinc-800/80 text-zinc-100 rounded-tl-none border border-white/5"
+    }`}
   >
-    <div className="mb-1 text-xs text-zinc-300">{message.senderName}</div>
-    <div className="text-sm leading-6">{message.decryptedBody}</div>
-    {message.mediaType === "audio" ? <VoiceWaveform points={message.waveform ?? []} /> : null}
-    <div className="mt-2 flex items-center justify-between gap-2">
-      <ReactionRail reactions={message.reactions} />
-      <DeliveryBadge status={message.status} />
+    <div className="text-sm leading-relaxed">{message.decryptedBody}</div>
+    <div className="mt-1 flex items-center justify-end gap-1.5 opacity-60">
+      <span className="text-[10px] uppercase font-medium">
+        {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+      </span>
+      {mine && (
+        <span className="text-[10px]">
+          {message.status === "READ" ? <CheckCheck className="h-3 w-3" /> : <Check className="h-3 w-3" />}
+        </span>
+      )}
     </div>
   </motion.div>
 );

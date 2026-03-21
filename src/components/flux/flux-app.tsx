@@ -26,6 +26,7 @@ import {
   MessageBubble,
   MessagePane,
   MessageScroll,
+  NavSidebar,
   NeonDivider,
   PinnedBanner,
   ProfileSheet,
@@ -57,6 +58,7 @@ export const FluxApp = () => {
   const [loading, setLoading] = useState(true);
   const [aiSummary, setAiSummary] = useState("Unread summary will appear here.");
   const [isCreateChatOpen, setIsCreateChatOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("chats");
   
   const { mode, variables } = useThemeEngine();
   const socket = useSocket(session?.user?.id || "u_me");
@@ -185,43 +187,67 @@ export const FluxApp = () => {
       return;
     }
 
-    // Временно используем открытый текст для отправки, чтобы избежать DataError
-    const payload = {
+    const currentInput = input;
+    setInput("");
+
+    // Оптимистичное обновление UI
+    const tempId = Math.random().toString(36).substring(7);
+    const optimisticMessage: FluxMessage = {
+      id: tempId,
       chatId: activeChat.id,
-      encryptedBody: input,
+      senderId: session.user.id,
+      senderName: session.user.name || "You",
+      encryptedBody: currentInput,
+      decryptedBody: currentInput,
       encryptedAes: "unsupported",
       iv: "unsupported",
+      createdAt: new Date().toISOString(),
+      status: "SENT",
+      reactions: [],
     };
+
+    setMessages((current) => [...current, optimisticMessage]);
+
+    // Обновление превью чата
+    setChatsData(current => current.map(chat => {
+      if (chat.id === activeChat.id) {
+        return {
+          ...chat,
+          lastMessagePreview: currentInput,
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return chat;
+    }));
     
     try {
       const res = await fetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          chatId: activeChat.id,
+          encryptedBody: currentInput,
+          encryptedAes: "unsupported",
+          iv: "unsupported",
+        }),
       });
 
       if (res.ok) {
         const newMessage = await res.json();
         socket.emit("message:queue", newMessage);
-        setMessages((current) => [...current, newMessage]);
-        setInput("");
-        
-        // Update last message in chatsData locally
-        setChatsData(current => current.map(chat => {
-          if (chat.id === activeChat.id) {
-            return {
-              ...chat,
-              lastMessagePreview: input,
-              updatedAt: new Date().toISOString()
-            };
-          }
-          return chat;
-        }));
+        // Заменяем временное сообщение реальным
+        setMessages((current) => current.map(m => m.id === tempId ? newMessage : m));
+      } else {
+        // В случае ошибки возвращаем текст в инпут
+        setInput(currentInput);
+        setMessages((current) => current.filter(m => m.id !== tempId));
       }
     } catch (error) {
       console.error("Failed to send message:", error);
+      setInput(currentInput);
+      setMessages((current) => current.filter(m => m.id !== tempId));
     }
-  }, [input, activeChat, session?.user?.id, socket]);
+  }, [input, activeChat, session?.user, socket]);
 
   const summarize = useCallback(async () => {
     const response = await fetch("/api/ai/summarize", {
@@ -252,63 +278,111 @@ export const FluxApp = () => {
         onCreate={handleCreateChat}
       />
       <FluxShell showRightPanel={showRightPanel}>
-        <Sidebar>
-          <SidebarHeader title="FLUX" onAddChat={() => setIsCreateChatOpen(true)} />
-          <SearchBar value={search} onChange={setSearch} />
-          <FolderTabs active={folder} onSelect={setFolder} />
-          <NeonDivider />
-          <ChatList>
-            {chats.map((chat) => (
-              <ChatListItem key={chat.id} chat={chat} active={chat.id === chatId} onClick={() => setChatId(chat.id)} />
-            ))}
-          </ChatList>
-        </Sidebar>
+        <NavSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        
+        {activeTab === "chats" && (
+          <>
+            <Sidebar>
+              <SidebarHeader title="FLUX" onAddChat={() => setIsCreateChatOpen(true)} />
+              <SearchBar value={search} onChange={setSearch} />
+              <FolderTabs active={folder} onSelect={setFolder} />
+              <NeonDivider />
+              <ChatList>
+                {chats.map((chat) => (
+                  <ChatListItem key={chat.id} chat={chat} active={chat.id === chatId} onClick={() => setChatId(chat.id)} />
+                ))}
+              </ChatList>
+            </Sidebar>
 
-        {activeChat ? (
-          <MessagePane>
-            <ChatHeader
-              title={activeChat.title}
-              participants={activeChat.participants}
-              onCall={() => startCall("audio")}
-              onVideoCall={() => startCall("video")}
-              extraAction={
-                <button
-                  onClick={() => setShowRightPanel((value) => !value)}
-                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs hover:bg-white/10"
-                >
-                  {showRightPanel ? "Скрыть меню" : "Открыть меню"}
-                </button>
-              }
-            />
-            <PinnedBanner message="Tomorrow 09:00 UTC — ship candidate freeze with encrypted calls." />
-            <div className="px-4 pt-3">
-              <ConnectionBadge online={socket.connected} queued={socket.queuedCount} />
-            </div>
-            <MessageScroll>
-              {visibleMessages.map((message) => (
-                <MessageBubble
-                  key={message.id}
-                  message={{ ...message, waveform, decryptedBody: message.encryptedBody }}
-                  mine={message.senderId === session?.user?.id}
+            {activeChat ? (
+              <MessagePane>
+                <ChatHeader
+                  title={activeChat.title}
+                  participants={activeChat.participants}
+                  onCall={() => startCall("audio")}
+                  onVideoCall={() => startCall("video")}
+                  extraAction={
+                    <button
+                      onClick={() => setShowRightPanel((value) => !value)}
+                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs hover:bg-white/10"
+                    >
+                      {showRightPanel ? "Скрыть меню" : "Открыть меню"}
+                    </button>
+                  }
                 />
-              ))}
-            </MessageScroll>
-            <TypingIndicator visible={activeChat.typing} />
-            <Composer
-              value={input}
-              onChange={setInput}
-              onSend={sendMessage}
-              onAttach={() => alert("Attachment logic integrated. Select file…")}
-              onVoice={() => alert("Recording voice encrypted clip…")}
-            />
-            <CallOverlay active={call.inCall} mode={call.mode} onEnd={call.end} onShare={call.shareScreen} />
-          </MessagePane>
-        ) : (
-          <EmptyState label="Select a conversation to begin." />
+                <PinnedBanner message="Tomorrow 09:00 UTC — ship candidate freeze with encrypted calls." />
+                <div className="px-4 pt-3">
+                  <ConnectionBadge online={socket.connected} queued={socket.queuedCount} />
+                </div>
+                <MessageScroll>
+                  {visibleMessages.map((message) => (
+                    <MessageBubble
+                      key={message.id}
+                      message={{ ...message, waveform, decryptedBody: message.encryptedBody }}
+                      mine={message.senderId === session?.user?.id}
+                    />
+                  ))}
+                </MessageScroll>
+                <TypingIndicator visible={activeChat.typing} />
+                <Composer
+                  value={input}
+                  onChange={setInput}
+                  onSend={sendMessage}
+                  onAttach={() => alert("Attachment logic integrated. Select file…")}
+                  onVoice={() => alert("Recording voice encrypted clip…")}
+                />
+                <CallOverlay active={call.inCall} mode={call.mode} onEnd={call.end} onShare={call.shareScreen} />
+              </MessagePane>
+            ) : (
+              <EmptyState label="Select a conversation to begin." />
+            )}
+          </>
         )}
 
-        {showRightPanel ? (
-          <div className="space-y-4">
+        {activeTab === "profile" && (
+          <div className="col-span-2 p-8 flex flex-col items-center justify-center text-center">
+             <div className="h-24 w-24 rounded-full bg-violet-500/20 grid place-items-center mb-4 border-2 border-violet-500/50">
+               <User className="h-12 w-12 text-violet-400" />
+             </div>
+             <h2 className="text-2xl font-bold mb-2">{session?.user?.name}</h2>
+             <p className="text-zinc-400 mb-6">{session?.user?.email}</p>
+             <button
+               onClick={() => signOut()}
+               className="px-6 py-2 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all"
+             >
+               Выйти из аккаунта
+             </button>
+          </div>
+        )}
+
+        {activeTab === "settings" && (
+          <div className="col-span-2 p-8 overflow-y-auto">
+            <h2 className="text-2xl font-bold mb-6">Настройки FLUX</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <SettingsPanel />
+              <SecurityPanel />
+              <SmartFolderPanel />
+              <div className="p-4 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-3xl">
+                <h3 className="text-sm font-semibold mb-4">Тема оформления</h3>
+                <div className="flex gap-4">
+                  <div className="flex-1 p-3 rounded-xl border border-violet-500 bg-violet-500/10 text-center text-xs">Темная (Default)</div>
+                  <div className="flex-1 p-3 rounded-xl border border-white/10 bg-white/5 text-center text-xs opacity-50">Светлая (Coming soon)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "notifications" && (
+          <div className="col-span-2 p-8 flex flex-col items-center justify-center text-center">
+            <Bell className="h-16 w-16 text-zinc-600 mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Уведомлений нет</h2>
+            <p className="text-zinc-400 text-sm">Мы сообщим вам, когда появится что-то важное.</p>
+          </div>
+        )}
+
+        {showRightPanel && activeTab === "chats" ? (
+          <div className="space-y-4 p-4 border-l border-white/5 overflow-y-auto bg-black/20">
             <AIInsightCard summary={aiSummary} />
             <button onClick={summarize} className="w-full rounded-2xl bg-violet-500/70 py-2 text-sm font-medium">
               Summarize unread
@@ -322,19 +396,7 @@ export const FluxApp = () => {
             <SmartFolderPanel />
             <GlobalSearchPanel query={search} />
             <SecurityPanel />
-            <ProfileSheet
-              name={session?.user?.name || undefined}
-              email={session?.user?.email || undefined}
-              onSignOut={() => signOut()}
-            />
-            <SettingsPanel />
-            <button
-              onClick={() => call.start("video")}
-              className="w-full rounded-2xl border border-white/20 bg-white/10 py-2 text-sm"
-            >
-              Start unified call
-            </button>
-            <p className="text-center text-xs text-zinc-400">Theme mode: {mode}</p>
+            <p className="text-center text-xs text-zinc-400 mt-auto pt-4">Theme mode: {mode}</p>
           </div>
         ) : null}
       </FluxShell>
