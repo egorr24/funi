@@ -13,6 +13,7 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV AUTH_TRUST_HOST=true
 
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
@@ -25,4 +26,4 @@ COPY --from=builder /app/models ./models
 COPY --from=builder /app/routes ./routes
 
 EXPOSE 3000
-CMD ["sh", "-c", "npx prisma db push && npm run start"]
+CMD ["sh", "-c", "if [ -z \"$DATABASE_URL\" ]; then echo 'DATABASE_URL is not set!'; else npx prisma db push; fi && node server.js"]
