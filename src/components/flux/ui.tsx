@@ -29,8 +29,17 @@ export const StatChip = ({ label, value }: { label: string; value: string | numb
   </div>
 );
 
-export const FluxShell = ({ children }: PropsWithChildren) => (
-  <div className="mx-auto grid h-screen max-w-[1600px] grid-cols-[360px_1fr_340px] gap-5 p-6 text-zinc-100">{children}</div>
+export const FluxShell = ({
+  children,
+  showRightPanel = true,
+}: PropsWithChildren<{ showRightPanel?: boolean }>) => (
+  <div
+    className={`mx-auto grid h-screen max-w-[1600px] gap-5 p-6 text-zinc-100 ${
+      showRightPanel ? "grid-cols-[360px_1fr_340px]" : "grid-cols-[360px_1fr]"
+    }`}
+  >
+    {children}
+  </div>
 );
 
 export const Sidebar = ({ children }: PropsWithChildren) => (
@@ -136,14 +145,25 @@ export const MessagePane = ({ children }: PropsWithChildren) => (
   <GlassCard className="flex min-h-0 flex-col overflow-hidden">{children}</GlassCard>
 );
 
-export const ChatHeader = ({ title, participants }: { title: string; participants: string[] }) => (
+export const ChatHeader = ({
+  title,
+  participants,
+  extraAction,
+}: {
+  title: string;
+  participants: string[];
+  extraAction?: ReactNode;
+}) => (
   <div className="border-b border-white/10 px-6 py-4">
     <div className="flex items-center justify-between">
       <div>
         <h2 className="text-lg font-semibold">{title}</h2>
         <p className="text-xs text-zinc-400">{participants.join(" • ")}</p>
       </div>
-      <QuickActions />
+      <div className="flex items-center gap-2">
+        {extraAction}
+        <QuickActions />
+      </div>
     </div>
   </div>
 );

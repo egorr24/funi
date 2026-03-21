@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 
 export default function LoginPage() {
@@ -42,6 +43,12 @@ export default function LoginPage() {
         <button type="submit" className="h-11 w-full rounded-xl bg-violet-500/80 text-sm font-medium">
           Continue
         </button>
+        <Link
+          href="/register"
+          className="mt-3 block h-11 w-full rounded-xl border border-white/15 bg-white/5 text-center text-sm leading-[44px]"
+        >
+          Создать аккаунт
+        </Link>
         {error ? <p className="mt-3 text-xs text-red-300">{error}</p> : null}
       </form>
     </div>

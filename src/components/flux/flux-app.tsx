@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useCallEngine } from "@/src/hooks/useCallEngine";
 import { useSocket } from "@/src/hooks/useSocket";
@@ -47,6 +48,7 @@ export const FluxApp = () => {
   const [chatId, setChatId] = useState(mockChats[0].id);
   const [input, setInput] = useState("");
   const [threadInput, setThreadInput] = useState("");
+  const [showRightPanel, setShowRightPanel] = useState(false);
   const [messages, setMessages] = useState(mockMessages);
   const [aiSummary, setAiSummary] = useState("Unread summary will appear here.");
   const { mode, variables } = useThemeEngine();
@@ -103,9 +105,23 @@ export const FluxApp = () => {
 
   return (
     <div style={{ background: variables.background, boxShadow: `inset 0 0 160px ${variables.glow}` }} className="min-h-screen">
-      <FluxShell>
+      <FluxShell showRightPanel={showRightPanel}>
         <Sidebar>
           <SidebarHeader title="FLUX" />
+          <div className="mx-4 mb-4 grid grid-cols-2 gap-2">
+            <Link
+              href="/login"
+              className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-center text-xs font-medium"
+            >
+              Вход
+            </Link>
+            <Link
+              href="/register"
+              className="rounded-xl bg-violet-500/75 px-3 py-2 text-center text-xs font-medium"
+            >
+              Регистрация
+            </Link>
+          </div>
           <SearchBar value={search} onChange={setSearch} />
           <FolderTabs active={folder} onSelect={setFolder} />
           <NeonDivider />
@@ -118,7 +134,18 @@ export const FluxApp = () => {
 
         {activeChat ? (
           <MessagePane>
-            <ChatHeader title={activeChat.title} participants={activeChat.participants} />
+            <ChatHeader
+              title={activeChat.title}
+              participants={activeChat.participants}
+              extraAction={
+                <button
+                  onClick={() => setShowRightPanel((value) => !value)}
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs hover:bg-white/10"
+                >
+                  {showRightPanel ? "Скрыть меню" : "Открыть меню"}
+                </button>
+              }
+            />
             <PinnedBanner message="Tomorrow 09:00 UTC — ship candidate freeze with encrypted calls." />
             <div className="px-4 pt-3">
               <ConnectionBadge online={socket.connected} queued={socket.queuedCount} />
@@ -136,30 +163,32 @@ export const FluxApp = () => {
           <EmptyState label="Select a conversation to begin." />
         )}
 
-        <div className="space-y-4">
-          <AIInsightCard summary={aiSummary} />
-          <button onClick={summarize} className="w-full rounded-2xl bg-violet-500/70 py-2 text-sm font-medium">
-            Summarize unread
-          </button>
-          <ThreadPanel>
-            <h3 className="text-sm font-semibold">Thread</h3>
-            <p className="mt-2 text-xs text-zinc-300">Nested replies stay contextual and synced.</p>
-            <ThreadReplyInput value={threadInput} onChange={setThreadInput} />
-          </ThreadPanel>
-          <MediaPicker />
-          <SmartFolderPanel />
-          <GlobalSearchPanel query={search} />
-          <SecurityPanel />
-          <ProfileSheet />
-          <SettingsPanel />
-          <button
-            onClick={() => call.start("video")}
-            className="w-full rounded-2xl border border-white/20 bg-white/10 py-2 text-sm"
-          >
-            Start unified call
-          </button>
-          <p className="text-center text-xs text-zinc-400">Theme mode: {mode}</p>
-        </div>
+        {showRightPanel ? (
+          <div className="space-y-4">
+            <AIInsightCard summary={aiSummary} />
+            <button onClick={summarize} className="w-full rounded-2xl bg-violet-500/70 py-2 text-sm font-medium">
+              Summarize unread
+            </button>
+            <ThreadPanel>
+              <h3 className="text-sm font-semibold">Thread</h3>
+              <p className="mt-2 text-xs text-zinc-300">Nested replies stay contextual and synced.</p>
+              <ThreadReplyInput value={threadInput} onChange={setThreadInput} />
+            </ThreadPanel>
+            <MediaPicker />
+            <SmartFolderPanel />
+            <GlobalSearchPanel query={search} />
+            <SecurityPanel />
+            <ProfileSheet />
+            <SettingsPanel />
+            <button
+              onClick={() => call.start("video")}
+              className="w-full rounded-2xl border border-white/20 bg-white/10 py-2 text-sm"
+            >
+              Start unified call
+            </button>
+            <p className="text-center text-xs text-zinc-400">Theme mode: {mode}</p>
+          </div>
+        ) : null}
       </FluxShell>
     </div>
   );
