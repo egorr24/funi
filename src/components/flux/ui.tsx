@@ -445,31 +445,38 @@ export const IncomingCallModal = ({
   onAccept: () => void; 
   onReject: () => void;
 }) => (
-  <div className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
+  <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-2xl flex items-center justify-center p-4">
     <motion.div 
-      initial={{ scale: 0.9, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      className="w-full max-w-sm bg-zinc-900 border border-white/10 rounded-3xl p-6 shadow-2xl text-center"
+      initial={{ scale: 0.9, opacity: 0, y: 20 }}
+      animate={{ scale: 1, opacity: 1, y: 0 }}
+      className="w-full max-w-sm bg-zinc-900 border border-white/10 rounded-[32px] p-8 shadow-2xl text-center relative overflow-hidden"
     >
-      <div className="h-20 w-20 rounded-full bg-violet-500/20 grid place-items-center mx-auto mb-4 border-2 border-violet-500/50">
-        <User className="h-10 w-10 text-violet-400" />
-      </div>
-      <h3 className="text-xl font-bold mb-1">Входящий звонок</h3>
-      <p className="text-zinc-400 text-sm mb-6">Тип: {mode === "video" ? "Видео" : "Аудио"}</p>
+      <div className="absolute inset-0 bg-gradient-to-b from-violet-500/10 to-transparent pointer-events-none" />
       
-      <div className="flex gap-4">
-        <button 
-          onClick={onReject}
-          className="flex-1 py-3 rounded-2xl bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all font-semibold"
-        >
-          Отклонить
-        </button>
-        <button 
-          onClick={onAccept}
-          className="flex-1 py-3 rounded-2xl bg-emerald-500 text-white hover:bg-emerald-600 transition-all font-semibold shadow-lg shadow-emerald-500/20"
-        >
-          Принять
-        </button>
+      <div className="relative z-10">
+        <div className="h-24 w-24 rounded-full bg-violet-500/20 grid place-items-center mx-auto mb-6 border-2 border-violet-500/50 shadow-lg shadow-violet-500/20">
+          <User className="h-12 w-12 text-violet-400" />
+        </div>
+        
+        <h3 className="text-2xl font-bold mb-2 tracking-tight text-white">Входящий звонок</h3>
+        <p className="text-zinc-400 text-sm mb-8 font-medium">От: {from}</p>
+        
+        <div className="flex gap-4">
+          <button 
+            onClick={onReject}
+            className="flex-1 py-4 rounded-2xl bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all font-bold flex items-center justify-center gap-2"
+          >
+            <PhoneOff className="h-5 w-5" />
+            Отклонить
+          </button>
+          <button 
+            onClick={onAccept}
+            className="flex-1 py-4 rounded-2xl bg-emerald-500 text-white hover:bg-emerald-600 transition-all font-bold shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 animate-bounce"
+          >
+            <Phone className="h-5 w-5" />
+            Принять
+          </button>
+        </div>
       </div>
     </motion.div>
   </div>

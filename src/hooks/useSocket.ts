@@ -7,57 +7,38 @@ import { FluxMessage, SocketPayloadMap } from "@/src/types/flux";
 type OutboundEvent = keyof SocketPayloadMap;
 
 export const useSocket = (userId: string) => {
+  const [socket, setSocket] = useState<Socket | null>(null);
   const [connected, setConnected] = useState(false);
-  const [queue, setQueue] = useState<FluxMessage[]>([]);
-  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    // В продакшене используем относительный путь для Railway
-    const socketUrl = process.env.NODE_ENV === "production" 
-      ? undefined // Означает текущий хост
-      : "http://localhost:3000";
+    if (!userId) return;
 
-    const socket = io(socketUrl, {
+    // На Railway/Production используем относительный путь
+    const s = io({
       path: "/api/socket",
       autoConnect: true,
       reconnection: true,
-      reconnectionAttempts: 10,
+      reconnectionAttempts: 15,
       reconnectionDelay: 1000,
-      transports: ["polling", "websocket"], // Сначала polling для надежности
+      transports: ["websocket", "polling"], // Поменял местами для исключения ошибок Railway
       auth: { userId },
     });
-    socketRef.current = socket;
 
-    socket.on("connect", () => {
+    s.on("connect", () => {
       setConnected(true);
-      setQueue((pending) => {
-        pending.forEach((message) => {
-          socket.emit("message:queue", message);
-        });
-        return [];
-      });
+      setSocket(s);
+      console.log("> Connected to Socket.io server");
     });
 
-    socket.on("disconnect", () => setConnected(false));
+    s.on("disconnect", () => {
+      setConnected(false);
+      console.log("> Disconnected from Socket.io server");
+    });
 
     return () => {
-      socket.disconnect();
-      socketRef.current = null;
+      s.disconnect();
     };
   }, [userId]);
 
-  const emit = <T extends OutboundEvent>(event: T, payload: SocketPayloadMap[T]) => {
-    if (event === "message:queue" && !connected) {
-      setQueue((pending) => [...pending, payload as FluxMessage]);
-      return;
-    }
-    socketRef.current?.emit(event, payload);
-  };
-
-  return {
-    connected,
-    emit,
-    socket: socketRef.current,
-    queuedCount: queue.length,
-  };
+  return { socket, connected, queuedCount: 0 };
 };

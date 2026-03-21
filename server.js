@@ -11,11 +11,17 @@ const cloudinary = require('cloudinary').v2;
 require('dotenv').config();
 
 // Настройка Cloudinary для постоянного хранения
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
+console.log('> Checking Cloudinary configuration...');
+if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+  });
+  console.log('> Cloudinary configured successfully.');
+} else {
+  console.warn('> WARNING: Cloudinary credentials missing. Media will not persist after redeploy!');
+}
 
 // Настройка Multer для хранения файлов на Railway (в папке uploads)
 const storage = multer.diskStorage({
@@ -118,7 +124,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
   
   try {
     // Если есть ключи Cloudinary, грузим туда
-    if (process.env.CLOUDINARY_CLOUD_NAME) {
+    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
       const result = await cloudinary.uploader.upload(req.file.path, {
         resource_type: "auto",
         folder: "flux_uploads"
@@ -134,7 +140,9 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     }
 
     // Если нет Cloudinary, грузим локально (сотрется при деплое)
-    const url = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    // Форсируем HTTPS для Railway
+    const protocol = req.headers['x-forwarded-proto'] || 'https';
+    const url = `${protocol}://${req.get('host')}/uploads/${req.file.filename}`;
     res.json({ 
       url, 
       type: req.file.mimetype.startsWith('image/') ? 'image' : 
