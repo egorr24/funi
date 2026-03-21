@@ -125,12 +125,15 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
   try {
     // Если есть ключи Cloudinary, грузим туда
     if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+      console.log('> Uploading to Cloudinary...');
       const result = await cloudinary.uploader.upload(req.file.path, {
         resource_type: "auto",
         folder: "flux_uploads"
       });
       // Удаляем временный файл
-      fs.unlinkSync(req.file.path);
+      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+      
+      console.log('> Upload successful:', result.secure_url);
       return res.json({ 
         url: result.secure_url, 
         type: req.file.mimetype.startsWith('image/') ? 'image' : 
@@ -140,7 +143,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     }
 
     // Если нет Cloudinary, грузим локально (сотрется при деплое)
-    // Форсируем HTTPS для Railway
+    console.log('> Cloudinary not configured, using local storage');
     const protocol = req.headers['x-forwarded-proto'] || 'https';
     const url = `${protocol}://${req.get('host')}/uploads/${req.file.filename}`;
     res.json({ 
@@ -150,8 +153,8 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
             req.file.mimetype.startsWith('audio/') ? 'audio' : 'file'
     });
   } catch (err) {
-    console.error('Upload error:', err);
-    res.status(500).json({ error: 'Upload failed' });
+    console.error('Upload error details:', err);
+    res.status(500).json({ error: 'Upload failed', details: err.message });
   }
 });
 

@@ -117,14 +117,16 @@ export const FluxApp = () => {
         const newChat = await res.json();
         setIsCreateChatOpen(false);
         // Уведомляем другого пользователя через сокет
-        socket.emit("chat:new", { targetId: userId, chat: newChat });
+        if (socket.socket) {
+          socket.socket.emit("chat:new", { targetId: userId, chat: newChat });
+        }
         await fetchChats(); // Refresh the list
         setChatId(newChat.id); // Select the new chat
       }
     } catch (error) {
       console.error("Failed to create chat:", error);
     }
-  }, [fetchChats, socket]);
+  }, [fetchChats, socket.socket]);
 
   // Fetch messages when chatId changes
   useEffect(() => {
@@ -136,14 +138,16 @@ export const FluxApp = () => {
           const data = await res.json();
           setMessages(data);
           // Присоединяемся к комнате чата в сокетах
-          socket.emit("chat:join", { chatId });
+          if (socket.socket) {
+            socket.socket.emit("chat:join", { chatId });
+          }
         }
       } catch (error) {
         console.error("Failed to fetch messages:", error);
       }
     };
     fetchMessages();
-  }, [chatId, socket]);
+  }, [chatId, socket.socket]);
 
   // Handle incoming socket messages
   useEffect(() => {
@@ -247,17 +251,19 @@ export const FluxApp = () => {
         if (res.ok) {
           const newMessage = await res.json();
           // Уведомляем сокет о новом медиа-сообщении
-          socket.emit("message:queue", newMessage);
+          if (socket.socket) {
+            socket.socket.emit("message:queue", newMessage);
+          }
           setMessages((current) => [...current, newMessage]);
         }
       }
     } catch (error) {
       console.error("Upload failed:", error);
     }
-  }, [activeChat, session?.user, socket]);
+  }, [activeChat, session?.user, socket.socket]);
 
   const sendMessage = useCallback(async () => {
-    if (!input.trim() || !activeChat || !session?.user?.id) {
+    if (!input.trim() || !activeChat || !session?.user) {
       return;
     }
 
@@ -269,7 +275,7 @@ export const FluxApp = () => {
     const optimisticMessage: FluxMessage = {
       id: tempId,
       chatId: activeChat.id,
-      senderId: session.user.id,
+      senderId: session.user.id!,
       senderName: session.user.name || "You",
       encryptedBody: currentInput,
       decryptedBody: currentInput,
@@ -308,7 +314,9 @@ export const FluxApp = () => {
 
       if (res.ok) {
         const newMessage = await res.json();
-        socket.emit("message:queue", newMessage);
+        if (socket.socket) {
+          socket.socket.emit("message:queue", newMessage);
+        }
         // Заменяем временное сообщение реальным
         setMessages((current) => current.map(m => m.id === tempId ? newMessage : m));
       } else {
@@ -321,7 +329,7 @@ export const FluxApp = () => {
       setInput(currentInput);
       setMessages((current) => current.filter(m => m.id !== tempId));
     }
-  }, [input, activeChat, session?.user, socket]);
+  }, [input, activeChat, session?.user, socket.socket]);
 
   const summarize = useCallback(async () => {
     const response = await fetch("/api/ai/summarize", {
