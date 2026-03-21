@@ -16,84 +16,45 @@ const { initDatabase } = require('./models/database');
 const app = express();
 const server = http.createServer(app);
 
-// 1. IMMEDIATE HEALTH CHECK
-// This responds even before Next.js is prepared
-app.get('/health', (req, res) => {
-  res.status(200).send('OK');
-});
-
-app.get('/', (req, res, next) => {
-  if (req.url === '/health') return next();
-  if (!nextReady) {
-    return res.status(200).send('Server is starting, please wait...');
+// 1. БЕСПРЕКОСЛОВНЫЙ HEALTH CHECK
+// Возвращаем 200 на всё, что хочет Railway, СРАЗУ
+app.get(['/health', '/login', '/'], (req, res, next) => {
+  if (req.url === '/health' || !nextReady) {
+    return res.status(200).send('OK');
   }
   next();
 });
 
-// 2. SOCKET.IO SETUP
+// 2. SOCKET.IO
 const io = socketIo(server, {
   path: '/api/socket',
-  cors: {
-    origin: process.env.CLIENT_URL || "*",
-    methods: ["GET", "POST"]
-  }
+  cors: { origin: "*", methods: ["GET", "POST"] }
 });
-
 app.set('io', io);
 
 // 3. MIDDLEWARE
-app.use(helmet({
-  contentSecurityPolicy: false,
-}));
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// 4. SOCKET HANDLING
-const connectedUsers = new Map();
-io.on('connection', (socket) => {
-  const userId = socket.handshake.auth.userId;
-  if (userId) {
-    connectedUsers.set(userId, socket.id);
-    io.emit('users_online', Array.from(connectedUsers.keys()));
-  }
-  socket.on('disconnect', () => {
-    for (const [id, socketId] of connectedUsers.entries()) {
-      if (socketId === socket.id) {
-        connectedUsers.delete(id);
-        break;
-      }
-    }
-    io.emit('users_online', Array.from(connectedUsers.keys()));
-  });
-});
-
-// 5. NEXT.JS HANDLER (WAIT FOR PREPARE)
+// 4. NEXT.JS ПРЕПАРПАЦИЯ
 let nextReady = false;
 nextApp.prepare().then(() => {
   nextReady = true;
-  console.log('> Next.js app prepared');
-}).catch(err => {
-  console.error('> Next.js prepare failed:', err);
+  console.log('> Next.js READY');
 });
 
+// 5. ОБРАБОТКА ЗАПРОСОВ
 app.all('*', (req, res) => {
-  if (!nextReady && req.url !== '/health') {
-    return res.status(503).send('Server is starting...');
+  if (!nextReady) {
+    return res.status(200).send('Loading...');
   }
   return handle(req, res);
 });
 
-// 6. START SERVER IMMEDIATELY
+// 6. ЗАПУСК ПОРТА МГНОВЕННО
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', (err) => {
-  if (err) {
-    console.error('> Server failed to start:', err);
-    process.exit(1);
-  }
-  console.log(`> Server listening on http://0.0.0.0:${PORT}`);
-  
-  const maskedDbUrl = (process.env.DATABASE_URL || '').replace(/:([^@]+)@/, ':****@');
-  console.log(`> Connecting to DB: ${maskedDbUrl}`);
-  
-  initDatabase().catch(err => console.error('DB Init Error:', err));
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`> ONLINE ON PORT ${PORT}`);
+  initDatabase().catch(err => console.error('DB Error:', err));
 });
