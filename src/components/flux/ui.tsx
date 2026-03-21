@@ -1,8 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Mic, Paperclip, Phone, Pin, Search, SendHorizontal, Shield, Video, Plus, X, MessageSquare, Settings, User, Bell, Check, CheckCheck } from "lucide-react";
-import { PropsWithChildren, ReactNode, useState, useEffect } from "react";
+import { Mic, Paperclip, Phone, Pin, Search, SendHorizontal, Shield, Video, Plus, X, MessageSquare, Settings, User, Bell, Check, CheckCheck, Maximize2, MicOff, VideoOff, PhoneOff, Share } from "lucide-react";
+import { PropsWithChildren, ReactNode, useState, useEffect, useRef } from "react";
 import { FluxChat, FluxMessage } from "@/src/types/flux";
 
 type BaseProps = {
@@ -198,6 +198,10 @@ export const CreateChatModal = ({
   );
 };
 
+export const EmptyState = ({ label }: { label: string }) => (
+  <GlassCard className="grid place-items-center p-5 text-sm text-zinc-400">{label}</GlassCard>
+);
+
 export const SidebarHeader = ({ title, onAddChat }: { title: string; onAddChat?: () => void }) => (
   <div className="px-5 pb-4 pt-5 flex items-center justify-between">
     <div>
@@ -360,24 +364,37 @@ export const MessageScroll = ({ children }: PropsWithChildren) => (
   </motion.div>
 );
 
-export const MessageBubble = ({ message, mine }: { message: FluxMessage; mine: boolean }) => (
+export const MessageBubble = ({ 
+  message, 
+  mine,
+  onImageClick
+}: { 
+  message: FluxMessage; 
+  mine: boolean;
+  onImageClick?: (url: string) => void;
+}) => (
   <motion.div
     initial={{ opacity: 0, y: 10, scale: 0.95 }}
     animate={{ opacity: 1, y: 0, scale: 1 }}
-    className={`max-w-[70%] rounded-2xl px-4 py-2 shadow-lg shadow-black/5 ${
+    className={`max-w-[70%] rounded-2xl px-4 py-2 shadow-lg shadow-black/5 group ${
       mine ? "ml-auto bg-violet-600/90 text-white rounded-tr-none" : "bg-zinc-800/80 text-zinc-100 rounded-tl-none border border-white/5"
     }`}
   >
     {message.mediaType === "image" && message.mediaUrl && (
-      <img src={message.mediaUrl} alt="media" className="rounded-xl mb-2 max-h-60 w-full object-cover" />
+      <div className="relative overflow-hidden rounded-xl mb-2 cursor-pointer group/img" onClick={() => onImageClick?.(message.mediaUrl!)}>
+        <img src={message.mediaUrl} alt="media" className="max-h-60 w-full object-cover transition-transform group-hover/img:scale-105" />
+        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/img:opacity-100 transition-opacity grid place-items-center">
+          <Maximize2 className="h-6 w-6 text-white" />
+        </div>
+      </div>
     )}
     {message.mediaType === "video" && message.mediaUrl && (
       <video src={message.mediaUrl} controls className="rounded-xl mb-2 max-h-60 w-full" />
     )}
     {message.mediaType === "audio" && message.mediaUrl && (
-      <audio src={message.mediaUrl} controls className="mb-2 w-full" />
+      <audio src={message.mediaUrl} controls className="mb-2 w-full h-10 filter invert brightness-200" />
     )}
-    <div className="text-sm leading-relaxed">{message.decryptedBody}</div>
+    <div className="text-sm leading-relaxed whitespace-pre-wrap">{message.decryptedBody}</div>
     <div className="mt-1 flex items-center justify-end gap-1.5 opacity-60">
       <span className="text-[10px] uppercase font-medium">
         {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -389,6 +406,32 @@ export const MessageBubble = ({ message, mine }: { message: FluxMessage; mine: b
       )}
     </div>
   </motion.div>
+);
+
+export const PhotoViewer = ({ url, onClose }: { url: string | null; onClose: () => void }) => (
+  <AnimatePresence>
+    {url && (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4"
+        onClick={onClose}
+      >
+        <button onClick={onClose} className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 rounded-full transition-colors">
+          <X className="h-6 w-6 text-white" />
+        </button>
+        <motion.img
+          initial={{ scale: 0.9 }}
+          animate={{ scale: 1 }}
+          exit={{ scale: 0.9 }}
+          src={url}
+          className="max-w-full max-h-full rounded-2xl shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        />
+      </motion.div>
+    )}
+  </AnimatePresence>
 );
 
 export const DeliveryBadge = ({ status }: { status: FluxMessage["status"] }) => (
@@ -526,52 +569,105 @@ export const CallOverlay = ({
   mode,
   onEnd,
   onShare,
+  localStream,
+  remoteStream,
+  muted,
+  cameraOff,
+  toggleMute,
+  toggleCamera,
 }: {
   active: boolean;
   mode: string;
   onEnd: () => void;
   onShare: () => void;
-}) => (
-  <AnimatePresence>
-    {active ? (
+  localStream: MediaStream | null;
+  remoteStream: MediaStream | null;
+  muted: boolean;
+  cameraOff: boolean;
+  toggleMute: () => void;
+  toggleCamera: () => void;
+}) => {
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+    }
+  }, [localStream, active]);
+
+  useEffect(() => {
+    if (remoteVideoRef.current && remoteStream) {
+      remoteVideoRef.current.srcObject = remoteStream;
+    }
+  }, [remoteStream, active]);
+
+  if (!active) return null;
+
+  return (
+    <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="absolute inset-0 z-20 grid place-items-center bg-black/60 backdrop-blur-xl"
+        className="fixed inset-0 z-[110] bg-zinc-950/90 backdrop-blur-2xl flex flex-col"
       >
-        <GlassCard className="w-[520px] space-y-4 p-5">
-          <h3 className="text-lg font-semibold">Unified {mode} call</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <VideoTile name="You" />
-            <VideoTile name="Remote" />
+        <div className="flex-1 relative p-6 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+          <div className="relative aspect-video rounded-3xl bg-zinc-900 border border-white/5 overflow-hidden shadow-2xl">
+            <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
+            <div className="absolute bottom-4 left-4 px-3 py-1 bg-black/40 backdrop-blur-md rounded-lg text-xs font-medium">
+              Собеседник
+            </div>
+            {!remoteStream && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+                <div className="h-20 w-20 rounded-full bg-violet-500/20 grid place-items-center animate-pulse">
+                  <User className="h-10 w-10 text-violet-400" />
+                </div>
+                <p className="text-sm text-zinc-400">Ожидание подключения...</p>
+              </div>
+            )}
           </div>
-          <ParticipantStrip />
-          <div className="flex gap-2">
-            <button onClick={onShare} className="rounded-xl border border-white/10 px-4 py-2 text-sm">
-              Share Screen
-            </button>
-            <button onClick={onEnd} className="rounded-xl bg-red-500/80 px-4 py-2 text-sm">
-              End Call
-            </button>
+
+          <div className="relative aspect-video rounded-3xl bg-zinc-900 border border-white/5 overflow-hidden shadow-2xl">
+            <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
+            <div className="absolute bottom-4 left-4 px-3 py-1 bg-black/40 backdrop-blur-md rounded-lg text-xs font-medium">
+              Вы (Вы)
+            </div>
+            {cameraOff && (
+              <div className="absolute inset-0 bg-zinc-900 flex items-center justify-center">
+                <VideoOff className="h-12 w-12 text-zinc-700" />
+              </div>
+            )}
           </div>
-        </GlassCard>
+        </div>
+
+        <div className="h-32 flex items-center justify-center gap-6 px-6">
+          <CallControlBtn onClick={toggleMute} active={!muted} icon={muted ? <MicOff /> : <Mic />} label={muted ? "Включить" : "Выключить"} />
+          <CallControlBtn onClick={toggleCamera} active={!cameraOff} icon={cameraOff ? <VideoOff /> : <Video />} label={cameraOff ? "Включить" : "Выключить"} />
+          <CallControlBtn onClick={onShare} active={mode === "screen"} icon={<Share />} label="Экран" />
+          <button
+            onClick={onEnd}
+            className="h-16 w-16 rounded-full bg-red-500 hover:bg-red-600 transition-colors grid place-items-center shadow-xl shadow-red-500/20"
+          >
+            <PhoneOff className="h-7 w-7 text-white" />
+          </button>
+        </div>
       </motion.div>
-    ) : null}
-  </AnimatePresence>
-);
+    </AnimatePresence>
+  );
+};
 
-export const VideoTile = ({ name }: { name: string }) => (
-  <div className="aspect-video rounded-2xl border border-white/10 bg-black/25 p-3">
-    <div className="text-xs text-zinc-300">{name}</div>
-  </div>
-);
-
-export const ParticipantStrip = () => (
-  <div className="flex gap-2">
-    <AvatarPill label="AR" />
-    <AvatarPill label="KL" />
-    <AvatarPill label="YO" />
+const CallControlBtn = ({ onClick, active, icon, label }: { onClick: () => void; active: boolean; icon: ReactNode; label: string }) => (
+  <div className="flex flex-col items-center gap-2">
+    <button
+      onClick={onClick}
+      className={`h-14 w-14 rounded-2xl grid place-items-center transition-all ${
+        active ? "bg-white/10 text-white hover:bg-white/20" : "bg-red-500/20 text-red-400 border border-red-500/20"
+      }`}
+    >
+      {icon}
+    </button>
+    <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">{label}</span>
   </div>
 );
 
@@ -671,6 +767,82 @@ export const SettingsPanel = () => (
   </GlassCard>
 );
 
-export const EmptyState = ({ label }: { label: string }) => (
-  <GlassCard className="grid place-items-center p-5 text-sm text-zinc-400">{label}</GlassCard>
-);
+export const VoiceRecorder = ({ onSend, onCancel }: { onSend: (blob: Blob) => void; onCancel: () => void }) => {
+  const [recording, setRecording] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (recording) {
+      interval = setInterval(() => setDuration(d => d + 1), 1000);
+    }
+    return () => clearInterval(interval);
+  }, [recording]);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      chunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        onSend(blob);
+        stream.getTracks().forEach(t => t.stop());
+      };
+
+      recorder.start();
+      setRecording(true);
+      setDuration(0);
+    } catch (err) {
+      console.error("Failed to start recording:", err);
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    setRecording(false);
+  };
+
+  const formatTime = (s: number) => {
+    const mins = Math.floor(s / 60);
+    const secs = s % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="flex items-center gap-4 bg-violet-600/20 px-4 py-2 rounded-2xl border border-violet-500/30 animate-in slide-in-from-bottom-2">
+      <div className="flex items-center gap-2">
+        <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+        <span className="text-sm font-mono text-violet-100">{formatTime(duration)}</span>
+      </div>
+      <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
+        <motion.div 
+          className="h-full bg-violet-400"
+          animate={{ width: ["0%", "100%"] }}
+          transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
+        />
+      </div>
+      <div className="flex items-center gap-2">
+        <button onClick={onCancel} className="p-2 hover:bg-white/10 rounded-xl transition-colors text-zinc-400">
+          <X className="h-5 w-5" />
+        </button>
+        <button 
+          onClick={recording ? stopRecording : startRecording}
+          className={`h-10 w-10 rounded-xl grid place-items-center transition-all ${
+            recording ? "bg-red-500 shadow-lg shadow-red-500/20" : "bg-violet-500"
+          }`}
+        >
+          {recording ? <Check className="h-5 w-5 text-white" /> : <Mic className="h-5 w-5 text-white" />}
+        </button>
+      </div>
+    </div>
+  );
+};

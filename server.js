@@ -49,6 +49,35 @@ const io = socketIo(server, {
 });
 app.set('io', io);
 
+io.on('connection', (socket) => {
+  const userId = socket.handshake.auth.userId;
+  if (userId) {
+    socket.join(userId);
+    console.log(`> User connected: ${userId}`);
+  }
+
+  // Сигналинг для звонков
+  socket.on('call:offer', ({ targetId, offer, mode }) => {
+    io.to(targetId).emit('call:offer', { from: userId, offer, mode });
+  });
+
+  socket.on('call:answer', ({ targetId, answer }) => {
+    io.to(targetId).emit('call:answer', { answer });
+  });
+
+  socket.on('call:ice', ({ targetId, candidate }) => {
+    io.to(targetId).emit('call:ice', { candidate });
+  });
+
+  socket.on('call:end', ({ targetId }) => {
+    io.to(targetId).emit('call:end');
+  });
+
+  socket.on('disconnect', () => {
+    console.log(`> User disconnected: ${userId}`);
+  });
+});
+
 // 3. MIDDLEWARE
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());

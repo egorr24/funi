@@ -28,6 +28,7 @@ import {
   MessageScroll,
   NavSidebar,
   NeonDivider,
+  PhotoViewer,
   PinnedBanner,
   ProfileSheet,
   SearchBar,
@@ -39,6 +40,7 @@ import {
   ThreadPanel,
   ThreadReplyInput,
   TypingIndicator,
+  VoiceRecorder,
 } from "@/src/components/flux/ui";
 
 const demoPublicKey =
@@ -59,6 +61,8 @@ export const FluxApp = () => {
   const [aiSummary, setAiSummary] = useState("Unread summary will appear here.");
   const [isCreateChatOpen, setIsCreateChatOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("chats");
+  const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
   
   const { 
     variables, 
@@ -67,7 +71,7 @@ export const FluxApp = () => {
     glowIntensity, setGlowIntensity 
   } = useThemeEngine();
   const socket = useSocket(session?.user?.id || "u_me");
-  const call = useCallEngine();
+  const call = useCallEngine(socket.socket, session?.user?.id || "");
   const waveform = useWaveform(`${chatId}-${messages.length}`);
 
   // Redirect if not authenticated
@@ -183,9 +187,19 @@ export const FluxApp = () => {
   const visibleMessages = useMemo(() => messages.filter((message) => message.chatId === activeChat?.id), [messages, activeChat]);
 
   const startCall = useCallback((mode: "audio" | "video") => {
-    if (!activeChat) return;
-    call.start(mode);
-  }, [activeChat, call]);
+    if (!activeChat || !session?.user?.id) return;
+    // Находим ID собеседника (первый участник, который не мы)
+    // В реальном приложении это должно быть более надежно
+    const targetMember = activeChat.participants.find(p => p !== session.user?.name);
+    // Для демо используем просто первый попавшийся ID из участников, если он есть
+    // Но так как у нас ChatMember в БД, нам нужен userId
+    fetch(`/api/chats/${activeChat.id}/members`)
+      .then(res => res.json())
+      .then(members => {
+        const other = members.find((m: any) => m.userId !== session.user?.id);
+        if (other) call.start(other.userId, mode);
+      });
+  }, [activeChat, session?.user, call]);
 
   const handleFileUpload = useCallback(async (file: File) => {
     if (!activeChat || !session?.user?.id) return;
@@ -316,6 +330,7 @@ export const FluxApp = () => {
 
   return (
     <div style={{ background: variables.background, boxShadow: `inset 0 0 160px ${variables.glow}` }} className="min-h-screen">
+      <PhotoViewer url={viewingPhoto} onClose={() => setViewingPhoto(null)} />
       <CreateChatModal
         isOpen={isCreateChatOpen}
         onClose={() => setIsCreateChatOpen(false)}
@@ -364,27 +379,54 @@ export const FluxApp = () => {
                       key={message.id}
                       message={{ ...message, waveform, decryptedBody: message.encryptedBody }}
                       mine={message.senderId === session?.user?.id}
+                      onImageClick={(url) => setViewingPhoto(url)}
                     />
                   ))}
                 </MessageScroll>
                 <TypingIndicator visible={activeChat.typing} />
-                <Composer
-                  value={input}
-                  onChange={setInput}
-                  onSend={sendMessage}
-                  onAttach={() => {
-                    const input = document.createElement("input");
-                    input.type = "file";
-                    input.accept = "image/*,video/*,audio/*";
-                    input.onchange = (e) => {
-                      const file = (e.target as HTMLInputElement).files?.[0];
-                      if (file) handleFileUpload(file);
-                    };
-                    input.click();
-                  }}
-                  onVoice={() => alert("Recording voice encrypted clip…")}
+                
+                {isRecording ? (
+                  <div className="px-4 py-2">
+                    <VoiceRecorder 
+                      onCancel={() => setIsRecording(false)}
+                      onSend={(blob) => {
+                        const file = new File([blob], "voice-message.webm", { type: "audio/webm" });
+                        handleFileUpload(file);
+                        setIsRecording(false);
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <Composer
+                    value={input}
+                    onChange={setInput}
+                    onSend={sendMessage}
+                    onAttach={() => {
+                      const input = document.createElement("input");
+                      input.type = "file";
+                      input.accept = "image/*,video/*,audio/*";
+                      input.onchange = (e) => {
+                        const file = (e.target as HTMLInputElement).files?.[0];
+                        if (file) handleFileUpload(file);
+                      };
+                      input.click();
+                    }}
+                    onVoice={() => setIsRecording(true)}
+                  />
+                )}
+                
+                <CallOverlay 
+                  active={call.inCall} 
+                  mode={call.mode} 
+                  onEnd={call.end} 
+                  onShare={call.shareScreen}
+                  localStream={call.localStream}
+                  remoteStream={call.remoteStream}
+                  muted={call.muted}
+                  cameraOff={call.cameraOff}
+                  toggleMute={call.toggleMute}
+                  toggleCamera={call.toggleCamera}
                 />
-                <CallOverlay active={call.inCall} mode={call.mode} onEnd={call.end} onShare={call.shareScreen} />
               </MessagePane>
             ) : (
               <EmptyState label="Select a conversation to begin." />
