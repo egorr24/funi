@@ -5,32 +5,18 @@ import { useEffect, useMemo, useState } from "react";
 export type FluxThemeMode = "night" | "day";
 
 export const useThemeEngine = () => {
-  const [mode, setMode] = useState<FluxThemeMode>("night");
-  const [hours, setHours] = useState<number>(new Date().getHours());
-
-  useEffect(() => {
-    const update = () => setHours(new Date().getHours());
-    update();
-    const timer = setInterval(update, 60_000);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    setMode(hours >= 7 && hours <= 18 ? "day" : "night");
-  }, [hours]);
+  const [accentColor, setAccentColor] = useState<string>("#8b5cf6"); // violet-500
+  const [blurIntensity, setBlurIntensity] = useState<number>(20);
+  const [glowIntensity, setGlowIntensity] = useState<number>(0.5);
 
   const variables = useMemo(() => {
-    if (mode === "day") {
-      return {
-        background: "radial-gradient(circle at top, #1d1038 0%, #0f0c1a 60%, #09080d 100%)",
-        glow: "rgba(183, 86, 255, 0.52)",
-      };
-    }
     return {
-      background: "radial-gradient(circle at top, #120a2b 0%, #09050f 58%, #040306 100%)",
-      glow: "rgba(161, 72, 255, 0.68)",
+      accent: accentColor,
+      background: `radial-gradient(circle at top, ${accentColor}15 0%, #09050f 58%, #040306 100%)`,
+      glow: `${accentColor}${Math.floor(glowIntensity * 255).toString(16).padStart(2, '0')}`,
+      blur: `${blurIntensity}px`,
     };
-  }, [mode]);
+  }, [accentColor, blurIntensity, glowIntensity]);
 
-  return { mode, variables };
+  return { variables, accentColor, setAccentColor, blurIntensity, setBlurIntensity, glowIntensity, setGlowIntensity };
 };

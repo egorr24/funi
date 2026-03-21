@@ -10,7 +10,7 @@ type BaseProps = {
 };
 
 export const GlassCard = ({ children, className = "" }: PropsWithChildren<BaseProps>) => (
-  <div className={`rounded-none border-x border-white/5 bg-zinc-950/40 backdrop-blur-3xl ${className}`}>{children}</div>
+  <div className={`rounded-none border-x border-white/5 bg-zinc-950/40 backdrop-blur-3xl transition-all duration-300 ${className}`}>{children}</div>
 );
 
 export const NeonDivider = () => <div className="h-px bg-gradient-to-r from-transparent via-violet-400/70 to-transparent" />;
@@ -368,6 +368,15 @@ export const MessageBubble = ({ message, mine }: { message: FluxMessage; mine: b
       mine ? "ml-auto bg-violet-600/90 text-white rounded-tr-none" : "bg-zinc-800/80 text-zinc-100 rounded-tl-none border border-white/5"
     }`}
   >
+    {message.mediaType === "image" && message.mediaUrl && (
+      <img src={message.mediaUrl} alt="media" className="rounded-xl mb-2 max-h-60 w-full object-cover" />
+    )}
+    {message.mediaType === "video" && message.mediaUrl && (
+      <video src={message.mediaUrl} controls className="rounded-xl mb-2 max-h-60 w-full" />
+    )}
+    {message.mediaType === "audio" && message.mediaUrl && (
+      <audio src={message.mediaUrl} controls className="mb-2 w-full" />
+    )}
     <div className="text-sm leading-relaxed">{message.decryptedBody}</div>
     <div className="mt-1 flex items-center justify-end gap-1.5 opacity-60">
       <span className="text-[10px] uppercase font-medium">

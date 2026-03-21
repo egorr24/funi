@@ -60,7 +60,12 @@ export const FluxApp = () => {
   const [isCreateChatOpen, setIsCreateChatOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("chats");
   
-  const { mode, variables } = useThemeEngine();
+  const { 
+    variables, 
+    accentColor, setAccentColor, 
+    blurIntensity, setBlurIntensity, 
+    glowIntensity, setGlowIntensity 
+  } = useThemeEngine();
   const socket = useSocket(session?.user?.id || "u_me");
   const call = useCallEngine();
   const waveform = useWaveform(`${chatId}-${messages.length}`);
@@ -181,6 +186,45 @@ export const FluxApp = () => {
     if (!activeChat) return;
     call.start(mode);
   }, [activeChat, call]);
+
+  const handleFileUpload = useCallback(async (file: File) => {
+    if (!activeChat || !session?.user?.id) return;
+    
+    const formData = new FormData();
+    formData.append("file", file);
+    
+    try {
+      const uploadRes = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      
+      if (uploadRes.ok) {
+        const { url, type } = await uploadRes.json();
+        
+        const res = await fetch("/api/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chatId: activeChat.id,
+            encryptedBody: `Sent a ${type}`,
+            encryptedAes: "unsupported",
+            iv: "unsupported",
+            mediaUrl: url,
+            mediaType: type,
+          }),
+        });
+
+        if (res.ok) {
+          const newMessage = await res.json();
+          socket.emit("message:queue", newMessage);
+          setMessages((current) => [...current, newMessage]);
+        }
+      }
+    } catch (error) {
+      console.error("Upload failed:", error);
+    }
+  }, [activeChat, session?.user, socket]);
 
   const sendMessage = useCallback(async () => {
     if (!input.trim() || !activeChat || !session?.user?.id) {
@@ -328,7 +372,16 @@ export const FluxApp = () => {
                   value={input}
                   onChange={setInput}
                   onSend={sendMessage}
-                  onAttach={() => alert("Attachment logic integrated. Select file…")}
+                  onAttach={() => {
+                    const input = document.createElement("input");
+                    input.type = "file";
+                    input.accept = "image/*,video/*,audio/*";
+                    input.onchange = (e) => {
+                      const file = (e.target as HTMLInputElement).files?.[0];
+                      if (file) handleFileUpload(file);
+                    };
+                    input.click();
+                  }}
                   onVoice={() => alert("Recording voice encrypted clip…")}
                 />
                 <CallOverlay active={call.inCall} mode={call.mode} onEnd={call.end} onShare={call.shareScreen} />
@@ -359,7 +412,56 @@ export const FluxApp = () => {
           <div className="col-span-2 p-8 overflow-y-auto">
             <h2 className="text-2xl font-bold mb-6">Настройки FLUX</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <SettingsPanel />
+              <div className="p-6 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-3xl space-y-6">
+                <h3 className="text-sm font-semibold mb-4">Кастомизация темы</h3>
+                
+                <div className="space-y-2">
+                  <label className="text-xs text-zinc-400">Акцентный цвет</label>
+                  <div className="flex gap-2">
+                    {["#8b5cf6", "#ec4899", "#3b82f6", "#10b981", "#f59e0b"].map(color => (
+                      <button 
+                        key={color}
+                        onClick={() => setAccentColor(color)}
+                        className={`h-8 w-8 rounded-full border-2 ${accentColor === color ? "border-white" : "border-transparent"}`}
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                    <input 
+                      type="color" 
+                      value={accentColor} 
+                      onChange={(e) => setAccentColor(e.target.value)}
+                      className="h-8 w-8 rounded-full bg-transparent border-none cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <label className="text-zinc-400">Интенсивность размытия</label>
+                    <span>{blurIntensity}px</span>
+                  </div>
+                  <input 
+                    type="range" min="0" max="100" 
+                    value={blurIntensity} 
+                    onChange={(e) => setBlurIntensity(parseInt(e.target.value))}
+                    className="w-full accent-violet-500"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <label className="text-zinc-400">Яркость свечения</label>
+                    <span>{Math.round(glowIntensity * 100)}%</span>
+                  </div>
+                  <input 
+                    type="range" min="0" max="1" step="0.01"
+                    value={glowIntensity} 
+                    onChange={(e) => setGlowIntensity(parseFloat(e.target.value))}
+                    className="w-full accent-violet-500"
+                  />
+                </div>
+              </div>
+
               <SecurityPanel />
               <SmartFolderPanel />
               <div className="p-4 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-3xl">

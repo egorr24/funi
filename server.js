@@ -5,7 +5,22 @@ const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
 const next = require('next');
+const multer = require('multer');
+const fs = require('fs');
 require('dotenv').config();
+
+// Настройка Multer для хранения файлов на Railway (в папке uploads)
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = './uploads';
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir);
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
+const upload = multer({ storage });
 
 const PORT = process.env.PORT || 3000;
 const dev = process.env.NODE_ENV !== 'production';
@@ -38,6 +53,18 @@ app.set('io', io);
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// API для загрузки медиа
+app.post('/api/upload', upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  const url = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+  res.json({ 
+    url, 
+    type: req.file.mimetype.startsWith('image/') ? 'image' : 
+          req.file.mimetype.startsWith('video/') ? 'video' : 
+          req.file.mimetype.startsWith('audio/') ? 'audio' : 'file'
+  });
+});
 
 // 4. NEXT.JS ПРЕПАРАЦИЯ (В ФОНЕ)
 let nextReady = false;
