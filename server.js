@@ -94,9 +94,9 @@ nextApp.prepare().then(() => {
   });
 
   const PORT = process.env.PORT || 3000;
-  server.listen(PORT, (err) => {
+  server.listen(PORT, '0.0.0.0', (err) => {
     if (err) throw err;
-    console.log(`> Ready on http://localhost:${PORT}`);
+    console.log(`> Ready on http://0.0.0.0:${PORT}`);
     
     // Also init the legacy DB if needed
     initDatabase().catch(err => console.error('DB Init Error:', err));
