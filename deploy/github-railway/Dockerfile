@@ -15,7 +15,7 @@ RUN npx prisma generate && npm run build
 FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-ENV PORT=8080
+ENV PORT=3000
 ENV HOST=0.0.0.0
 ENV AUTH_TRUST_HOST=true
 # Use credentials from your latest screenshot
@@ -33,5 +33,5 @@ COPY --from=builder /app/server.js ./server.js
 COPY --from=builder /app/models ./models
 COPY --from=builder /app/routes ./routes
 
-EXPOSE 8080
-CMD ["sh", "-c", "npx prisma db push && node server.js"]
+EXPOSE 3000
+CMD ["sh", "-c", "npx prisma db push || true && node server.js"]

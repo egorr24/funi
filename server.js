@@ -15,9 +15,11 @@ const handle = nextApp.getRequestHandler();
 const { initDatabase } = require('./models/database');
 
 nextApp.prepare().then(() => {
+  console.log('> Next.js app prepared');
   const app = express();
   const server = http.createServer(app);
   
+  console.log('> Initializing Socket.io...');
   // Initialize Socket.io with the correct path expected by the client
   const io = socketIo(server, {
     path: '/api/socket',
@@ -40,10 +42,6 @@ nextApp.prepare().then(() => {
 
   // Static files
   app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-  // Legacy API routes (if needed)
-  // const authRoutes = require('./routes/auth');
-  // app.use('/api/legacy/auth', authRoutes);
 
   // Socket.io connection handling
   const connectedUsers = new Map();
@@ -99,9 +97,11 @@ nextApp.prepare().then(() => {
     console.log(`> Ready on http://0.0.0.0:${PORT}`);
     
     // Also init the legacy DB if needed
+    console.log('> Initializing legacy database...');
     initDatabase().catch(err => console.error('DB Init Error:', err));
   });
 }).catch((ex) => {
+  console.error('> Error during Next.js prepare:');
   console.error(ex.stack);
   process.exit(1);
 });
