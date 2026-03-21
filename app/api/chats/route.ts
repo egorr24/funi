@@ -1,6 +1,6 @@
 import { auth } from "@/src/auth";
 import { prisma } from "@/src/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 export async function GET() {
   const session = await auth();
@@ -34,20 +34,83 @@ export async function GET() {
       return {
         id: chat.id,
         title: chat.title,
-        kind: chat.kind,
-        isPinned: chat.isPinned,
-        pinnedMessage: chat.pinnedMessage,
+        avatar: chat.title.slice(0, 2).toUpperCase(),
+        folder: chat.kind as any,
+        unreadCount: 0,
+        pinned: chat.isPinned,
+        typing: false,
+        participants: chat.members.map(m => m.user.name || "Unknown"),
         lastMessagePreview: lastMessage ? lastMessage.encryptedBody : "No messages yet",
-        lastMessageTime: lastMessage ? lastMessage.createdAt.toISOString() : chat.updatedAt.toISOString(),
-        unreadCount: 0, // Logic for unread count can be added later
-        online: chat.members.some(member => member.user.id !== session.user.id), // Simple online logic
-        folder: chat.kind,
+        updatedAt: chat.updatedAt.toISOString(),
       };
     });
 
     return NextResponse.json(chats);
   } catch (error) {
     console.error("Error fetching chats:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const { userId, title, kind = "PERSONAL" } = await request.json();
+
+    if (!userId) {
+      return NextResponse.json({ error: "userId is required" }, { status: 400 });
+    }
+
+    // Check if private chat already exists between these two users
+    if (kind === "PERSONAL") {
+      const existingChat = await prisma.chat.findFirst({
+        where: {
+          kind: "PERSONAL",
+          members: { every: { userId: { in: [session.user.id, userId] } } },
+        },
+      });
+
+      if (existingChat) {
+        return NextResponse.json(existingChat);
+      }
+    }
+
+    const chat = await prisma.chat.create({
+      data: {
+        title: title || "New Chat",
+        kind,
+        members: {
+          create: [
+            { userId: session.user.id },
+            { userId: userId },
+          ],
+        },
+      },
+      include: {
+        members: {
+          include: { user: true }
+        }
+      }
+    });
+
+    return NextResponse.json({
+      id: chat.id,
+      title: chat.title,
+      avatar: chat.title.slice(0, 2).toUpperCase(),
+      folder: chat.kind as any,
+      unreadCount: 0,
+      pinned: chat.isPinned,
+      typing: false,
+      participants: chat.members.map(m => m.user.name || "Unknown"),
+      lastMessagePreview: "No messages yet",
+      updatedAt: chat.updatedAt.toISOString(),
+    });
+  } catch (error) {
+    console.error("Chat creation error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

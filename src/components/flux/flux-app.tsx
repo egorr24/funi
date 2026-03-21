@@ -18,6 +18,7 @@ import {
   ChatListItem,
   Composer,
   ConnectionBadge,
+  CreateChatModal,
   EmptyState,
   FluxShell,
   FolderTabs,
@@ -56,6 +57,7 @@ export const FluxApp = () => {
   const [chatsData, setChatsData] = useState<FluxChat[]>([]);
   const [loading, setLoading] = useState(true);
   const [aiSummary, setAiSummary] = useState("Unread summary will appear here.");
+  const [isCreateChatOpen, setIsCreateChatOpen] = useState(false);
   
   const { mode, variables } = useThemeEngine();
   const socket = useSocket(session?.user?.id || "u_me");
@@ -69,26 +71,47 @@ export const FluxApp = () => {
     }
   }, [status, router]);
 
+  // Fetch chats function (reusable)
+  const fetchChats = async () => {
+    try {
+      const res = await fetch("/api/chats");
+      if (res.ok) {
+        const data = await res.json();
+        setChatsData(data);
+        if (data.length > 0 && !chatId) {
+          setChatId(data[0].id);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch chats:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Fetch chats on mount
   useEffect(() => {
-    const fetchChats = async () => {
-      try {
-        const res = await fetch("/api/chats");
-        if (res.ok) {
-          const data = await res.json();
-          setChatsData(data);
-          if (data.length > 0 && !chatId) {
-            setChatId(data[0].id);
-          }
-        }
-      } catch (error) {
-        console.error("Failed to fetch chats:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
     if (session?.user?.id) fetchChats();
   }, [session?.user?.id]);
+
+  // Handle chat creation
+  const handleCreateChat = async (userId: string, name: string) => {
+    try {
+      const res = await fetch("/api/chats", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, title: name }),
+      });
+      if (res.ok) {
+        const newChat = await res.json();
+        setIsCreateChatOpen(false);
+        await fetchChats(); // Refresh the list
+        setChatId(newChat.id); // Select the new chat
+      }
+    } catch (error) {
+      console.error("Failed to create chat:", error);
+    }
+  };
 
   // Fetch messages when chatId changes
   useEffect(() => {
@@ -112,9 +135,9 @@ export const FluxApp = () => {
     if (!socket.socket) return;
 
     const handleNewMessage = (message: FluxMessage) => {
+      // Avoid duplicate messages if we are in the active chat and already added it
       if (message.chatId === chatId) {
         setMessages((current) => {
-          // Avoid duplicates
           if (current.some(m => m.id === message.id)) return current;
           return [...current, message];
         });
@@ -126,7 +149,7 @@ export const FluxApp = () => {
           return {
             ...chat,
             lastMessagePreview: message.encryptedBody,
-            lastMessageTime: message.createdAt
+            updatedAt: message.createdAt
           };
         }
         return chat;
@@ -177,6 +200,18 @@ export const FluxApp = () => {
         socket.emit("message:queue", newMessage);
         setMessages((current) => [...current, newMessage]);
         setInput("");
+        
+        // Update last message in chatsData locally
+        setChatsData(current => current.map(chat => {
+          if (chat.id === activeChat.id) {
+            return {
+              ...chat,
+              lastMessagePreview: input,
+              updatedAt: new Date().toISOString()
+            };
+          }
+          return chat;
+        }));
       }
     } catch (error) {
       console.error("Failed to send message:", error);
@@ -206,9 +241,14 @@ export const FluxApp = () => {
 
   return (
     <div style={{ background: variables.background, boxShadow: `inset 0 0 160px ${variables.glow}` }} className="min-h-screen">
+      <CreateChatModal
+        isOpen={isCreateChatOpen}
+        onClose={() => setIsCreateChatOpen(false)}
+        onCreate={handleCreateChat}
+      />
       <FluxShell showRightPanel={showRightPanel}>
         <Sidebar>
-          <SidebarHeader title="FLUX" />
+          <SidebarHeader title="FLUX" onAddChat={() => setIsCreateChatOpen(true)} />
           <SearchBar value={search} onChange={setSearch} />
           <FolderTabs active={folder} onSelect={setFolder} />
           <NeonDivider />
@@ -239,7 +279,11 @@ export const FluxApp = () => {
             </div>
             <MessageScroll>
               {visibleMessages.map((message) => (
-                <MessageBubble key={message.id} message={{ ...message, waveform }} mine={message.senderId === "u_me"} />
+                <MessageBubble
+                  key={message.id}
+                  message={{ ...message, waveform, decryptedBody: message.encryptedBody }}
+                  mine={message.senderId === session?.user?.id}
+                />
               ))}
             </MessageScroll>
             <TypingIndicator visible={activeChat.typing} />
