@@ -5,119 +5,103 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const next = require('next');
 require('dotenv').config();
 
+const dev = process.env.NODE_ENV !== 'production';
+const nextApp = next({ dev });
+const handle = nextApp.getRequestHandler();
+
 const { initDatabase } = require('./models/database');
-const authRoutes = require('./routes/auth');
-const messageRoutes = require('./routes/messages');
-const userRoutes = require('./routes/users');
-const fileRoutes = require('./routes/files');
-const callRoutes = require('./routes/calls');
 
-const app = express();
-const server = http.createServer(app);
-const io = socketIo(server, {
-  cors: {
-    origin: process.env.CLIENT_URL || "*",
-    methods: ["GET", "POST"]
-  }
-});
-
-// Store io instance for use in routes
-app.set('io', io);
-
-// Middleware
-app.use(helmet());
-app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
-});
-app.use('/api/', limiter);
-
-// Static files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/messages', messageRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/files', fileRoutes);
-app.use('/api/calls', callRoutes);
-
-// Socket.io connection handling
-const connectedUsers = new Map();
-
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
-
-  socket.on('user_online', (userId) => {
-    connectedUsers.set(userId, socket.id);
-    io.emit('users_online', Array.from(connectedUsers.keys()));
-  });
-
-  socket.on('send_message', (data) => {
-    const recipientSocketId = connectedUsers.get(data.recipientId);
-    if (recipientSocketId) {
-      io.to(recipientSocketId).emit('new_message', data);
+nextApp.prepare().then(() => {
+  const app = express();
+  const server = http.createServer(app);
+  
+  // Initialize Socket.io with the correct path expected by the client
+  const io = socketIo(server, {
+    path: '/api/socket',
+    cors: {
+      origin: process.env.CLIENT_URL || "*",
+      methods: ["GET", "POST"]
     }
   });
 
-  socket.on('typing', (data) => {
-    const recipientSocketId = connectedUsers.get(data.recipientId);
-    if (recipientSocketId) {
-      io.to(recipientSocketId).emit('user_typing', data);
-    }
-  });
+  // Store io instance for use in routes
+  app.set('io', io);
 
-  socket.on('call_user', (data) => {
-    const recipientSocketId = connectedUsers.get(data.recipientId);
-    if (recipientSocketId) {
-      io.to(recipientSocketId).emit('incoming_call', data);
-    }
-  });
+  // Middleware (Next.js handles most of this, but we keep it for API routes)
+  app.use(helmet({
+    contentSecurityPolicy: false, // Required for Next.js in some cases
+  }));
+  app.use(cors());
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-  socket.on('answer_call', (data) => {
-    const recipientSocketId = connectedUsers.get(data.recipientId);
-    if (recipientSocketId) {
-      io.to(recipientSocketId).emit('call_answered', data);
-    }
-  });
+  // Static files
+  app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-  socket.on('ice_candidate', (data) => {
-    const recipientSocketId = connectedUsers.get(data.recipientId);
-    if (recipientSocketId) {
-      io.to(recipientSocketId).emit('ice_candidate', data);
-    }
-  });
+  // Legacy API routes (if needed)
+  // const authRoutes = require('./routes/auth');
+  // app.use('/api/legacy/auth', authRoutes);
 
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
-    for (const [userId, socketId] of connectedUsers.entries()) {
-      if (socketId === socket.id) {
-        connectedUsers.delete(userId);
-        break;
+  // Socket.io connection handling
+  const connectedUsers = new Map();
+
+  io.on('connection', (socket) => {
+    console.log('User connected:', socket.id);
+    const userId = socket.handshake.auth.userId;
+
+    if (userId) {
+      connectedUsers.set(userId, socket.id);
+      io.emit('users_online', Array.from(connectedUsers.keys()));
+    }
+
+    socket.on('user_online', (id) => {
+      connectedUsers.set(id, socket.id);
+      io.emit('users_online', Array.from(connectedUsers.keys()));
+    });
+
+    socket.on('send_message', (data) => {
+      const recipientSocketId = connectedUsers.get(data.recipientId);
+      if (recipientSocketId) {
+        io.to(recipientSocketId).emit('new_message', data);
       }
-    }
-    io.emit('users_online', Array.from(connectedUsers.keys()));
-  });
-});
+    });
 
-const PORT = process.env.PORT || 3000;
+    socket.on('typing', (data) => {
+      const recipientSocketId = connectedUsers.get(data.recipientId);
+      if (recipientSocketId) {
+        io.to(recipientSocketId).emit('user_typing', data);
+      }
+    });
 
-// Initialize database and start server
-initDatabase().then(() => {
-  server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    socket.on('disconnect', () => {
+      console.log('User disconnected:', socket.id);
+      for (const [id, socketId] of connectedUsers.entries()) {
+        if (socketId === socket.id) {
+          connectedUsers.delete(id);
+          break;
+        }
+      }
+      io.emit('users_online', Array.from(connectedUsers.keys()));
+    });
   });
-}).catch(error => {
-  console.error('Failed to initialize database:', error);
+
+  // Handle all other requests with Next.js
+  app.all('*', (req, res) => {
+    return handle(req, res);
+  });
+
+  const PORT = process.env.PORT || 3000;
+  server.listen(PORT, (err) => {
+    if (err) throw err;
+    console.log(`> Ready on http://localhost:${PORT}`);
+    
+    // Also init the legacy DB if needed
+    initDatabase().catch(err => console.error('DB Init Error:', err));
+  });
+}).catch((ex) => {
+  console.error(ex.stack);
   process.exit(1);
 });
-
-module.exports = { app, io };
