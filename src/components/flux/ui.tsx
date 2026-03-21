@@ -421,16 +421,24 @@ export const MediaPicker = () => (
   </GlassCard>
 );
 
-export const ProfileSheet = () => (
+export const ProfileSheet = ({ name, email, onSignOut }: { name?: string; email?: string; onSignOut?: () => void }) => (
   <GlassCard className="space-y-3 p-4">
     <h3 className="text-sm font-semibold">Profile</h3>
     <div className="flex items-center gap-3">
-      <AvatarPill label="YO" />
+      <AvatarPill label={(name || "U").slice(0, 2).toUpperCase()} />
       <div>
-        <p className="text-sm font-medium">You</p>
-        <p className="text-xs text-zinc-400">sovereign@flux.app</p>
+        <p className="text-sm font-medium">{name || "You"}</p>
+        <p className="text-xs text-zinc-400">{email || "sovereign@flux.app"}</p>
       </div>
     </div>
+    {onSignOut && (
+      <button
+        onClick={onSignOut}
+        className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/10"
+      >
+        Sign Out
+      </button>
+    )}
   </GlassCard>
 );
 
