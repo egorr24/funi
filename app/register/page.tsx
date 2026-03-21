@@ -30,7 +30,8 @@ export default function RegisterPage() {
       return;
     }
 
-    router.push("/login");
+    console.log("Registration successful, redirecting to login...");
+    window.location.assign("/login");
   };
 
   return (
