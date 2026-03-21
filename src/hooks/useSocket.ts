@@ -19,8 +19,9 @@ export const useSocket = (userId: string) => {
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: 15,
-      reconnectionDelay: 1000,
-      transports: ["websocket", "polling"], // Поменял местами для исключения ошибок Railway
+      reconnectionDelay: 2000,
+      transports: ["websocket"], // Принудительно используем только WebSocket
+      upgrade: false, // Отключаем апгрейд с polling
       auth: { userId },
     });
 

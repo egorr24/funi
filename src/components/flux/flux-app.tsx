@@ -75,6 +75,34 @@ export const FluxApp = () => {
   const call = useCallEngine(socket.socket, session?.user?.id || "");
   const waveform = useWaveform(`${chatId}-${messages.length}`);
 
+  // Браузерные уведомления
+  useEffect(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // Звук звонка
+  useEffect(() => {
+    if (call.incomingCall) {
+      const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3");
+      audio.loop = true;
+      audio.play().catch(() => {});
+      
+      if (Notification.permission === "granted") {
+        new Notification("Входящий звонок FLUX", {
+          body: `Звонит: ${call.incomingCall.from}`,
+          icon: "/favicon.ico"
+        });
+      }
+      
+      return () => {
+        audio.pause();
+        audio.src = "";
+      };
+    }
+  }, [call.incomingCall]);
+
   // Redirect if not authenticated
   useEffect(() => {
     if (status === "unauthenticated") {
