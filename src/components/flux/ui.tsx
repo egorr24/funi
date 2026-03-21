@@ -243,10 +243,14 @@ export const ChatHeader = ({
   title,
   participants,
   extraAction,
+  onCall,
+  onVideoCall,
 }: {
   title: string;
   participants: string[];
   extraAction?: ReactNode;
+  onCall?: () => void;
+  onVideoCall?: () => void;
 }) => (
   <div className="border-b border-white/10 px-6 py-4">
     <div className="flex items-center justify-between">
@@ -256,22 +260,22 @@ export const ChatHeader = ({
       </div>
       <div className="flex items-center gap-2">
         {extraAction}
-        <QuickActions />
+        <QuickActions onCall={onCall} onVideoCall={onVideoCall} />
       </div>
     </div>
   </div>
 );
 
-export const QuickActions = () => (
+export const QuickActions = ({ onCall, onVideoCall }: { onCall?: () => void; onVideoCall?: () => void }) => (
   <div className="flex items-center gap-2">
-    <IconAction icon={<Phone className="h-4 w-4" />} />
-    <IconAction icon={<Video className="h-4 w-4" />} />
+    <IconAction onClick={onCall} icon={<Phone className="h-4 w-4" />} />
+    <IconAction onClick={onVideoCall} icon={<Video className="h-4 w-4" />} />
     <IconAction icon={<Search className="h-4 w-4" />} />
   </div>
 );
 
-export const IconAction = ({ icon }: { icon: ReactNode }) => (
-  <button className="rounded-xl border border-white/10 bg-white/5 p-2 text-zinc-200 hover:bg-white/10">{icon}</button>
+export const IconAction = ({ icon, onClick }: { icon: ReactNode; onClick?: () => void }) => (
+  <button onClick={onClick} className="rounded-xl border border-white/10 bg-white/5 p-2 text-zinc-200 hover:bg-white/10">{icon}</button>
 );
 
 export const PinnedBanner = ({ message }: { message: string }) => (
@@ -352,44 +356,62 @@ export const Composer = ({
   value,
   onChange,
   onSend,
+  onAttach,
+  onVoice,
 }: {
   value: string;
   onChange: (value: string) => void;
   onSend: () => void;
+  onAttach?: () => void;
+  onVoice?: () => void;
 }) => (
   <div className="border-t border-white/10 px-4 py-4">
     <div className="flex items-center gap-2">
-      <AttachmentButton />
-      <MessageInput value={value} onChange={onChange} />
-      <VoiceButton />
+      <AttachmentButton onClick={onAttach} />
+      <MessageInput value={value} onChange={onChange} onSend={onSend} />
+      <VoiceButton onClick={onVoice} />
       <SendButton onClick={onSend} />
     </div>
   </div>
 );
 
-export const MessageInput = ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
+export const MessageInput = ({
+  value,
+  onChange,
+  onSend,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onSend?: () => void;
+}) => (
   <input
     value={value}
     onChange={(event) => onChange(event.target.value)}
+    onKeyDown={(e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        onSend?.();
+      }
+    }}
     className="h-11 flex-1 rounded-2xl border border-white/10 bg-black/20 px-4 text-sm outline-none"
     placeholder="Write encrypted message…"
   />
 );
 
 export const SendButton = ({ onClick }: { onClick: () => void }) => (
-  <button onClick={onClick} className="grid h-11 w-11 place-items-center rounded-2xl bg-violet-500/80">
+  <button onClick={onClick} className="grid h-11 w-11 place-items-center rounded-2xl bg-violet-500/80 hover:bg-violet-600 transition-colors">
     <SendHorizontal className="h-4 w-4" />
   </button>
 );
 
-export const AttachmentButton = () => (
-  <button className="grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/5">
+export const AttachmentButton = ({ onClick }: { onClick?: () => void }) => (
+  <button onClick={onClick} className="grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors">
     <Paperclip className="h-4 w-4" />
   </button>
 );
 
-export const VoiceButton = () => (
-  <button className="grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/5">
+export const VoiceButton = ({ onClick }: { onClick?: () => void }) => (
+  <button onClick={onClick} className="grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors">
     <Mic className="h-4 w-4" />
   </button>
 );

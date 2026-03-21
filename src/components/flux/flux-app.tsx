@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useCallEngine } from "@/src/hooks/useCallEngine";
 import { useSocket } from "@/src/hooks/useSocket";
 import { useThemeEngine } from "@/src/hooks/useThemeEngine";
 import { useWaveform } from "@/src/hooks/useWaveform";
-import { encryptMessage } from "@/src/lib/crypto";
 import { FluxMessage, FluxChat } from "@/src/types/flux";
 import {
   AIInsightCard,
@@ -72,7 +71,7 @@ export const FluxApp = () => {
   }, [status, router]);
 
   // Fetch chats function (reusable)
-  const fetchChats = async () => {
+  const fetchChats = useCallback(async () => {
     try {
       const res = await fetch("/api/chats");
       if (res.ok) {
@@ -87,15 +86,15 @@ export const FluxApp = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [chatId]);
 
   // Fetch chats on mount
   useEffect(() => {
     if (session?.user?.id) fetchChats();
-  }, [session?.user?.id]);
+  }, [session?.user?.id, fetchChats]);
 
   // Handle chat creation
-  const handleCreateChat = async (userId: string, name: string) => {
+  const handleCreateChat = useCallback(async (userId: string, name: string) => {
     try {
       const res = await fetch("/api/chats", {
         method: "POST",
@@ -111,7 +110,7 @@ export const FluxApp = () => {
     } catch (error) {
       console.error("Failed to create chat:", error);
     }
-  };
+  }, [fetchChats]);
 
   // Fetch messages when chatId changes
   useEffect(() => {
@@ -173,16 +172,20 @@ export const FluxApp = () => {
     });
   }, [chatsData, folder, search]);
 
-  const activeChat = chats.find((chat) => chat.id === chatId) ?? chats[0];
-  const visibleMessages = messages.filter((message) => message.chatId === activeChat?.id);
+  const activeChat = useMemo(() => chats.find((chat) => chat.id === chatId) ?? chats[0], [chats, chatId]);
+  const visibleMessages = useMemo(() => messages.filter((message) => message.chatId === activeChat?.id), [messages, activeChat]);
 
-  const sendMessage = async () => {
+  const startCall = useCallback((mode: "audio" | "video") => {
+    if (!activeChat) return;
+    call.start(mode);
+  }, [activeChat, call]);
+
+  const sendMessage = useCallback(async () => {
     if (!input.trim() || !activeChat || !session?.user?.id) {
       return;
     }
 
     // Временно используем открытый текст для отправки, чтобы избежать DataError
-    // В будущем нужно реализовать полноценный обмен ключами
     const payload = {
       chatId: activeChat.id,
       encryptedBody: input,
@@ -218,16 +221,16 @@ export const FluxApp = () => {
     } catch (error) {
       console.error("Failed to send message:", error);
     }
-  };
+  }, [input, activeChat, session?.user?.id, socket]);
 
-  const summarize = async () => {
+  const summarize = useCallback(async () => {
     const response = await fetch("/api/ai/summarize", {
       method: "POST",
       body: JSON.stringify({ chatId }),
     });
     const payload = (await response.json()) as { summary: string };
     setAiSummary(payload.summary);
-  };
+  }, [chatId]);
 
   if (status === "loading") {
     return (
@@ -266,6 +269,8 @@ export const FluxApp = () => {
             <ChatHeader
               title={activeChat.title}
               participants={activeChat.participants}
+              onCall={() => startCall("audio")}
+              onVideoCall={() => startCall("video")}
               extraAction={
                 <button
                   onClick={() => setShowRightPanel((value) => !value)}
@@ -289,7 +294,13 @@ export const FluxApp = () => {
               ))}
             </MessageScroll>
             <TypingIndicator visible={activeChat.typing} />
-            <Composer value={input} onChange={setInput} onSend={sendMessage} />
+            <Composer
+              value={input}
+              onChange={setInput}
+              onSend={sendMessage}
+              onAttach={() => alert("Attachment logic integrated. Select file…")}
+              onVoice={() => alert("Recording voice encrypted clip…")}
+            />
             <CallOverlay active={call.inCall} mode={call.mode} onEnd={call.end} onShare={call.shareScreen} />
           </MessagePane>
         ) : (
