@@ -17,9 +17,13 @@ export default function LoginPage() {
       redirect: false,
       callbackUrl: "/",
     }) as any;
+
+    console.log("Login result:", result);
+
     if (result?.error) {
       setError("Invalid credentials");
     } else {
+      console.log("Login success, redirecting...");
       window.location.href = "/";
     }
   };
