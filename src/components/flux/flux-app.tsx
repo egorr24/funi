@@ -244,14 +244,31 @@ export const FluxApp = () => {
     });
   }, [chatsData, folder, search]);
 
+  const [onlineUserIds, setOnlineUserIds] = useState<string[]>([]);
+  const [typingUsers, setTypingUsers] = useState<Record<string, string[]>>({}); // chatId -> [userName]
+  const [messageSearch, setMessageSearch] = useState("");
+
   const activeChat = useMemo(() => {
     if (!chatId) return null;
     return chatsData.find((chat) => chat.id === chatId) ?? null;
   }, [chatsData, chatId]);
+
+  const typingInActiveChat = useMemo(() => {
+    if (!activeChat) return [];
+    return typingUsers[activeChat.id] || [];
+  }, [typingUsers, activeChat]);
+
   const visibleMessages = useMemo(() => {
     if (!activeChat) return [];
-    return messages.filter((message) => message.chatId === activeChat.id);
-  }, [messages, activeChat]);
+    let filtered = messages.filter((message) => message.chatId === activeChat.id);
+    if (messageSearch) {
+      filtered = filtered.filter(m => 
+        m.decryptedBody.toLowerCase().includes(messageSearch.toLowerCase()) ||
+        m.senderName.toLowerCase().includes(messageSearch.toLowerCase())
+      );
+    }
+    return filtered;
+  }, [messages, activeChat, messageSearch]);
 
   const startCall = useCallback((mode: "audio" | "video") => {
     if (!activeChat || !session?.user?.id) return;
@@ -273,6 +290,89 @@ export const FluxApp = () => {
         call.start(activeChat.id, activeChat.id, session.user?.name || "Anonymous", mode);
       });
   }, [activeChat, session?.user, call]);
+
+  // Typing logic
+  const handleTyping = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    if (socket.socket && activeChat) {
+      socket.socket.emit("presence:typing", {
+        chatId: activeChat.id,
+        userName: session?.user?.name || "Someone",
+        isTyping: e.target.value.length > 0
+      });
+    }
+  };
+
+  // Reaction logic
+  const addReaction = (messageId: string, emoji: string) => {
+    if (socket.socket && activeChat) {
+      socket.socket.emit("message:reaction", {
+        messageId,
+        chatId: activeChat.id,
+        emoji,
+        userId: session?.user?.id || ""
+      });
+      // Local update
+      setMessages(current => current.map(m => {
+        if (m.id === messageId) {
+          const reactions = m.reactions || [];
+          return { ...m, reactions: [...reactions, { emoji, userId: session?.user?.id || "" }] };
+        }
+        return m;
+      }));
+    }
+  };
+
+  // Handle incoming socket events
+  useEffect(() => {
+    if (!socket.socket) return;
+
+    const s = socket.socket;
+
+    s.on("users:online", (ids: string[]) => setOnlineUserIds(ids));
+
+    s.on("presence:typing", ({ chatId: tChatId, userName, isTyping }: any) => {
+      setTypingUsers(prev => {
+        const current = prev[tChatId] || [];
+        if (isTyping && !current.includes(userName)) {
+          return { ...prev, [tChatId]: [...current, userName] };
+        } else if (!isTyping) {
+          return { ...prev, [tChatId]: current.filter(u => u !== userName) };
+        }
+        return prev;
+      });
+      // Auto-clear typing after 3s
+      if (isTyping) {
+        setTimeout(() => {
+          setTypingUsers(prev => ({
+            ...prev,
+            [tChatId]: (prev[tChatId] || []).filter(u => u !== userName)
+          }));
+        }, 3000);
+      }
+    });
+
+    s.on("message:reaction", ({ messageId, emoji, userId }: any) => {
+      setMessages(current => current.map(m => {
+        if (m.id === messageId) {
+          const reactions = m.reactions || [];
+          return { ...m, reactions: [...reactions, { emoji, userId }] };
+        }
+        return m;
+      }));
+    });
+
+    s.on("message:delete", ({ messageId }: any) => {
+      setMessages(current => current.filter(m => m.id !== messageId));
+    });
+
+    return () => {
+      s.off("users:online");
+      s.off("presence:typing");
+      s.off("message:reaction");
+      s.off("message:delete");
+    };
+  }, [socket.socket]);
 
   const handleFileUpload = useCallback(async (file: File) => {
     if (!activeChat || !session?.user?.id) return;
@@ -478,7 +578,13 @@ export const FluxApp = () => {
               <NeonDivider />
               <ChatList>
                 {chats.map((chat) => (
-                  <ChatListItem key={chat.id} chat={chat} active={chat.id === chatId} onClick={() => setChatId(chat.id)} />
+                  <ChatListItem 
+                    key={chat.id} 
+                    chat={chat} 
+                    active={chat.id === chatId} 
+                    onClick={() => setChatId(chat.id)} 
+                    isOnline={onlineUserIds.includes(chat.id)}
+                  />
                 ))}
               </ChatList>
             </Sidebar>
@@ -492,6 +598,8 @@ export const FluxApp = () => {
                   onVideoCall={() => startCall("video")}
                   onShareLink={sendCallLink}
                   onBack={() => setChatId(null)}
+                  searchValue={messageSearch}
+                  onSearchChange={setMessageSearch}
                   extraAction={
                     <button
                       onClick={() => setShowRightPanel((value) => !value)}
@@ -515,40 +623,42 @@ export const FluxApp = () => {
                       message={{ ...message, waveform, decryptedBody: message.encryptedBody }}
                       mine={message.senderId === session?.user?.id}
                       onImageClick={(url) => setViewingPhoto(url)}
+                      onReaction={(emoji) => addReaction(message.id, emoji)}
                     />
                   ))}
                 </MessageScroll>
-                <TypingIndicator visible={activeChat.typing} />
+                <TypingIndicator visible={typingInActiveChat.length > 0} userNames={typingInActiveChat} />
                 
-                {isRecording ? (
-                  <div className="px-4 py-2">
-                    <VoiceRecorder 
-                      onCancel={() => setIsRecording(false)}
-                      onSend={(blob) => {
-                        const file = new File([blob], "voice-message.webm", { type: "audio/webm" });
-                        handleFileUpload(file);
-                        setIsRecording(false);
+                  {isRecording ? (
+                    <div className="px-4 py-2">
+                      <VoiceRecorder 
+                        onCancel={() => setIsRecording(false)}
+                        onSend={(blob) => {
+                          const file = new File([blob], "voice-message.webm", { type: "audio/webm" });
+                          handleFileUpload(file);
+                          setIsRecording(false);
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <Composer
+                      value={input}
+                      onChange={handleTyping}
+                      onSend={sendMessage}
+                      onAttach={() => {
+                        const input = document.createElement("input");
+                        input.type = "file";
+                        input.accept = "image/*,video/*,audio/*";
+                        input.onchange = (e) => {
+                          const file = (e.target as HTMLInputElement).files?.[0];
+                          if (file) handleFileUpload(file);
+                        };
+                        input.click();
                       }}
+                      onVoiceStart={() => setIsRecording(true)}
+                      isRecording={isRecording}
                     />
-                  </div>
-                ) : (
-                  <Composer
-                    value={input}
-                    onChange={setInput}
-                    onSend={sendMessage}
-                    onAttach={() => {
-                      const input = document.createElement("input");
-                      input.type = "file";
-                      input.accept = "image/*,video/*,audio/*";
-                      input.onchange = (e) => {
-                        const file = (e.target as HTMLInputElement).files?.[0];
-                        if (file) handleFileUpload(file);
-                      };
-                      input.click();
-                    }}
-                    onVoice={() => setIsRecording(true)}
-                  />
-                )}
+                  )}
               </MessagePane>
             ) : (
               <div className="hidden lg:flex flex-1">

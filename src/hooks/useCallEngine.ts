@@ -100,23 +100,31 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
     };
 
     peer.ontrack = (event) => {
-      console.log("[CALL] Received remote track:", event.track.kind);
-      if (event.streams && event.streams[0]) {
-        console.log("[CALL] Setting remote stream from event streams");
-        setRemoteStream(event.streams[0]);
-      } else {
-        // Создаем поток из отдельного трека, если потока нет в событии
-        console.log("[CALL] Creating remote stream from individual track");
-        setRemoteStream(prev => {
-          if (prev) {
-            // Проверяем, нет ли уже такого трека
-            if (prev.getTracks().find(t => t.id === event.track.id)) return prev;
-            prev.addTrack(event.track);
-            return new MediaStream(prev.getTracks());
+      console.log(`[CALL] Received remote track: ${event.track.kind}`);
+      
+      setRemoteStream(prev => {
+        // Если потока еще нет, создаем новый из полученных стримов или трека
+        if (!prev) {
+          if (event.streams && event.streams[0]) {
+            console.log("[CALL] Creating remote stream from event streams");
+            return new MediaStream(event.streams[0].getTracks());
           }
+          console.log("[CALL] Creating remote stream from individual track");
           return new MediaStream([event.track]);
-        });
-      }
+        }
+
+        // Если поток уже есть, добавляем в него новый трек, если его там нет
+        const tracks = prev.getTracks();
+        if (tracks.find(t => t.id === event.track.id)) {
+          console.log("[CALL] Track already exists in stream, ignoring");
+          return prev;
+        }
+
+        console.log("[CALL] Adding track to existing remote stream");
+        // ВАЖНО: Создаем НОВЫЙ объект MediaStream, чтобы триггерить useEffect в UI
+        return new MediaStream([...tracks, event.track]);
+      });
+
       setCallStatus("active");
     };
 
@@ -224,23 +232,41 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
     if (!socket) return;
 
     const handleOffer = async ({ from, fromName, offer, mode: offerMode, chatId }: any) => {
-      console.log("[CALL] Room offer from", fromName, "in chat", chatId);
+      console.log(`[CALL] Offer from ${fromName}. Current inCall: ${inCall}, incoming: ${!!incomingCall}`);
       if (inCall || incomingCall) {
-        return; // Уже заняты
+        console.log("[CALL] Busy, sending busy signal");
+        socket.emit("call:busy", { targetId: from });
+        return;
       }
       setIncomingCall({ from, fromName, offer, mode: offerMode, chatId });
     };
 
-    const handleAnswer = async ({ from, answer, chatId }: any) => {
-      console.log("[CALL] Someone answered!", from);
+    const handleAnswer = async ({ from, answer }: any) => {
+      console.log("[CALL] Answer received. Current state:", peerRef.current?.signalingState);
       if (peerRef.current && isOutgoing) {
         const peer = peerRef.current;
-        await peer.setRemoteDescription(new RTCSessionDescription(answer));
-        setCallStatus("connecting");
         
-        while (iceCandidatesBuffer.current.length > 0) {
-          const candidate = iceCandidatesBuffer.current.shift();
-          if (candidate) await peer.addIceCandidate(new RTCIceCandidate(candidate));
+        if (peer.signalingState !== "have-local-offer") {
+          console.warn("[CALL] Signaling state is not have-local-offer, ignoring answer. State:", peer.signalingState);
+          return;
+        }
+
+        try {
+          await peer.setRemoteDescription(new RTCSessionDescription(answer));
+          console.log("[CALL] Remote description set successfully (answer)");
+          setCallStatus("active");
+          
+          while (iceCandidatesBuffer.current.length > 0) {
+            const candidate = iceCandidatesBuffer.current.shift();
+            if (candidate) {
+              await peer.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => {
+                console.error("[CALL] Error adding buffered ICE candidate", e);
+              });
+            }
+          }
+        } catch (err) {
+          console.error("[CALL] Critical error setting remote answer:", err);
+          cleanup();
         }
       }
     };
@@ -262,16 +288,25 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
       cleanup();
     };
 
+    const handleBusy = () => {
+      console.log("[CALL] Remote is busy");
+      setCallStatus("failed");
+      setFailReason("busy");
+      setTimeout(cleanup, 3000);
+    };
+
     socket.on("call:offer", handleOffer);
     socket.on("call:answer", handleAnswer);
     socket.on("call:ice", handleIce);
     socket.on("call:end", handleEnd);
+    socket.on("call:busy", handleBusy);
 
     return () => {
       socket.off("call:offer", handleOffer);
       socket.off("call:answer", handleAnswer);
       socket.off("call:ice", handleIce);
       socket.off("call:end", handleEnd);
+      socket.off("call:busy", handleBusy);
     };
   }, [socket, inCall, incomingCall, isOutgoing, cleanup]);
 

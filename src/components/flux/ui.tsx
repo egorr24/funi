@@ -289,10 +289,12 @@ export const ChatListItem = ({
   chat,
   active,
   onClick,
+  isOnline = false,
 }: {
   chat: FluxChat;
   active: boolean;
   onClick: () => void;
+  isOnline?: boolean;
 }) => (
   <button
     onClick={onClick}
@@ -300,7 +302,12 @@ export const ChatListItem = ({
   >
     <div className="flex items-start justify-between">
       <div className="flex items-center gap-3">
-        <AvatarPill label={chat.avatar} />
+        <div className="relative">
+          <AvatarPill label={chat.avatar} />
+          {isOnline && (
+            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-zinc-950 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse" />
+          )}
+        </div>
         <div>
           <div className="text-sm font-semibold">{chat.title}</div>
           <div className="max-w-[210px] truncate text-xs text-zinc-400">{chat.lastMessagePreview}</div>
@@ -336,6 +343,8 @@ export const ChatHeader = ({
   onVideoCall,
   onShareLink,
   onBack,
+  onSearchChange,
+  searchValue = "",
 }: {
   title: string;
   participants: string[];
@@ -344,6 +353,8 @@ export const ChatHeader = ({
   onVideoCall?: () => void;
   onShareLink?: () => void;
   onBack?: () => void;
+  onSearchChange?: (val: string) => void;
+  searchValue?: string;
 }) => (
   <div className="border-b border-white/10 px-4 lg:px-6 py-4">
     <div className="flex items-center justify-between">
@@ -359,6 +370,18 @@ export const ChatHeader = ({
         </div>
       </div>
       <div className="flex items-center gap-2">
+        {onSearchChange && (
+          <div className="relative mr-2">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
+            <input
+              type="text"
+              placeholder="Search messages..."
+              value={searchValue}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="w-32 lg:w-48 h-8 pl-8 pr-3 bg-white/5 border border-white/5 rounded-full text-xs focus:outline-none focus:ring-1 focus:ring-violet-500/50 transition-all"
+            />
+          </div>
+        )}
         <div className="hidden lg:block">
           {extraAction}
         </div>
@@ -396,19 +419,35 @@ export const MessageScroll = ({ children }: PropsWithChildren) => (
 export const MessageBubble = ({ 
   message, 
   mine,
-  onImageClick
+  onImageClick,
+  onReaction
 }: { 
   message: FluxMessage; 
   mine: boolean;
   onImageClick?: (url: string) => void;
+  onReaction?: (emoji: string) => void;
 }) => (
   <motion.div
     initial={{ opacity: 0, y: 10, scale: 0.95 }}
     animate={{ opacity: 1, y: 0, scale: 1 }}
-    className={`max-w-[85%] lg:max-w-[70%] rounded-2xl px-4 py-2 shadow-lg shadow-black/5 group ${
+    className={`max-w-[85%] lg:max-w-[70%] rounded-2xl px-4 py-2 shadow-lg shadow-black/5 group relative ${
       mine ? "ml-auto bg-violet-600/90 text-white rounded-tr-none" : "bg-zinc-800/80 text-zinc-100 rounded-tl-none border border-white/5"
     }`}
   >
+    {!mine && onReaction && (
+      <div className="absolute -right-12 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
+        {["👍", "❤️", "🔥", "😂"].map(emoji => (
+          <button 
+            key={emoji}
+            onClick={() => onReaction(emoji)}
+            className="w-8 h-8 rounded-full bg-zinc-900 border border-white/10 flex items-center justify-center text-sm hover:bg-zinc-800 hover:scale-110 transition-all"
+          >
+            {emoji}
+          </button>
+        ))}
+      </div>
+    )}
+
     {message.mediaType === "image" && message.mediaUrl && (
       <div className="relative overflow-hidden rounded-xl mb-2 cursor-pointer group/img" onClick={() => onImageClick?.(message.mediaUrl!)}>
         <img src={message.mediaUrl} alt="media" className="max-h-60 w-full object-cover transition-transform group-hover/img:scale-105" />
@@ -424,6 +463,21 @@ export const MessageBubble = ({
       <audio src={message.mediaUrl} controls className="mb-2 w-full h-10 filter invert brightness-200" />
     )}
     <div className="text-sm leading-relaxed whitespace-pre-wrap">{message.decryptedBody}</div>
+    
+    {message.reactions && message.reactions.length > 0 && (
+      <div className="mt-2 flex flex-wrap gap-1">
+        {Array.from(new Set(message.reactions.map(r => r.emoji))).map(emoji => {
+          const count = message.reactions!.filter(r => r.emoji === emoji).length;
+          return (
+            <div key={emoji} className="px-1.5 py-0.5 rounded-full bg-black/20 border border-white/5 text-[10px] flex items-center gap-1">
+              <span>{emoji}</span>
+              <span className="font-bold opacity-80">{count}</span>
+            </div>
+          );
+        })}
+      </div>
+    )}
+
     <div className="mt-1 flex items-center justify-end gap-1.5 opacity-60">
       <span className="text-[10px] uppercase font-medium">
         {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -541,16 +595,31 @@ export const VoiceWaveform = ({ points }: { points: number[] }) => (
   </svg>
 );
 
-export const TypingIndicator = ({ visible }: { visible: boolean }) => (
+export const TypingIndicator = ({ 
+  visible, 
+  userNames = [] 
+}: { 
+  visible: boolean;
+  userNames?: string[];
+}) => (
   <AnimatePresence>
     {visible ? (
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="px-5 pb-2 text-xs text-zinc-400"
+        initial={{ opacity: 0, y: 5 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 5 }}
+        className="px-6 py-2 text-[11px] text-zinc-500 font-medium flex items-center gap-2"
       >
-        Typing with spring-physics…
+        <div className="flex gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-bounce [animation-delay:-0.3s]" />
+          <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-bounce [animation-delay:-0.15s]" />
+          <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-bounce" />
+        </div>
+        <span>
+          {userNames.length > 0 
+            ? `${userNames.join(", ")} ${userNames.length > 1 ? "печатают" : "печатает"}...` 
+            : "Кто-то печатает..."}
+        </span>
       </motion.div>
     ) : null}
   </AnimatePresence>
@@ -561,21 +630,57 @@ export const Composer = ({
   onChange,
   onSend,
   onAttach,
-  onVoice,
+  onVoiceStart,
+  isRecording = false
 }: {
   value: string;
-  onChange: (value: string) => void;
+  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onSend: () => void;
   onAttach?: () => void;
-  onVoice?: () => void;
+  onVoiceStart?: () => void;
+  isRecording?: boolean;
 }) => (
-  <div className="border-t border-white/10 px-4 py-4">
-    <div className="flex items-center gap-2">
-      <AttachmentButton onClick={onAttach} />
-      <MessageInput value={value} onChange={onChange} onSend={onSend} />
-      <VoiceButton onClick={onVoice} />
-      <SendButton onClick={onSend} />
+  <div className="p-4 bg-zinc-950/40 backdrop-blur-xl border-t border-white/5 flex items-end gap-3 z-10">
+    <button 
+      onClick={onAttach}
+      className="p-3 hover:bg-white/5 rounded-2xl text-zinc-400 hover:text-white transition-all group"
+    >
+      <Paperclip className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+    </button>
+    
+    <div className="flex-1 relative group">
+      <textarea
+        value={value}
+        onChange={onChange}
+        placeholder="Написать сообщение..."
+        rows={1}
+        className="w-full bg-white/5 border border-white/10 rounded-[24px] px-5 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-all resize-none placeholder:text-zinc-600"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            onSend();
+          }
+        }}
+      />
     </div>
+
+    {value.trim() ? (
+      <button
+        onClick={onSend}
+        className="p-3.5 bg-violet-600 hover:bg-violet-500 text-white rounded-2xl shadow-lg shadow-violet-600/20 transition-all active:scale-95"
+      >
+        <Send className="w-5 h-5" />
+      </button>
+    ) : (
+      <button 
+        onClick={onVoiceStart}
+        className={`p-3.5 rounded-2xl transition-all active:scale-95 ${
+          isRecording ? "bg-red-500 text-white animate-pulse" : "bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10"
+        }`}
+      >
+        <Mic className="w-5 h-5" />
+      </button>
+    )}
   </div>
 );
 

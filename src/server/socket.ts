@@ -27,18 +27,46 @@ export const createSocketServer = (httpServer: HttpServer) => {
     },
   });
 
+  const onlineUsers = new Map<string, number>(); // userId -> count of sockets
+
+  const broadcastOnlineUsers = () => {
+    io.emit("users:online", Array.from(onlineUsers.keys()));
+  };
+
   io.on("connection", (socket) => {
     const userId = socket.handshake.auth.userId as string | undefined;
     if (userId) {
       socket.join(userId);
       console.log(`[SOCKET] User ${userId} joined their own room`);
+      
+      // Update online users
+      const current = onlineUsers.get(userId) || 0;
+      onlineUsers.set(userId, current + 1);
+      broadcastOnlineUsers();
+      
       flushQueue(socket, userId);
     }
 
-    socket.on("user:online", ({ userId }) => {
-      if (userId) {
-        socket.join(userId);
+    socket.on("user:online", ({ userId: uid }) => {
+      if (uid) {
+        socket.join(uid);
+        if (!onlineUsers.has(uid)) {
+          onlineUsers.set(uid, 1);
+          broadcastOnlineUsers();
+        }
       }
+    });
+
+    socket.on("presence:typing", (payload: SocketPayloadMap["presence:typing"]) => {
+      socket.to(payload.chatId).emit("presence:typing", payload);
+    });
+
+    socket.on("message:reaction", (payload: SocketPayloadMap["message:reaction"]) => {
+      socket.to(payload.chatId).emit("message:reaction", payload);
+    });
+
+    socket.on("message:delete", (payload: { messageId: string, chatId: string }) => {
+      socket.to(payload.chatId).emit("message:delete", payload);
     });
 
     socket.on("chat:join", ({ chatId }) => {
@@ -101,6 +129,19 @@ export const createSocketServer = (httpServer: HttpServer) => {
 
     socket.on("offline:enqueue", ({ toUserId, payload }: { toUserId: string; payload: QueuedMessage }) => {
       queueForUser(toUserId, payload);
+    });
+
+    socket.on("disconnect", () => {
+      if (userId) {
+        const count = onlineUsers.get(userId) || 0;
+        if (count <= 1) {
+          onlineUsers.delete(userId);
+        } else {
+          onlineUsers.set(userId, count - 1);
+        }
+        broadcastOnlineUsers();
+        console.log(`[SOCKET] User ${userId} disconnected. Remaining: ${onlineUsers.size}`);
+      }
     });
   });
 
