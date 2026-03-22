@@ -34,9 +34,9 @@ export const FluxShell = ({
   showRightPanel = true,
 }: PropsWithChildren<{ showRightPanel?: boolean }>) => (
   <div
-    className={`mx-auto grid h-screen max-w-[1600px] gap-0 p-0 text-zinc-100 ${
-      showRightPanel ? "grid-cols-[72px_360px_1fr_340px]" : "grid-cols-[72px_360px_1fr]"
-    }`}
+    className={`mx-auto grid h-screen max-w-[1600px] gap-0 p-0 text-zinc-100 overflow-hidden relative ${
+      showRightPanel ? "lg:grid-cols-[72px_360px_1fr_340px]" : "lg:grid-cols-[72px_360px_1fr]"
+    } grid-cols-1`}
   >
     {children}
   </div>
@@ -45,41 +45,44 @@ export const FluxShell = ({
 export const NavSidebar = ({
   activeTab,
   onTabChange,
+  className = "",
 }: {
   activeTab: string;
   onTabChange: (tab: string) => void;
+  className?: string;
 }) => (
-  <div className="flex flex-col items-center py-6 bg-black/40 border-r border-white/5 gap-4">
-    <div className="mb-4">
+  <div className={`flex lg:flex-col items-center lg:py-6 bg-black/40 border-r border-white/5 gap-4 fixed bottom-0 left-0 right-0 h-16 lg:static lg:h-auto z-50 ${className}`}>
+    <div className="lg:mb-4 hidden lg:block">
       <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-violet-600 to-fuchsia-600 grid place-items-center shadow-lg shadow-violet-500/20">
-        <span className="font-bold text-lg italic">F</span>
+        <span className="font-bold text-lg italic text-white">F</span>
       </div>
     </div>
-    <NavIcon
-      active={activeTab === "chats"}
-      onClick={() => onTabChange("chats")}
-      icon={<MessageSquare className="h-6 w-6" />}
-      label="Чаты"
-    />
-    <NavIcon
-      active={activeTab === "profile"}
-      onClick={() => onTabChange("profile")}
-      icon={<User className="h-6 w-6" />}
-      label="Профиль"
-    />
-    <NavIcon
-      active={activeTab === "notifications"}
-      onClick={() => onTabChange("notifications")}
-      icon={<Bell className="h-6 w-6" />}
-      label="Уведомления"
-    />
-    <div className="mt-auto" />
-    <NavIcon
-      active={activeTab === "settings"}
-      onClick={() => onTabChange("settings")}
-      icon={<Settings className="h-6 w-6" />}
-      label="Настройки"
-    />
+    <div className="flex lg:flex-col items-center justify-around lg:justify-start gap-4 w-full lg:w-auto px-4 lg:px-0">
+      <NavIcon
+        active={activeTab === "chats"}
+        onClick={() => onTabChange("chats")}
+        icon={<MessageSquare className="h-6 w-6" />}
+        label="Чаты"
+      />
+      <NavIcon
+        active={activeTab === "profile"}
+        onClick={() => onTabChange("profile")}
+        icon={<User className="h-6 w-6" />}
+        label="Профиль"
+      />
+      <NavIcon
+        active={activeTab === "notifications"}
+        onClick={() => onTabChange("notifications")}
+        icon={<Bell className="h-6 w-6" />}
+        label="Уведомления"
+      />
+      <NavIcon
+        active={activeTab === "settings"}
+        onClick={() => onTabChange("settings")}
+        icon={<Settings className="h-6 w-6" />}
+        label="Настройки"
+      />
+    </div>
   </div>
 );
 
@@ -111,8 +114,8 @@ const NavIcon = ({
   </button>
 );
 
-export const Sidebar = ({ children }: PropsWithChildren) => (
-  <GlassCard className="overflow-hidden">{children}</GlassCard>
+export const Sidebar = ({ children, className = "" }: PropsWithChildren<BaseProps>) => (
+  <GlassCard className={`overflow-hidden ${className}`}>{children}</GlassCard>
 );
 
 export const CreateChatModal = ({
@@ -202,11 +205,26 @@ export const EmptyState = ({ label }: { label: string }) => (
   <GlassCard className="grid place-items-center p-5 text-sm text-zinc-400">{label}</GlassCard>
 );
 
-export const SidebarHeader = ({ title, onAddChat }: { title: string; onAddChat?: () => void }) => (
+export const SidebarHeader = ({
+  title,
+  onAddChat,
+  onBack,
+}: {
+  title: string;
+  onAddChat?: () => void;
+  onBack?: () => void;
+}) => (
   <div className="px-5 pb-4 pt-5 flex items-center justify-between">
-    <div>
-      <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-      <p className="text-xs text-zinc-300/70">Hyper-Glass 2026 realtime channeling</p>
+    <div className="flex items-center gap-3">
+      {onBack && (
+        <button onClick={onBack} className="lg:hidden p-2 -ml-2 hover:bg-white/5 rounded-xl transition-colors">
+          <X className="h-5 w-5 rotate-90" />
+        </button>
+      )}
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+        <p className="text-xs text-zinc-300/70">Hyper-Glass 2026 realtime channeling</p>
+      </div>
     </div>
     {onAddChat && (
       <button
@@ -308,8 +326,8 @@ export const ConnectionBadge = ({ online, queued }: { online: boolean; queued: n
   </div>
 );
 
-export const MessagePane = ({ children }: PropsWithChildren) => (
-  <GlassCard className="flex min-h-0 flex-col overflow-hidden">{children}</GlassCard>
+export const MessagePane = ({ children, className = "" }: PropsWithChildren<BaseProps>) => (
+  <main className={`flex flex-col bg-zinc-950/20 backdrop-blur-md h-full overflow-hidden ${className}`}>{children}</main>
 );
 
 export const ChatHeader = ({
@@ -318,32 +336,45 @@ export const ChatHeader = ({
   extraAction,
   onCall,
   onVideoCall,
+  onShareLink,
+  onBack,
 }: {
   title: string;
   participants: string[];
   extraAction?: ReactNode;
   onCall?: () => void;
   onVideoCall?: () => void;
+  onShareLink?: () => void;
+  onBack?: () => void;
 }) => (
-  <div className="border-b border-white/10 px-6 py-4">
+  <div className="border-b border-white/10 px-4 lg:px-6 py-4">
     <div className="flex items-center justify-between">
-      <div>
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <p className="text-xs text-zinc-400">{participants.join(" • ")}</p>
+      <div className="flex items-center gap-3">
+        {onBack && (
+          <button onClick={onBack} className="lg:hidden p-2 -ml-2 hover:bg-white/5 rounded-xl transition-colors">
+            <X className="h-5 w-5 rotate-90" />
+          </button>
+        )}
+        <div>
+          <h2 className="text-lg font-semibold leading-tight">{title}</h2>
+          <p className="text-[10px] text-zinc-400 mt-0.5">{participants.join(" • ")}</p>
+        </div>
       </div>
       <div className="flex items-center gap-2">
-        {extraAction}
-        <QuickActions onCall={onCall} onVideoCall={onVideoCall} />
+        <div className="hidden lg:block">
+          {extraAction}
+        </div>
+        <QuickActions onCall={onCall} onVideoCall={onVideoCall} onShareLink={onShareLink} />
       </div>
     </div>
   </div>
 );
 
-export const QuickActions = ({ onCall, onVideoCall }: { onCall?: () => void; onVideoCall?: () => void }) => (
-  <div className="flex items-center gap-2">
+export const QuickActions = ({ onCall, onVideoCall, onShareLink }: { onCall?: () => void; onVideoCall?: () => void; onShareLink?: () => void }) => (
+  <div className="flex items-center gap-1 lg:gap-2">
     <IconAction onClick={onCall} icon={<Phone className="h-4 w-4" />} />
     <IconAction onClick={onVideoCall} icon={<Video className="h-4 w-4" />} />
-    <IconAction icon={<Search className="h-4 w-4" />} />
+    <IconAction onClick={onShareLink} icon={<Share className="h-4 w-4" />} />
   </div>
 );
 

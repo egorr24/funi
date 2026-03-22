@@ -130,29 +130,11 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   
   try {
-    // Если есть ключи Cloudinary, грузим туда
-    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
-      console.log('> Uploading to Cloudinary...');
-      const result = await cloudinary.uploader.upload(req.file.path, {
-        resource_type: "auto",
-        folder: "flux_uploads"
-      });
-      // Удаляем временный файл
-      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      
-      console.log('> Upload successful:', result.secure_url);
-      return res.json({ 
-        url: result.secure_url, 
-        type: req.file.mimetype.startsWith('image/') ? 'image' : 
-              req.file.mimetype.startsWith('video/') ? 'video' : 
-              req.file.mimetype.startsWith('audio/') ? 'audio' : 'file'
-      });
-    }
-
-    // Если нет Cloudinary, грузим локально (сотрется при деплое)
-    console.log('> Cloudinary not configured, using local storage');
+    // Возвращаемся к локальному хранилищу по просьбе пользователя
+    console.log(`> Saving file locally: ${req.file.filename}`);
     const protocol = req.headers['x-forwarded-proto'] || 'https';
     const url = `${protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    
     res.json({ 
       url, 
       type: req.file.mimetype.startsWith('image/') ? 'image' : 

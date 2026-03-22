@@ -290,13 +290,13 @@ export const FluxApp = () => {
     }
   }, [activeChat, session?.user, socket.socket]);
 
-  const sendMessage = useCallback(async () => {
-    if (!input.trim() || !activeChat || !session?.user) {
+  const sendMessage = useCallback(async (customText?: string) => {
+    const textToSend = customText || input;
+    if (!textToSend.trim() || !activeChat || !session?.user) {
       return;
     }
 
-    const currentInput = input;
-    setInput("");
+    if (!customText) setInput("");
 
     // Оптимистичное обновление UI
     const tempId = Math.random().toString(36).substring(7);
@@ -305,8 +305,8 @@ export const FluxApp = () => {
       chatId: activeChat.id,
       senderId: session.user.id!,
       senderName: session.user.name || "You",
-      encryptedBody: currentInput,
-      decryptedBody: currentInput,
+      encryptedBody: textToSend,
+      decryptedBody: textToSend,
       encryptedAes: "unsupported",
       iv: "unsupported",
       createdAt: new Date().toISOString(),
@@ -321,7 +321,7 @@ export const FluxApp = () => {
       if (chat.id === activeChat.id) {
         return {
           ...chat,
-          lastMessagePreview: currentInput,
+          lastMessagePreview: textToSend,
           updatedAt: new Date().toISOString()
         };
       }
@@ -334,7 +334,7 @@ export const FluxApp = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           chatId: activeChat.id,
-          encryptedBody: currentInput,
+          encryptedBody: textToSend,
           encryptedAes: "unsupported",
           iv: "unsupported",
         }),
@@ -348,16 +348,22 @@ export const FluxApp = () => {
         // Заменяем временное сообщение реальным
         setMessages((current) => current.map(m => m.id === tempId ? newMessage : m));
       } else {
-        // В случае ошибки возвращаем текст в инпут
-        setInput(currentInput);
+        // В случае ошибки возвращаем текст в инпут если это не авто-сообщение
+        if (!customText) setInput(textToSend);
         setMessages((current) => current.filter(m => m.id !== tempId));
       }
     } catch (error) {
       console.error("Failed to send message:", error);
-      setInput(currentInput);
+      if (!customText) setInput(textToSend);
       setMessages((current) => current.filter(m => m.id !== tempId));
     }
   }, [input, activeChat, session?.user, socket.socket]);
+
+  const sendCallLink = useCallback(() => {
+    if (!activeChat) return;
+    const callLink = `📞 Присоединяйтесь к звонку FLUX: https://${window.location.host}/?call=${activeChat.id}`;
+    sendMessage(callLink);
+  }, [activeChat, sendMessage]);
 
   const summarize = useCallback(async () => {
     const response = await fetch("/api/ai/summarize", {
@@ -381,7 +387,7 @@ export const FluxApp = () => {
   }
 
   return (
-    <div style={{ background: variables.background, boxShadow: `inset 0 0 160px ${variables.glow}` }} className="min-h-screen">
+    <div style={{ background: variables.background, boxShadow: `inset 0 0 160px ${variables.glow}` }} className="h-screen w-full overflow-hidden">
       <PhotoViewer url={viewingPhoto} onClose={() => setViewingPhoto(null)} />
       {call.incomingCall && (
         <IncomingCallModal 
@@ -397,11 +403,15 @@ export const FluxApp = () => {
         onCreate={handleCreateChat}
       />
       <FluxShell showRightPanel={showRightPanel}>
-        <NavSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        <NavSidebar 
+          activeTab={activeTab} 
+          onTabChange={setActiveTab} 
+          className={chatId ? "hidden lg:flex" : "flex"}
+        />
         
         {activeTab === "chats" && (
           <>
-            <Sidebar>
+            <Sidebar className={`${chatId ? "hidden lg:flex" : "flex"}`}>
               <SidebarHeader title="FLUX" onAddChat={() => setIsCreateChatOpen(true)} />
               <SearchBar value={search} onChange={setSearch} />
               <FolderTabs active={folder} onSelect={setFolder} />
@@ -414,12 +424,14 @@ export const FluxApp = () => {
             </Sidebar>
 
             {activeChat ? (
-              <MessagePane>
+              <MessagePane className={`${chatId ? "flex" : "hidden lg:flex"}`}>
                 <ChatHeader
                   title={activeChat.title}
                   participants={activeChat.participants}
                   onCall={() => startCall("audio")}
                   onVideoCall={() => startCall("video")}
+                  onShareLink={sendCallLink}
+                  onBack={() => setChatId(null)}
                   extraAction={
                     <button
                       onClick={() => setShowRightPanel((value) => !value)}
@@ -492,13 +504,15 @@ export const FluxApp = () => {
                 />
               </MessagePane>
             ) : (
-              <EmptyState label="Select a conversation to begin." />
+              <div className="hidden lg:flex flex-1">
+                <EmptyState label="Select a conversation to begin." />
+              </div>
             )}
           </>
         )}
 
         {activeTab === "profile" && (
-          <div className="col-span-2 p-8 flex flex-col items-center justify-center text-center">
+          <div className="lg:col-span-2 p-8 flex flex-col items-center justify-center text-center">
              <div className="h-24 w-24 rounded-full bg-violet-500/20 grid place-items-center mb-4 border-2 border-violet-500/50">
                <User className="h-12 w-12 text-violet-400" />
              </div>
