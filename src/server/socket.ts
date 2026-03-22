@@ -14,7 +14,7 @@ const queueForUser = (userId: string, payload: QueuedMessage) => {
 
 const flushQueue = (socket: Socket, userId: string) => {
   const queued = offlineQueue.get(userId) ?? [];
-  queued.forEach((message) => socket.emit("message:sent", message));
+  queued.forEach((message) => socket.emit("new_message", message));
   offlineQueue.delete(userId);
 };
 
@@ -82,7 +82,9 @@ export const createSocketServer = (httpServer: HttpServer) => {
     });
 
     socket.on("message:queue", (payload: QueuedMessage) => {
-      io.to(payload.chatId).emit("message:sent", { ...payload, status: "SENT" });
+      console.log(`[SOCKET] New message from ${payload.senderName} to chat ${payload.chatId}`);
+      // Отправляем всем участникам комнаты чата
+      io.to(payload.chatId).emit("new_message", { ...payload, status: "SENT" });
     });
 
     socket.on("message:delivered", (payload: SocketPayloadMap["message:delivered"]) => {
