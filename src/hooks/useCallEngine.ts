@@ -9,7 +9,7 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
   const [inCall, setInCall] = useState(false);
   const [isOutgoing, setIsOutgoing] = useState(false);
   const [callStatus, setCallStatus] = useState<"idle" | "calling" | "connecting" | "active">("idle");
-  const [incomingCall, setIncomingCall] = useState<{ from: string; offer: any; mode: CallMode } | null>(null);
+  const [incomingCall, setIncomingCall] = useState<{ from: string; fromName?: string; offer: any; mode: CallMode } | null>(null);
   const [muted, setMuted] = useState(false);
   const [cameraOff, setCameraOff] = useState(false);
   const [mode, setMode] = useState<CallMode>("video");
@@ -37,6 +37,7 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
     setMuted(false);
     setCameraOff(false);
     setMode("video");
+    setIncomingCall(null);
   }, [localStream, socket]);
 
   const createPeer = useCallback((targetId: string) => {
@@ -66,7 +67,7 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
     return peer;
   }, [socket, end]);
 
-  const start = useCallback(async (targetId: string, nextMode: CallMode = "video") => {
+  const start = useCallback(async (targetId: string, fromName: string, nextMode: CallMode = "video") => {
     const constraints = { 
       audio: true, 
       video: nextMode !== "audio" 
@@ -82,7 +83,7 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
       const offer = await peer.createOffer();
       await peer.setLocalDescription(offer);
       
-      socket?.emit("call:offer", { targetId, offer, mode: nextMode });
+      socket?.emit("call:offer", { targetId, fromName, offer, mode: nextMode });
       setMode(nextMode);
       setInCall(true);
       setIsOutgoing(true);
@@ -95,8 +96,8 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
   useEffect(() => {
     if (!socket) return;
 
-    socket.on("call:offer", async ({ from, offer, mode: offerMode }) => {
-      setIncomingCall({ from, offer, mode: offerMode });
+    socket.on("call:offer", async ({ from, fromName, offer, mode: offerMode }) => {
+      setIncomingCall({ from, fromName, offer, mode: offerMode });
     });
 
     socket.on("call:answer", async ({ answer }) => {

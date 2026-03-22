@@ -20,8 +20,7 @@ export const useSocket = (userId: string) => {
       reconnection: true,
       reconnectionAttempts: 15,
       reconnectionDelay: 2000,
-      transports: ["websocket"], // Принудительно используем только WebSocket
-      upgrade: false, // Отключаем апгрейд с polling
+      transports: ["polling", "websocket"], // Разрешаем polling как fallback
       auth: { userId },
     });
 

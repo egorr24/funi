@@ -91,9 +91,9 @@ io.on('connection', (socket) => {
   });
 
   // Сигналинг для звонков
-  socket.on('call:offer', ({ targetId, offer, mode }) => {
-    console.log(`> Call offer from ${userId} to ${targetId}`);
-    io.to(targetId).emit('call:offer', { from: userId, offer, mode });
+  socket.on('call:offer', ({ targetId, fromName, offer, mode }) => {
+    console.log(`> Call offer from ${userId} (${fromName}) to ${targetId}`);
+    io.to(targetId).emit('call:offer', { from: userId, fromName, offer, mode });
   });
 
   socket.on('call:answer', ({ targetId, answer }) => {

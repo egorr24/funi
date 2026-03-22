@@ -265,16 +265,11 @@ export const FluxApp = () => {
 
   const startCall = useCallback((mode: "audio" | "video") => {
     if (!activeChat || !session?.user?.id) return;
-    // Находим ID собеседника (первый участник, который не мы)
-    // В реальном приложении это должно быть более надежно
-    const targetMember = activeChat.participants.find(p => p !== session.user?.name);
-    // Для демо используем просто первый попавшийся ID из участников, если он есть
-    // Но так как у нас ChatMember в БД, нам нужен userId
     fetch(`/api/chats/${activeChat.id}/members`)
       .then(res => res.json())
       .then(members => {
         const other = members.find((m: any) => m.userId !== session.user?.id);
-        if (other) call.start(other.userId, mode);
+        if (other) call.start(other.userId, session.user?.name || "Anonymous", mode);
       });
   }, [activeChat, session?.user, call]);
 
@@ -441,12 +436,25 @@ export const FluxApp = () => {
       <PhotoViewer url={viewingPhoto} onClose={() => setViewingPhoto(null)} />
       {call.incomingCall && (
         <IncomingCallModal 
-          from={call.incomingCall.from}
+          from={call.incomingCall.fromName || call.incomingCall.from}
           mode={call.incomingCall.mode}
           onAccept={call.acceptCall}
           onReject={call.rejectCall}
         />
       )}
+      <CallOverlay 
+        active={call.inCall} 
+        mode={call.mode} 
+        onEnd={call.end} 
+        onShare={call.shareScreen}
+        localStream={call.localStream}
+        remoteStream={call.remoteStream}
+        muted={call.muted}
+        cameraOff={call.cameraOff}
+        toggleMute={call.toggleMute}
+        toggleCamera={call.toggleCamera}
+        callStatus={call.callStatus}
+      />
       <CreateChatModal
         isOpen={isCreateChatOpen}
         onClose={() => setIsCreateChatOpen(false)}
@@ -539,20 +547,6 @@ export const FluxApp = () => {
                     onVoice={() => setIsRecording(true)}
                   />
                 )}
-                
-                <CallOverlay 
-                  active={call.inCall} 
-                  mode={call.mode} 
-                  onEnd={call.end} 
-                  onShare={call.shareScreen}
-                  localStream={call.localStream}
-                  remoteStream={call.remoteStream}
-                  muted={call.muted}
-                  cameraOff={call.cameraOff}
-                  toggleMute={call.toggleMute}
-                  toggleCamera={call.toggleCamera}
-                  callStatus={call.callStatus}
-                />
               </MessagePane>
             ) : (
               <div className="hidden lg:flex flex-1">
