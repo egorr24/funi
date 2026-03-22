@@ -99,33 +99,34 @@ export const FluxApp = () => {
 
   // Звук звонка
   useEffect(() => {
+    let audio: HTMLAudioElement | null = null;
+    
     if (call.incomingCall) {
-      const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3");
+      audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3");
       audio.loop = true;
       audio.play().catch(() => {});
       
       if (Notification.permission === "granted") {
         new Notification("Входящий звонок FLUX", {
-          body: `Звонит: ${call.incomingCall.from}`,
+          body: `Звонит: ${call.incomingCall.fromName}`,
           icon: "/favicon.ico"
         });
       }
-      
-      return () => {
-        audio.pause();
-        audio.src = "";
-      };
-    }
-
-    if (call.isOutgoing && call.callStatus === "calling") {
-      const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/1350/1350-preview.mp3");
+    } else if (call.isOutgoing && call.callStatus === "ringing") {
+      audio = new Audio("https://assets.mixkit.co/active_storage/sfx/1350/1350-preview.mp3");
       audio.loop = true;
       audio.play().catch(() => {});
-      return () => {
+    } else if (call.callStatus === "failed") {
+      audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3"); // Звук ошибки/занято
+      audio.play().catch(() => {});
+    }
+
+    return () => {
+      if (audio) {
         audio.pause();
         audio.src = "";
-      };
-    }
+      }
+    };
   }, [call.incomingCall, call.isOutgoing, call.callStatus]);
 
   // Redirect if not authenticated

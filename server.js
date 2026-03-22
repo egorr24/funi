@@ -90,24 +90,37 @@ io.on('connection', (socket) => {
     console.log(`> Socket ${socket.id} joined chat room: ${chatId}`);
   });
 
-  // Сигналинг для звонков
+  // УЛУЧШЕННЫЙ СИГНАЛИНГ ДЛЯ ЗВОНКОВ
   socket.on('call:offer', ({ targetId, fromName, offer, mode }) => {
-    console.log(`> Call offer from ${userId} (${fromName}) to ${targetId}`);
-    io.to(targetId).emit('call:offer', { from: userId, fromName, offer, mode });
+    console.log(`[CALL] Offer from ${userId} (${fromName}) to ${targetId} [mode: ${mode}]`);
+    // Проверяем, онлайн ли получатель
+    const targetSocket = io.sockets.adapter.rooms.get(targetId);
+    if (targetSocket && targetSocket.size > 0) {
+      io.to(targetId).emit('call:offer', { from: userId, fromName, offer, mode });
+    } else {
+      console.log(`[CALL] Target ${targetId} is offline, sending call:failed`);
+      socket.emit('call:failed', { targetId, reason: 'offline' });
+    }
   });
 
   socket.on('call:answer', ({ targetId, answer }) => {
-    console.log(`> Call answer from ${userId} to ${targetId}`);
-    io.to(targetId).emit('call:answer', { answer });
+    console.log(`[CALL] Answer from ${userId} to ${targetId}`);
+    io.to(targetId).emit('call:answer', { from: userId, answer });
   });
 
   socket.on('call:ice', ({ targetId, candidate }) => {
-    io.to(targetId).emit('call:ice', { candidate });
+    // console.log(`[CALL] ICE candidate from ${userId} to ${targetId}`);
+    io.to(targetId).emit('call:ice', { from: userId, candidate });
   });
 
   socket.on('call:end', ({ targetId }) => {
-    console.log(`> Call end by ${userId} for ${targetId}`);
-    io.to(targetId).emit('call:end');
+    console.log(`[CALL] End by ${userId} for ${targetId}`);
+    io.to(targetId).emit('call:end', { from: userId });
+  });
+
+  socket.on('call:busy', ({ targetId }) => {
+    console.log(`[CALL] Busy from ${userId} to ${targetId}`);
+    io.to(targetId).emit('call:busy', { from: userId });
   });
 
   socket.on('chat:new', ({ targetId, chat }) => {

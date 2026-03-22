@@ -708,11 +708,12 @@ export const CallOverlay = ({
                 </div>
                 <div className="text-center">
                   <p className="text-lg font-bold text-white mb-1">
-                    {callStatus === "calling" ? "Вызов..." : 
-                     callStatus === "connecting" ? "Подключение..." : "Ожидание..."}
+                    {callStatus === "ringing" ? "Вызов..." : 
+                     callStatus === "connecting" ? "Подключение..." : 
+                     callStatus === "failed" ? "Сбой вызова" : "Ожидание..."}
                   </p>
                   <p className="text-xs text-zinc-500 uppercase tracking-widest animate-pulse">
-                    Ждем ответа собеседника
+                    {callStatus === "failed" ? "Собеседник занят или офлайн" : "Ждем ответа собеседника"}
                   </p>
                 </div>
               </div>
