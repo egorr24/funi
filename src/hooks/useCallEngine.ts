@@ -109,6 +109,8 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
         console.log("[CALL] Creating remote stream from individual track");
         setRemoteStream(prev => {
           if (prev) {
+            // Проверяем, нет ли уже такого трека
+            if (prev.getTracks().find(t => t.id === event.track.id)) return prev;
             prev.addTrack(event.track);
             return new MediaStream(prev.getTracks());
           }

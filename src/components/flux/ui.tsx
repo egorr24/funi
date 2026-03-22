@@ -405,7 +405,7 @@ export const MessageBubble = ({
   <motion.div
     initial={{ opacity: 0, y: 10, scale: 0.95 }}
     animate={{ opacity: 1, y: 0, scale: 1 }}
-    className={`max-w-[70%] rounded-2xl px-4 py-2 shadow-lg shadow-black/5 group ${
+    className={`max-w-[85%] lg:max-w-[70%] rounded-2xl px-4 py-2 shadow-lg shadow-black/5 group ${
       mine ? "ml-auto bg-violet-600/90 text-white rounded-tr-none" : "bg-zinc-800/80 text-zinc-100 rounded-tl-none border border-white/5"
     }`}
   >

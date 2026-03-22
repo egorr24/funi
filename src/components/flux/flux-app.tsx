@@ -181,7 +181,14 @@ export const FluxApp = () => {
   // Fetch messages when chatId changes
   useEffect(() => {
     fetchMessages();
-  }, [fetchMessages]);
+    // При переключении чата сбрасываем непрочитанные локально
+    if (chatId) {
+      setChatsData(current => current.map(chat => {
+        if (chat.id === chatId) return { ...chat, unreadCount: 0 };
+        return chat;
+      }));
+    }
+  }, [fetchMessages, chatId]);
 
   // Handle incoming socket messages
   useEffect(() => {
@@ -196,13 +203,14 @@ export const FluxApp = () => {
         });
       }
       
-      // Update last message in chatsData
+      // Update last message in chatsData and increment unread if not active
       setChatsData(current => current.map(chat => {
         if (chat.id === message.chatId) {
           return {
             ...chat,
             lastMessagePreview: message.encryptedBody,
-            updatedAt: message.createdAt
+            updatedAt: message.createdAt,
+            unreadCount: chat.id === chatId ? 0 : (chat.unreadCount || 0) + 1
           };
         }
         return chat;
@@ -238,8 +246,8 @@ export const FluxApp = () => {
 
   const activeChat = useMemo(() => {
     if (!chatId) return null;
-    return chats.find((chat) => chat.id === chatId) ?? null;
-  }, [chats, chatId]);
+    return chatsData.find((chat) => chat.id === chatId) ?? null;
+  }, [chatsData, chatId]);
   const visibleMessages = useMemo(() => {
     if (!activeChat) return [];
     return messages.filter((message) => message.chatId === activeChat.id);
@@ -257,12 +265,12 @@ export const FluxApp = () => {
           call.start(activeChat.id, other.userId, session.user?.name || "Anonymous", mode);
         } else {
           // Если это чат с самим собой или ошибка — звоним в комнату чата
-          call.start(activeChat.id, "", session.user?.name || "Anonymous", mode);
+          call.start(activeChat.id, activeChat.id, session.user?.name || "Anonymous", mode);
         }
       })
       .catch(() => {
         // Фолбэк на комнатный звонок если API упал
-        call.start(activeChat.id, "", session.user?.name || "Anonymous", mode);
+        call.start(activeChat.id, activeChat.id, session.user?.name || "Anonymous", mode);
       });
   }, [activeChat, session?.user, call]);
 
