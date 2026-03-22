@@ -669,7 +669,7 @@ export const Composer = ({
         onClick={onSend}
         className="p-3.5 bg-violet-600 hover:bg-violet-500 text-white rounded-2xl shadow-lg shadow-violet-600/20 transition-all active:scale-95"
       >
-        <Send className="w-5 h-5" />
+        <SendHorizontal className="w-5 h-5" />
       </button>
     ) : (
       <button 
