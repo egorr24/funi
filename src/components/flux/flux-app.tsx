@@ -97,37 +97,17 @@ export const FluxApp = () => {
     }
   }, []);
 
-  // Звук звонка
+  // Уведомления о звонке (без звука)
   useEffect(() => {
-    let audio: HTMLAudioElement | null = null;
-    
     if (call.incomingCall) {
-      audio = new Audio("https://assets.mixkit.co/active_storage/sfx/1358/1358-preview.mp3");
-      audio.loop = true;
-      audio.play().catch(() => {});
-      
       if (Notification.permission === "granted") {
         new Notification("Входящий звонок FLUX", {
           body: `Звонит: ${call.incomingCall.fromName}`,
           icon: "/favicon.ico"
         });
       }
-    } else if (call.isOutgoing && call.callStatus === "ringing") {
-      audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2361/2361-preview.mp3");
-      audio.loop = true;
-      audio.play().catch(() => {});
-    } else if (call.callStatus === "failed") {
-      audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3"); // Звук ошибки/занято
-      audio.play().catch(() => {});
     }
-
-    return () => {
-      if (audio) {
-        audio.pause();
-        audio.src = "";
-      }
-    };
-  }, [call.incomingCall, call.isOutgoing, call.callStatus]);
+  }, [call.incomingCall]);
 
   // Redirect if not authenticated
   useEffect(() => {

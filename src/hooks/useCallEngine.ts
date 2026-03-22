@@ -136,7 +136,7 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
     return peer;
   }, [socket, cleanup]);
 
-  // Начало звонка (Outgoing) - ТЕПЕРЬ С ТАРГЕТОМ ДЛЯ ГЛОБАЛЬНОГО ВЫЗОВА
+  // Начало звонка (Outgoing)
   const start = useCallback(async (chatId: string, targetId: string, fromName: string, callMode: CallMode = "video") => {
     if (inCall) return;
     console.log(`[CALL] Starting call. Chat: ${chatId}, Target: ${targetId}, From: ${fromName}`);
@@ -152,25 +152,18 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
       chatIdRef.current = chatId;
       targetIdRef.current = targetId;
 
-      const tempPeer = new RTCPeerConnection({
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun1.l.google.com:19302" },
-          { urls: "stun:stun2.l.google.com:19302" },
-        ]
-      });
-      stream.getTracks().forEach(track => tempPeer.addTrack(track, stream));
-      const offer = await tempPeer.createOffer();
-      await tempPeer.setLocalDescription(offer);
+      const peer = createPeer(targetId, chatId);
+      stream.getTracks().forEach(track => peer.addTrack(track, stream));
       
-      peerRef.current = tempPeer;
+      const offer = await peer.createOffer();
+      await peer.setLocalDescription(offer);
       
       socket?.emit("call:offer", { chatId, targetId, fromName, offer, mode: callMode });
     } catch (err) {
       console.error("[CALL] Start call error:", err);
       cleanup();
     }
-  }, [inCall, socket, cleanup]);
+  }, [inCall, socket, createPeer, cleanup]);
 
   // Принятие звонка (Incoming)
   const acceptCall = useCallback(async () => {
@@ -191,11 +184,6 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
 
       await peer.setRemoteDescription(new RTCSessionDescription(incomingCall.offer));
       
-      while (iceCandidatesBuffer.current.length > 0) {
-        const candidate = iceCandidatesBuffer.current.shift();
-        if (candidate) await peer.addIceCandidate(new RTCIceCandidate(candidate));
-      }
-
       const answer = await peer.createAnswer();
       await peer.setLocalDescription(answer);
       
@@ -204,6 +192,13 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
         answer, 
         chatId: incomingCall.chatId 
       });
+
+      // Добавляем накопленные ICE кандидаты после setRemoteDescription
+      while (iceCandidatesBuffer.current.length > 0) {
+        const candidate = iceCandidatesBuffer.current.shift();
+        if (candidate) await peer.addIceCandidate(new RTCIceCandidate(candidate));
+      }
+
       setIncomingCall(null);
     } catch (err) {
       console.error("[CALL] Accept call error:", err);
@@ -237,33 +232,7 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
     const handleAnswer = async ({ from, answer, chatId }: any) => {
       console.log("[CALL] Someone answered!", from);
       if (peerRef.current && isOutgoing) {
-        // Добавляем обработчики к уже существующему peer (который мы создали в start)
         const peer = peerRef.current;
-        targetIdRef.current = from;
-        chatIdRef.current = chatId;
-
-        peer.onicecandidate = (event) => {
-          if (event.candidate) {
-            socket.emit("call:ice", { targetId: from, candidate: event.candidate, chatId });
-          }
-        };
-
-        peer.ontrack = (event) => {
-          console.log("[CALL] Received remote track (outgoing):", event.track.kind);
-          if (event.streams && event.streams[0]) {
-            setRemoteStream(event.streams[0]);
-          } else {
-            setRemoteStream(prev => {
-              if (prev) {
-                prev.addTrack(event.track);
-                return new MediaStream(prev.getTracks());
-              }
-              return new MediaStream([event.track]);
-            });
-          }
-          setCallStatus("active");
-        };
-
         await peer.setRemoteDescription(new RTCSessionDescription(answer));
         setCallStatus("connecting");
         

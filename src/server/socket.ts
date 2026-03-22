@@ -30,8 +30,16 @@ export const createSocketServer = (httpServer: HttpServer) => {
   io.on("connection", (socket) => {
     const userId = socket.handshake.auth.userId as string | undefined;
     if (userId) {
+      socket.join(userId);
+      console.log(`[SOCKET] User ${userId} joined their own room`);
       flushQueue(socket, userId);
     }
+
+    socket.on("user:online", ({ userId }) => {
+      if (userId) {
+        socket.join(userId);
+      }
+    });
 
     socket.on("chat:join", ({ chatId }) => {
       socket.join(chatId);
@@ -62,16 +70,33 @@ export const createSocketServer = (httpServer: HttpServer) => {
     });
 
     socket.on("call:offer", (payload: SocketPayloadMap["call:offer"]) => {
-      socket.to(payload.chatId).emit("call:offer", payload);
+      if (payload.targetId) {
+        console.log(`[CALL] Offer from ${payload.fromName} to user ${payload.targetId}`);
+        io.to(payload.targetId).emit("call:offer", payload);
+      } else {
+        socket.to(payload.chatId).emit("call:offer", payload);
+      }
     });
     socket.on("call:answer", (payload: SocketPayloadMap["call:answer"]) => {
-      socket.to(payload.chatId).emit("call:answer", payload);
+      if (payload.targetId) {
+        io.to(payload.targetId).emit("call:answer", payload);
+      } else {
+        socket.to(payload.chatId).emit("call:answer", payload);
+      }
     });
     socket.on("call:ice", (payload: SocketPayloadMap["call:ice"]) => {
-      socket.to(payload.chatId).emit("call:ice", payload);
+      if (payload.targetId) {
+        io.to(payload.targetId).emit("call:ice", payload);
+      } else {
+        socket.to(payload.chatId).emit("call:ice", payload);
+      }
     });
     socket.on("call:end", (payload: SocketPayloadMap["call:end"]) => {
-      socket.to(payload.chatId).emit("call:end", payload);
+      if (payload.targetId) {
+        io.to(payload.targetId).emit("call:end", payload);
+      } else {
+        socket.to(payload.chatId).emit("call:end", payload);
+      }
     });
 
     socket.on("offline:enqueue", ({ toUserId, payload }: { toUserId: string; payload: QueuedMessage }) => {
