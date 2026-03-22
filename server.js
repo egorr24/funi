@@ -85,7 +85,7 @@ io.on('connection', (socket) => {
     }
     onlineUsers.get(userId).add(socket.id);
     
-    console.log(`[CONN] User ${userId} connected (Socket: ${socket.id}). Online: ${onlineUsers.size} users`);
+    console.log(`[CONN] User ${userId} connected. Total users: ${onlineUsers.size}. All IDs: ${Array.from(onlineUsers.keys()).join(', ')}`);
   } else {
     console.warn(`[CONN] Socket connected without userId: ${socket.id}`);
   }
@@ -104,6 +104,12 @@ io.on('connection', (socket) => {
   socket.on('call:offer', ({ targetId, fromName, offer, mode }) => {
     console.log(`[CALL] Offer from ${userId} (${fromName}) to ${targetId}`);
     
+    if (userId === targetId) {
+      console.warn(`[CALL] User ${userId} is trying to call themselves.`);
+      socket.emit('call:failed', { targetId, reason: 'self-call' });
+      return;
+    }
+
     // Проверяем через карту онлайн-пользователей
     const isTargetOnline = onlineUsers.has(targetId) && onlineUsers.get(targetId).size > 0;
     

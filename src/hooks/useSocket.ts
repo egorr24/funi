@@ -11,7 +11,7 @@ export const useSocket = (userId: string) => {
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || userId === "u_me") return;
 
     // На Railway/Production используем относительный путь
     const s = io({

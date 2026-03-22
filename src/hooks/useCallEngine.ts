@@ -231,6 +231,11 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
     socket.on("call:busy", handleBusy);
     socket.on("call:failed", handleFailed);
 
+    socket.on("disconnect", () => {
+      console.log("[CALL] Socket disconnected, cleaning up call...");
+      cleanup();
+    });
+
     return () => {
       socket.off("call:offer", handleOffer);
       socket.off("call:answer", handleAnswer);
@@ -238,6 +243,7 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
       socket.off("call:end", handleEnd);
       socket.off("call:busy", handleBusy);
       socket.off("call:failed", handleFailed);
+      socket.off("disconnect");
     };
   }, [socket, inCall, incomingCall, cleanup]);
 

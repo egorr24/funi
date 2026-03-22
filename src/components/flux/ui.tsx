@@ -653,6 +653,7 @@ export const CallOverlay = ({
   toggleMute,
   toggleCamera,
   callStatus = "idle",
+  failReason,
 }: {
   active: boolean;
   mode: string;
