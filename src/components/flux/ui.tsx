@@ -606,7 +606,7 @@ export const ReactionRail = ({ reactions }: { reactions: FluxMessage["reactions"
 );
 
 export const VoiceWaveform = ({ points }: { points: number[] }) => (
-  <svg width="220" height="38" className="mt-2">
+  <svg width="220" height="38" viewBox="0 0 220 38" className="mt-2">
     {points.map((value, index) => (
       <rect
         key={`${value}-${index}`}

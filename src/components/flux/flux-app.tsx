@@ -734,66 +734,147 @@ export const FluxApp = () => {
         )}
 
         {activeTab === "settings" && (
-          <div className="col-span-2 p-8 overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-6">Настройки FLUX</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="p-6 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-3xl space-y-6">
-                <h3 className="text-sm font-semibold mb-4">Кастомизация темы</h3>
-                
-                <div className="space-y-2">
-                  <label className="text-xs text-zinc-400">Акцентный цвет</label>
-                  <div className="flex gap-2">
-                    {["#8b5cf6", "#ec4899", "#3b82f6", "#10b981", "#f59e0b"].map(color => (
-                      <button 
-                        key={color}
-                        onClick={() => setAccentColor(color)}
-                        className={`h-8 w-8 rounded-full border-2 ${accentColor === color ? "border-white" : "border-transparent"}`}
-                        style={{ backgroundColor: color }}
-                      />
-                    ))}
-                    <input 
-                      type="color" 
-                      value={accentColor} 
-                      onChange={(e) => setAccentColor(e.target.value)}
-                      className="h-8 w-8 rounded-full bg-transparent border-none cursor-pointer"
-                    />
-                  </div>
+          <div className="flex-1 h-full overflow-y-auto bg-[#0a0a0c]">
+            <div className="max-w-4xl mx-auto p-8 lg:p-12">
+              <div className="flex items-center justify-between mb-10">
+                <div>
+                  <h2 className="text-3xl font-bold tracking-tight mb-1">Настройки</h2>
+                  <p className="text-zinc-500 text-sm">Управление вашим аккаунтом и интерфейсом FLUX</p>
                 </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <label className="text-zinc-400">Интенсивность размытия</label>
-                    <span>{blurIntensity}px</span>
-                  </div>
-                  <input 
-                    type="range" min="0" max="100" 
-                    value={blurIntensity} 
-                    onChange={(e) => setBlurIntensity(parseInt(e.target.value))}
-                    className="w-full accent-violet-500"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <label className="text-zinc-400">Яркость свечения</label>
-                    <span>{Math.round(glowIntensity * 100)}%</span>
-                  </div>
-                  <input 
-                    type="range" min="0" max="1" step="0.01"
-                    value={glowIntensity} 
-                    onChange={(e) => setGlowIntensity(parseFloat(e.target.value))}
-                    className="w-full accent-violet-500"
-                  />
+                <div className="h-12 w-12 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
+                  <Settings className="h-6 w-6 text-violet-400" />
                 </div>
               </div>
 
-              <SecurityPanel />
-              <SmartFolderPanel />
-              <div className="p-4 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-3xl">
-                <h3 className="text-sm font-semibold mb-4">Тема оформления</h3>
-                <div className="flex gap-4">
-                  <div className="flex-1 p-3 rounded-xl border border-violet-500 bg-violet-500/10 text-center text-xs">Темная (Default)</div>
-                  <div className="flex-1 p-3 rounded-xl border border-white/10 bg-white/5 text-center text-xs opacity-50">Светлая (Coming soon)</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Раздел: Безопасность */}
+                <div className="space-y-6">
+                  <div className="p-6 rounded-[32px] bg-zinc-900/50 border border-white/5 backdrop-blur-xl">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="p-2 bg-emerald-500/10 rounded-xl">
+                        <Shield className="h-5 w-5 text-emerald-400" />
+                      </div>
+                      <h3 className="font-bold">Безопасность</h3>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer group">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium">Сквозное шифрование</span>
+                          <span className="text-[10px] text-emerald-500 uppercase font-bold tracking-wider">Активно</span>
+                        </div>
+                        <CheckCheck className="h-4 w-4 text-emerald-500" />
+                      </div>
+                      
+                      <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium">Двухфакторная аутентификация</span>
+                          <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Настроить</span>
+                        </div>
+                        <Plus className="h-4 w-4 text-zinc-500" />
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium">Активные сессии</span>
+                          <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">3 устройства</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Раздел: Уведомления */}
+                  <div className="p-6 rounded-[32px] bg-zinc-900/50 border border-white/5 backdrop-blur-xl">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="p-2 bg-blue-500/10 rounded-xl">
+                        <Bell className="h-5 w-5 text-blue-400" />
+                      </div>
+                      <h3 className="font-bold">Уведомления</h3>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Звук уведомлений</span>
+                        <div className="w-10 h-5 bg-violet-600 rounded-full relative">
+                          <div className="absolute right-1 top-1 w-3 h-3 bg-white rounded-full" />
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Показывать превью</span>
+                        <div className="w-10 h-5 bg-violet-600 rounded-full relative">
+                          <div className="absolute right-1 top-1 w-3 h-3 bg-white rounded-full" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Раздел: Внешний вид */}
+                <div className="space-y-6">
+                  <div className="p-6 rounded-[32px] bg-zinc-900/50 border border-white/5 backdrop-blur-xl">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="p-2 bg-violet-500/10 rounded-xl">
+                        <Settings className="h-5 w-5 text-violet-400" />
+                      </div>
+                      <h3 className="font-bold">Внешний вид</h3>
+                    </div>
+
+                    <div className="space-y-6">
+                      <div className="space-y-3">
+                        <label className="text-xs text-zinc-400 font-bold uppercase tracking-widest">Акцентный цвет</label>
+                        <div className="flex flex-wrap gap-3">
+                          {["#8b5cf6", "#ec4899", "#3b82f6", "#10b981", "#f59e0b"].map(color => (
+                            <button 
+                              key={color}
+                              onClick={() => setAccentColor(color)}
+                              className={`h-10 w-10 rounded-xl border-2 transition-transform hover:scale-110 ${accentColor === color ? "border-white" : "border-transparent"}`}
+                              style={{ backgroundColor: color }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex justify-between text-xs font-bold uppercase tracking-widest text-zinc-400">
+                          <label>Интенсивность размытия</label>
+                          <span className="text-violet-400">{blurIntensity}px</span>
+                        </div>
+                        <input 
+                          type="range" min="0" max="100" 
+                          value={blurIntensity} 
+                          onChange={(e) => setBlurIntensity(parseInt(e.target.value))}
+                          className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-violet-500"
+                        />
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex justify-between text-xs font-bold uppercase tracking-widest text-zinc-400">
+                          <label>Яркость свечения</label>
+                          <span className="text-violet-400">{Math.round(glowIntensity * 100)}%</span>
+                        </div>
+                        <input 
+                          type="range" min="0" max="1" step="0.01"
+                          value={glowIntensity} 
+                          onChange={(e) => setGlowIntensity(parseFloat(e.target.value))}
+                          className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-violet-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-6 rounded-[32px] bg-zinc-900/50 border border-white/5 backdrop-blur-xl">
+                    <h3 className="text-sm font-semibold mb-4">О программе</h3>
+                    <div className="space-y-2 text-xs text-zinc-500">
+                      <div className="flex justify-between">
+                        <span>Версия</span>
+                        <span className="text-zinc-300 font-mono">2.4.0-stable</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Сборка</span>
+                        <span className="text-zinc-300 font-mono">2026.03.22</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
