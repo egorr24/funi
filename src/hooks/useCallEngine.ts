@@ -102,9 +102,11 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
     peer.ontrack = (event) => {
       console.log("[CALL] Received remote track:", event.track.kind);
       if (event.streams && event.streams[0]) {
+        console.log("[CALL] Setting remote stream from event streams");
         setRemoteStream(event.streams[0]);
       } else {
         // Создаем поток из отдельного трека, если потока нет в событии
+        console.log("[CALL] Creating remote stream from individual track");
         setRemoteStream(prev => {
           if (prev) {
             prev.addTrack(event.track);
@@ -117,8 +119,13 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
     };
 
     peer.onconnectionstatechange = () => {
-      console.log("[CALL] Connection state:", peer.connectionState);
+      console.log("[CALL] Connection state changed:", peer.connectionState);
+      if (peer.connectionState === "connected") {
+        console.log("[CALL] WebRTC connected successfully!");
+        setCallStatus("active");
+      }
       if (["disconnected", "failed", "closed"].includes(peer.connectionState)) {
+        console.log("[CALL] WebRTC connection failed or closed");
         cleanup();
       }
     };

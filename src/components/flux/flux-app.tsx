@@ -102,7 +102,7 @@ export const FluxApp = () => {
     let audio: HTMLAudioElement | null = null;
     
     if (call.incomingCall) {
-      audio = new Audio("https://assets.mixkit.co/active_storage/sfx/1360/1360-preview.mp3");
+      audio = new Audio("https://assets.mixkit.co/active_storage/sfx/1358/1358-preview.mp3");
       audio.loop = true;
       audio.play().catch(() => {});
       
