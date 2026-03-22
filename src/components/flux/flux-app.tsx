@@ -75,6 +75,21 @@ export const FluxApp = () => {
   const call = useCallEngine(socket.socket, session?.user?.id || "");
   const waveform = useWaveform(`${chatId}-${messages.length}`);
 
+  // Обработка ссылки на звонок из URL
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const callId = params.get("call");
+      if (callId && session?.user?.id) {
+        // Если это не наш собственный ID (хотя в ссылке chatId)
+        // Для простоты — просто открываем чат и предлагаем звонок
+        setChatId(callId);
+        // Убираем параметр из URL чтобы не звонить при каждой перезагрузке
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, [session?.user?.id]);
+
   // Браузерные уведомления
   useEffect(() => {
     if (typeof window !== "undefined" && "Notification" in window) {
@@ -117,16 +132,14 @@ export const FluxApp = () => {
       if (res.ok) {
         const data = await res.json();
         setChatsData(data);
-        if (data.length > 0 && !chatId) {
-          setChatId(data[0].id);
-        }
+        // Не выбираем первый чат автоматически на мобилках
       }
     } catch (error) {
       console.error("Failed to fetch chats:", error);
     } finally {
       setLoading(false);
     }
-  }, [chatId]);
+  }, []);
 
   // Fetch chats on mount
   useEffect(() => {
@@ -156,26 +169,27 @@ export const FluxApp = () => {
     }
   }, [fetchChats, socket.socket]);
 
+  const fetchMessages = useCallback(async () => {
+    if (!chatId) return;
+    try {
+      const res = await fetch(`/api/messages?chatId=${chatId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setMessages(data);
+        // Присоединяемся к комнате чата в сокетах
+        if (socket.socket) {
+          socket.socket.emit("chat:join", { chatId });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch messages:", error);
+    }
+  }, [chatId, socket.socket]);
+
   // Fetch messages when chatId changes
   useEffect(() => {
-    const fetchMessages = async () => {
-      if (!chatId) return;
-      try {
-        const res = await fetch(`/api/messages?chatId=${chatId}`);
-        if (res.ok) {
-          const data = await res.json();
-          setMessages(data);
-          // Присоединяемся к комнате чата в сокетах
-          if (socket.socket) {
-            socket.socket.emit("chat:join", { chatId });
-          }
-        }
-      } catch (error) {
-        console.error("Failed to fetch messages:", error);
-      }
-    };
     fetchMessages();
-  }, [chatId, socket.socket]);
+  }, [fetchMessages]);
 
   // Handle incoming socket messages
   useEffect(() => {
@@ -230,8 +244,14 @@ export const FluxApp = () => {
     });
   }, [chatsData, folder, search]);
 
-  const activeChat = useMemo(() => chats.find((chat) => chat.id === chatId) ?? chats[0], [chats, chatId]);
-  const visibleMessages = useMemo(() => messages.filter((message) => message.chatId === activeChat?.id), [messages, activeChat]);
+  const activeChat = useMemo(() => {
+    if (!chatId) return null;
+    return chats.find((chat) => chat.id === chatId) ?? null;
+  }, [chats, chatId]);
+  const visibleMessages = useMemo(() => {
+    if (!activeChat) return [];
+    return messages.filter((message) => message.chatId === activeChat.id);
+  }, [messages, activeChat]);
 
   const startCall = useCallback((mode: "audio" | "video") => {
     if (!activeChat || !session?.user?.id) return;
@@ -251,6 +271,24 @@ export const FluxApp = () => {
   const handleFileUpload = useCallback(async (file: File) => {
     if (!activeChat || !session?.user?.id) return;
     
+    // Оптимистичное медиа-сообщение
+    const tempId = "upload-" + Math.random().toString(36).substring(7);
+    const optimisticMedia: FluxMessage = {
+      id: tempId,
+      chatId: activeChat.id,
+      senderId: session.user.id,
+      senderName: session.user.name || "You",
+      encryptedBody: "Uploading...",
+      decryptedBody: "Uploading...",
+      encryptedAes: "unsupported",
+      iv: "unsupported",
+      createdAt: new Date().toISOString(),
+      status: "SENT",
+      reactions: [],
+      mediaType: file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'audio',
+    };
+    setMessages(prev => [...prev, optimisticMedia]);
+
     const formData = new FormData();
     formData.append("file", file);
     
@@ -278,15 +316,17 @@ export const FluxApp = () => {
 
         if (res.ok) {
           const newMessage = await res.json();
-          // Уведомляем сокет о новом медиа-сообщении
           if (socket.socket) {
             socket.socket.emit("message:queue", newMessage);
           }
-          setMessages((current) => [...current, newMessage]);
+          setMessages((current) => current.map(m => m.id === tempId ? newMessage : m));
         }
+      } else {
+        setMessages(prev => prev.filter(m => m.id !== tempId));
       }
     } catch (error) {
       console.error("Upload failed:", error);
+      setMessages(prev => prev.filter(m => m.id !== tempId));
     }
   }, [activeChat, session?.user, socket.socket]);
 

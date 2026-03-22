@@ -34,9 +34,7 @@ export const FluxShell = ({
   showRightPanel = true,
 }: PropsWithChildren<{ showRightPanel?: boolean }>) => (
   <div
-    className={`mx-auto grid h-screen max-w-[1600px] gap-0 p-0 text-zinc-100 overflow-hidden relative ${
-      showRightPanel ? "lg:grid-cols-[72px_360px_1fr_340px]" : "lg:grid-cols-[72px_360px_1fr]"
-    } grid-cols-1`}
+    className={`mx-auto flex h-screen max-w-[1600px] text-zinc-100 overflow-hidden relative w-full`}
   >
     {children}
   </div>
@@ -51,7 +49,7 @@ export const NavSidebar = ({
   onTabChange: (tab: string) => void;
   className?: string;
 }) => (
-  <div className={`flex lg:flex-col items-center lg:py-6 bg-black/40 border-r border-white/5 gap-4 fixed bottom-0 left-0 right-0 h-16 lg:static lg:h-auto z-50 ${className}`}>
+  <div className={`flex lg:flex-col items-center lg:py-6 bg-black/40 border-r border-white/5 gap-4 fixed bottom-0 left-0 right-0 h-16 lg:static lg:h-auto lg:w-[72px] z-50 ${className}`}>
     <div className="lg:mb-4 hidden lg:block">
       <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-violet-600 to-fuchsia-600 grid place-items-center shadow-lg shadow-violet-500/20">
         <span className="font-bold text-lg italic text-white">F</span>
@@ -115,7 +113,7 @@ const NavIcon = ({
 );
 
 export const Sidebar = ({ children, className = "" }: PropsWithChildren<BaseProps>) => (
-  <GlassCard className={`overflow-hidden ${className}`}>{children}</GlassCard>
+  <aside className={`flex flex-col border-r border-white/5 bg-black/20 lg:w-[360px] shrink-0 ${className}`}>{children}</aside>
 );
 
 export const CreateChatModal = ({
@@ -327,7 +325,7 @@ export const ConnectionBadge = ({ online, queued }: { online: boolean; queued: n
 );
 
 export const MessagePane = ({ children, className = "" }: PropsWithChildren<BaseProps>) => (
-  <main className={`flex flex-col bg-zinc-950/20 backdrop-blur-md h-full overflow-hidden ${className}`}>{children}</main>
+  <main className={`flex flex-col bg-zinc-950/20 backdrop-blur-md h-full overflow-hidden flex-1 ${className}`}>{children}</main>
 );
 
 export const ChatHeader = ({
