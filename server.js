@@ -65,40 +65,53 @@ app.use((req, res, next) => {
 const io = socketIo(server, {
   path: '/api/socket',
   cors: { origin: "*", methods: ["GET", "POST"] },
-  transports: ['polling', 'websocket'], // Соответствует клиенту
-  allowEIO3: true // Для обратной совместимости если нужно
+  transports: ['polling', 'websocket'],
+  allowEIO3: true
 });
 app.set('io', io);
 
+// Карта онлайн-пользователей: userId -> Set(socketIds)
+const onlineUsers = new Map();
+
 io.on('connection', (socket) => {
   const userId = socket.handshake.auth.userId;
+  
   if (userId) {
     socket.join(userId);
-    console.log(`> User connected: ${userId} (Socket ID: ${socket.id})`);
+    
+    // Добавляем сокет в карту онлайн-пользователей
+    if (!onlineUsers.has(userId)) {
+      onlineUsers.set(userId, new Set());
+    }
+    onlineUsers.get(userId).add(socket.id);
+    
+    console.log(`[CONN] User ${userId} connected (Socket: ${socket.id}). Online: ${onlineUsers.size} users`);
+  } else {
+    console.warn(`[CONN] Socket connected without userId: ${socket.id}`);
   }
 
   // Обработка сообщений в реальном времени
   socket.on('message:queue', async (message) => {
-    console.log(`> Message from ${message.senderId} in chat ${message.chatId}`);
-    // Рассылаем всем в комнате чата (нужно чтобы клиенты джойнились в chatId)
     socket.to(message.chatId).emit('new_message', message);
   });
 
   // Вход в комнату чата
   socket.on('chat:join', ({ chatId }) => {
     socket.join(chatId);
-    console.log(`> Socket ${socket.id} joined chat room: ${chatId}`);
   });
 
   // УЛУЧШЕННЫЙ СИГНАЛИНГ ДЛЯ ЗВОНКОВ
   socket.on('call:offer', ({ targetId, fromName, offer, mode }) => {
-    console.log(`[CALL] Offer from ${userId} (${fromName}) to ${targetId} [mode: ${mode}]`);
-    // Проверяем, онлайн ли получатель
-    const targetSocket = io.sockets.adapter.rooms.get(targetId);
-    if (targetSocket && targetSocket.size > 0) {
+    console.log(`[CALL] Offer from ${userId} (${fromName}) to ${targetId}`);
+    
+    // Проверяем через карту онлайн-пользователей
+    const isTargetOnline = onlineUsers.has(targetId) && onlineUsers.get(targetId).size > 0;
+    
+    if (isTargetOnline) {
+      console.log(`[CALL] Target ${targetId} is online, sending offer...`);
       io.to(targetId).emit('call:offer', { from: userId, fromName, offer, mode });
     } else {
-      console.log(`[CALL] Target ${targetId} is offline, sending call:failed`);
+      console.warn(`[CALL] Target ${targetId} is OFFLINE. Active users: ${Array.from(onlineUsers.keys()).join(', ')}`);
       socket.emit('call:failed', { targetId, reason: 'offline' });
     }
   });
@@ -109,12 +122,11 @@ io.on('connection', (socket) => {
   });
 
   socket.on('call:ice', ({ targetId, candidate }) => {
-    // console.log(`[CALL] ICE candidate from ${userId} to ${targetId}`);
     io.to(targetId).emit('call:ice', { from: userId, candidate });
   });
 
   socket.on('call:end', ({ targetId }) => {
-    console.log(`[CALL] End by ${userId} for ${targetId}`);
+    console.log(`[CALL] End from ${userId} to ${targetId}`);
     io.to(targetId).emit('call:end', { from: userId });
   });
 
@@ -124,12 +136,17 @@ io.on('connection', (socket) => {
   });
 
   socket.on('chat:new', ({ targetId, chat }) => {
-    console.log(`> New chat created for ${targetId}`);
     io.to(targetId).emit('chat:new', chat);
   });
 
   socket.on('disconnect', () => {
-    console.log(`> User disconnected: ${userId}`);
+    if (userId && onlineUsers.has(userId)) {
+      onlineUsers.get(userId).delete(socket.id);
+      if (onlineUsers.get(userId).size === 0) {
+        onlineUsers.delete(userId);
+      }
+      console.log(`[CONN] User ${userId} disconnected. Online: ${onlineUsers.size} users`);
+    }
   });
 });
 

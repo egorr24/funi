@@ -444,18 +444,19 @@ export const FluxApp = () => {
         />
       )}
       <CallOverlay 
-        active={call.inCall} 
-        mode={call.mode} 
-        onEnd={call.end} 
-        onShare={call.shareScreen}
-        localStream={call.localStream}
-        remoteStream={call.remoteStream}
-        muted={call.muted}
-        cameraOff={call.cameraOff}
-        toggleMute={call.toggleMute}
-        toggleCamera={call.toggleCamera}
-        callStatus={call.callStatus}
-      />
+                    active={call.inCall} 
+                    mode={call.mode} 
+                    onEnd={call.end} 
+                    onShare={call.shareScreen}
+                    localStream={call.localStream}
+                    remoteStream={call.remoteStream}
+                    muted={call.muted}
+                    cameraOff={call.cameraOff}
+                    toggleMute={call.toggleMute}
+                    toggleCamera={call.toggleCamera}
+                    callStatus={call.callStatus}
+                    failReason={call.failReason}
+                  />
       <CreateChatModal
         isOpen={isCreateChatOpen}
         onClose={() => setIsCreateChatOpen(false)}

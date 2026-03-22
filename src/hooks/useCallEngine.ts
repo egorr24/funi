@@ -17,6 +17,7 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
   const [inCall, setInCall] = useState(false);
   const [isOutgoing, setIsOutgoing] = useState(false);
   const [callStatus, setCallStatus] = useState<CallStatus>("idle");
+  const [failReason, setFailReason] = useState<string | null>(null);
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
   const [mode, setMode] = useState<CallMode>("video");
   const [muted, setMuted] = useState(false);
@@ -43,6 +44,7 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
     setInCall(false);
     setIsOutgoing(false);
     setCallStatus("idle");
+    setFailReason(null);
     setIncomingCall(null);
     setMuted(false);
     setCameraOff(false);
@@ -211,13 +213,15 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
     const handleBusy = () => {
       console.log("[CALL] Target is busy");
       setCallStatus("failed");
-      setTimeout(cleanup, 2000);
+      setFailReason("busy");
+      setTimeout(cleanup, 3000);
     };
 
     const handleFailed = ({ reason }: any) => {
       console.log("[CALL] Call failed:", reason);
       setCallStatus("failed");
-      setTimeout(cleanup, 2000);
+      setFailReason(reason);
+      setTimeout(cleanup, 3000);
     };
 
     socket.on("call:offer", handleOffer);
@@ -257,6 +261,7 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
     inCall,
     isOutgoing,
     callStatus,
+    failReason,
     incomingCall,
     mode,
     muted,

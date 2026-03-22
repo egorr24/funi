@@ -664,7 +664,8 @@ export const CallOverlay = ({
   cameraOff: boolean;
   toggleMute: () => void;
   toggleCamera: () => void;
-  callStatus?: "idle" | "calling" | "connecting" | "active";
+  callStatus?: "idle" | "ringing" | "connecting" | "active" | "failed";
+  failReason?: string | null;
 }) => {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -713,7 +714,9 @@ export const CallOverlay = ({
                      callStatus === "failed" ? "Сбой вызова" : "Ожидание..."}
                   </p>
                   <p className="text-xs text-zinc-500 uppercase tracking-widest animate-pulse">
-                    {callStatus === "failed" ? "Собеседник занят или офлайн" : "Ждем ответа собеседника"}
+                    {callStatus === "failed" 
+                      ? (failReason === "busy" ? "Собеседник занят" : "Собеседник офлайн") 
+                      : "Ждем ответа собеседника"}
                   </p>
                 </div>
               </div>
