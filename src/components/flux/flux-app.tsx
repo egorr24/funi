@@ -189,6 +189,7 @@ export const FluxApp = () => {
         setMessages(data);
         // Присоединяемся к комнате чата в сокетах
         if (socket.socket) {
+          console.log(`> Joining chat room: ${chatId}`);
           socket.socket.emit("chat:join", { chatId });
         }
       }
@@ -266,12 +267,7 @@ export const FluxApp = () => {
 
   const startCall = useCallback((mode: "audio" | "video") => {
     if (!activeChat || !session?.user?.id) return;
-    fetch(`/api/chats/${activeChat.id}/members`)
-      .then(res => res.json())
-      .then(members => {
-        const other = members.find((m: any) => m.userId !== session.user?.id);
-        if (other) call.start(other.userId, session.user?.name || "Anonymous", mode);
-      });
+    call.start(activeChat.id, session.user?.name || "Anonymous", mode);
   }, [activeChat, session?.user, call]);
 
   const handleFileUpload = useCallback(async (file: File) => {

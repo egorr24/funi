@@ -120,40 +120,32 @@ io.on('connection', (socket) => {
     socket.join(chatId);
   });
 
-  // УЛУЧШЕННЫЙ СИГНАЛИНГ ДЛЯ ЗВОНКОВ
-  socket.on('call:offer', ({ targetId, fromName, offer, mode }) => {
-    console.log(`[CALL] Offer from ${userId} (${fromName}) to ${targetId}`);
-    
-    if (userId === targetId) {
-      console.warn(`[CALL] User ${userId} is trying to call themselves.`);
-      socket.emit('call:failed', { targetId, reason: 'self-call' });
-      return;
-    }
-
-    // Проверяем через карту онлайн-пользователей
-    const isTargetOnline = onlineUsers.has(targetId) && onlineUsers.get(targetId).size > 0;
-    
-    if (isTargetOnline) {
-      console.log(`[CALL] Target ${targetId} is online, sending offer...`);
-      io.to(targetId).emit('call:offer', { from: userId, fromName, offer, mode });
-    } else {
-      console.warn(`[CALL] Target ${targetId} is OFFLINE. Active users: ${Array.from(onlineUsers.keys()).join(', ')}`);
-      socket.emit('call:failed', { targetId, reason: 'offline' });
-    }
+  // КОМНАТНЫЙ СИГНАЛИНГ ДЛЯ ЗВОНКОВ (БОЛЕЕ НАДЕЖНЫЙ)
+  socket.on('call:offer', ({ chatId, fromName, offer, mode }) => {
+    const room = io.sockets.adapter.rooms.get(chatId);
+    const roomSize = room ? room.size : 0;
+    console.log(`[CALL] Offer from ${userId} (${fromName}) in chat ${chatId}. Room size: ${roomSize}`);
+    // Рассылаем предложение всем в комнате чата
+    socket.to(chatId).emit('call:offer', { from: userId, fromName, offer, mode, chatId });
   });
 
-  socket.on('call:answer', ({ targetId, answer }) => {
+  socket.on('call:answer', ({ targetId, answer, chatId }) => {
     console.log(`[CALL] Answer from ${userId} to ${targetId}`);
-    io.to(targetId).emit('call:answer', { from: userId, answer });
+    io.to(targetId).emit('call:answer', { from: userId, answer, chatId });
   });
 
-  socket.on('call:ice', ({ targetId, candidate }) => {
-    io.to(targetId).emit('call:ice', { from: userId, candidate });
+  socket.on('call:ice', ({ targetId, candidate, chatId }) => {
+    io.to(targetId).emit('call:ice', { from: userId, candidate, chatId });
   });
 
-  socket.on('call:end', ({ targetId }) => {
+  socket.on('call:end', ({ targetId, chatId }) => {
     console.log(`[CALL] End from ${userId} to ${targetId}`);
-    io.to(targetId).emit('call:end', { from: userId });
+    if (targetId) {
+      io.to(targetId).emit('call:end', { from: userId, chatId });
+    }
+    if (chatId) {
+      socket.to(chatId).emit('call:end', { from: userId, chatId });
+    }
   });
 
   socket.on('call:busy', ({ targetId }) => {

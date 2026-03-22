@@ -11,6 +11,7 @@ interface IncomingCall {
   fromName: string;
   offer: RTCSessionDescriptionInit;
   mode: CallMode;
+  chatId: string;
 }
 
 export const useCallEngine = (socket: Socket | null, userId: string) => {
@@ -28,6 +29,7 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
 
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const targetIdRef = useRef<string | null>(null);
+  const chatIdRef = useRef<string | null>(null);
   const iceCandidatesBuffer = useRef<RTCIceCandidateInit[]>([]);
 
   // Очистка ресурсов
@@ -37,6 +39,7 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
     peerRef.current?.close();
     peerRef.current = null;
     targetIdRef.current = null;
+    chatIdRef.current = null;
     iceCandidatesBuffer.current = [];
     
     setLocalStream(null);
@@ -53,15 +56,18 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
   // Завершение звонка
   const end = useCallback(() => {
     console.log("[CALL] Ending call");
-    if (targetIdRef.current && socket) {
-      socket.emit("call:end", { targetId: targetIdRef.current });
+    if (socket) {
+      socket.emit("call:end", { 
+        targetId: targetIdRef.current, 
+        chatId: chatIdRef.current 
+      });
     }
     cleanup();
   }, [socket, cleanup]);
 
   // Создание PeerConnection
-  const createPeer = useCallback((targetId: string) => {
-    console.log("[CALL] Creating PeerConnection for", targetId);
+  const createPeer = useCallback((targetId: string, chatId: string) => {
+    console.log(`[CALL] Creating PeerConnection. Target: ${targetId}, Chat: ${chatId}`);
     const peer = new RTCPeerConnection({
       iceServers: [
         { urls: "stun:stun.l.google.com:19302" },
@@ -71,7 +77,7 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
 
     peer.onicecandidate = (event) => {
       if (event.candidate && socket) {
-        socket.emit("call:ice", { targetId, candidate: event.candidate });
+        socket.emit("call:ice", { targetId, candidate: event.candidate, chatId });
       }
     };
 
@@ -90,13 +96,14 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
 
     peerRef.current = peer;
     targetIdRef.current = targetId;
+    chatIdRef.current = chatId;
     return peer;
   }, [socket, cleanup]);
 
-  // Начало звонка (Outgoing)
-  const start = useCallback(async (targetId: string, fromName: string, callMode: CallMode = "video") => {
+  // Начало звонка (Outgoing) - ТЕПЕРЬ ПО CHAT_ID
+  const start = useCallback(async (chatId: string, fromName: string, callMode: CallMode = "video") => {
     if (inCall) return;
-    console.log(`[CALL] Starting outgoing call. Target: ${targetId}, MyName: ${fromName}, SocketConnected: ${socket?.connected}, SocketID: ${socket?.id}`);
+    console.log(`[CALL] Room-based start. Chat: ${chatId}, From: ${fromName}`);
     
     try {
       const constraints = { audio: true, video: callMode !== "audio" };
@@ -106,24 +113,32 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
       setInCall(true);
       setIsOutgoing(true);
       setCallStatus("ringing");
+      chatIdRef.current = chatId;
 
-      const peer = createPeer(targetId);
-      stream.getTracks().forEach(track => peer.addTrack(track, stream));
-
-      const offer = await peer.createOffer();
-      await peer.setLocalDescription(offer);
+      // Мы не создаем peer здесь, так как не знаем КТО ответит.
+      // Мы создаем его, когда получим call:answer.
+      // Но нам нужно подготовить offer.
+      const tempPeer = new RTCPeerConnection({
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+      });
+      stream.getTracks().forEach(track => tempPeer.addTrack(track, stream));
+      const offer = await tempPeer.createOffer();
+      await tempPeer.setLocalDescription(offer);
       
-      socket?.emit("call:offer", { targetId, fromName, offer, mode: callMode });
+      // Сохраняем временный peer, чтобы потом заменить его на настоящий с нужным targetId
+      peerRef.current = tempPeer;
+      
+      socket?.emit("call:offer", { chatId, fromName, offer, mode: callMode });
     } catch (err) {
       console.error("[CALL] Start call error:", err);
       cleanup();
     }
-  }, [inCall, socket, createPeer, cleanup]);
+  }, [inCall, socket, cleanup]);
 
   // Принятие звонка (Incoming)
   const acceptCall = useCallback(async () => {
     if (!incomingCall || !socket) return;
-    console.log("[CALL] Accepting call from", incomingCall.from);
+    console.log("[CALL] Accepting call in chat", incomingCall.chatId);
 
     try {
       const constraints = { audio: true, video: incomingCall.mode !== "audio" };
@@ -134,12 +149,11 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
       setIsOutgoing(false);
       setCallStatus("connecting");
 
-      const peer = createPeer(incomingCall.from);
+      const peer = createPeer(incomingCall.from, incomingCall.chatId);
       stream.getTracks().forEach(track => peer.addTrack(track, stream));
 
       await peer.setRemoteDescription(new RTCSessionDescription(incomingCall.offer));
       
-      // Добавляем буферизованные ICE-кандидаты
       while (iceCandidatesBuffer.current.length > 0) {
         const candidate = iceCandidatesBuffer.current.shift();
         if (candidate) await peer.addIceCandidate(new RTCIceCandidate(candidate));
@@ -148,7 +162,11 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
       const answer = await peer.createAnswer();
       await peer.setLocalDescription(answer);
       
-      socket.emit("call:answer", { targetId: incomingCall.from, answer });
+      socket.emit("call:answer", { 
+        targetId: incomingCall.from, 
+        answer, 
+        chatId: incomingCall.chatId 
+      });
       setIncomingCall(null);
     } catch (err) {
       console.error("[CALL] Accept call error:", err);
@@ -159,7 +177,10 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
   // Отклонение звонка
   const rejectCall = useCallback(() => {
     if (incomingCall && socket) {
-      socket.emit("call:end", { targetId: incomingCall.from });
+      socket.emit("call:end", { 
+        targetId: incomingCall.from, 
+        chatId: incomingCall.chatId 
+      });
     }
     setIncomingCall(null);
   }, [incomingCall, socket]);
@@ -168,26 +189,39 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
   useEffect(() => {
     if (!socket) return;
 
-    const handleOffer = async ({ from, fromName, offer, mode: offerMode }: any) => {
-      console.log("[CALL] Received offer from", fromName);
+    const handleOffer = async ({ from, fromName, offer, mode: offerMode, chatId }: any) => {
+      console.log("[CALL] Room offer from", fromName, "in chat", chatId);
       if (inCall || incomingCall) {
-        console.log("[CALL] Busy, sending call:busy");
-        socket.emit("call:busy", { targetId: from });
-        return;
+        return; // Уже заняты
       }
-      setIncomingCall({ from, fromName, offer, mode: offerMode });
+      setIncomingCall({ from, fromName, offer, mode: offerMode, chatId });
     };
 
-    const handleAnswer = async ({ from, answer }: any) => {
-      console.log("[CALL] Received answer from", from);
-      if (peerRef.current) {
-        await peerRef.current.setRemoteDescription(new RTCSessionDescription(answer));
+    const handleAnswer = async ({ from, answer, chatId }: any) => {
+      console.log("[CALL] Someone answered!", from);
+      if (peerRef.current && isOutgoing) {
+        // Добавляем обработчики к уже существующему peer (который мы создали в start)
+        const peer = peerRef.current;
+        targetIdRef.current = from;
+        chatIdRef.current = chatId;
+
+        peer.onicecandidate = (event) => {
+          if (event.candidate) {
+            socket.emit("call:ice", { targetId: from, candidate: event.candidate, chatId });
+          }
+        };
+
+        peer.ontrack = (event) => {
+          setRemoteStream(event.streams[0]);
+          setCallStatus("active");
+        };
+
+        await peer.setRemoteDescription(new RTCSessionDescription(answer));
         setCallStatus("connecting");
         
-        // Добавляем буферизованные ICE-кандидаты
         while (iceCandidatesBuffer.current.length > 0) {
           const candidate = iceCandidatesBuffer.current.shift();
-          if (candidate) await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+          if (candidate) await peer.addIceCandidate(new RTCIceCandidate(candidate));
         }
       }
     };
@@ -200,52 +234,27 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
           console.error("[CALL] ICE error", e);
         }
       } else {
-        // Буферизуем кандидатов, если RemoteDescription еще не установлен
         iceCandidatesBuffer.current.push(candidate);
       }
     };
 
     const handleEnd = () => {
-      console.log("[CALL] Received end event");
+      console.log("[CALL] Call ended by remote");
       cleanup();
-    };
-
-    const handleBusy = () => {
-      console.log("[CALL] Target is busy");
-      setCallStatus("failed");
-      setFailReason("busy");
-      setTimeout(cleanup, 3000);
-    };
-
-    const handleFailed = ({ reason }: any) => {
-      console.log("[CALL] Call failed:", reason);
-      setCallStatus("failed");
-      setFailReason(reason);
-      setTimeout(cleanup, 3000);
     };
 
     socket.on("call:offer", handleOffer);
     socket.on("call:answer", handleAnswer);
     socket.on("call:ice", handleIce);
     socket.on("call:end", handleEnd);
-    socket.on("call:busy", handleBusy);
-    socket.on("call:failed", handleFailed);
-
-    socket.on("disconnect", () => {
-      console.log("[CALL] Socket disconnected, cleaning up call...");
-      cleanup();
-    });
 
     return () => {
       socket.off("call:offer", handleOffer);
       socket.off("call:answer", handleAnswer);
       socket.off("call:ice", handleIce);
       socket.off("call:end", handleEnd);
-      socket.off("call:busy", handleBusy);
-      socket.off("call:failed", handleFailed);
-      socket.off("disconnect");
     };
-  }, [socket, inCall, incomingCall, cleanup]);
+  }, [socket, inCall, incomingCall, isOutgoing, cleanup]);
 
   const toggleMute = useCallback(() => {
     if (localStream) {
