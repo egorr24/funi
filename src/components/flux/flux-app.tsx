@@ -305,18 +305,23 @@ export const FluxApp = () => {
 
   // Reaction logic
   const addReaction = (messageId: string, emoji: string) => {
-    if (socket.socket && activeChat) {
+    if (socket.socket && activeChat && session?.user?.id) {
+      const userId = session.user.id;
+      
       socket.socket.emit("message:reaction", {
         messageId,
         chatId: activeChat.id,
         emoji,
-        userId: session?.user?.id || ""
+        userId
       });
-      // Local update
+
+      // Локальное обновление с ограничением: 1 пользователь = 1 реакция на сообщение
       setMessages(current => current.map(m => {
         if (m.id === messageId) {
           const reactions = m.reactions || [];
-          return { ...m, reactions: [...reactions, { emoji, userId: session?.user?.id || "" }] };
+          // Удаляем старую реакцию этого пользователя, если она была
+          const otherReactions = reactions.filter(r => r.userId !== userId);
+          return { ...m, reactions: [...otherReactions, { emoji, userId }] };
         }
         return m;
       }));
@@ -353,10 +358,13 @@ export const FluxApp = () => {
     });
 
     s.on("message:reaction", ({ messageId, emoji, userId }: any) => {
+      console.log("[SOCKET] Received reaction:", emoji, "from", userId);
       setMessages(current => current.map(m => {
         if (m.id === messageId) {
           const reactions = m.reactions || [];
-          return { ...m, reactions: [...reactions, { emoji, userId }] };
+          // Удаляем старую реакцию этого пользователя, если она была (синхронизация)
+          const otherReactions = reactions.filter(r => r.userId !== userId);
+          return { ...m, reactions: [...otherReactions, { emoji, userId }] };
         }
         return m;
       }));

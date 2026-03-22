@@ -96,7 +96,8 @@ export const createSocketServer = (httpServer: HttpServer) => {
     });
 
     socket.on("message:reaction", (payload: SocketPayloadMap["message:reaction"]) => {
-      socket.to(payload.messageId).emit("message:reaction", payload);
+      console.log(`[SOCKET] Reaction ${payload.emoji} from ${payload.userId} to message ${payload.messageId}`);
+      socket.to(payload.chatId).emit("message:reaction", payload);
     });
 
     socket.on("call:offer", (payload: SocketPayloadMap["call:offer"]) => {
