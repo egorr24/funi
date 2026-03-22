@@ -116,7 +116,17 @@ export const FluxApp = () => {
         audio.src = "";
       };
     }
-  }, [call.incomingCall]);
+
+    if (call.isOutgoing && call.callStatus === "calling") {
+      const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/1350/1350-preview.mp3");
+      audio.loop = true;
+      audio.play().catch(() => {});
+      return () => {
+        audio.pause();
+        audio.src = "";
+      };
+    }
+  }, [call.incomingCall, call.isOutgoing, call.callStatus]);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -541,6 +551,7 @@ export const FluxApp = () => {
                   cameraOff={call.cameraOff}
                   toggleMute={call.toggleMute}
                   toggleCamera={call.toggleCamera}
+                  callStatus={call.callStatus}
                 />
               </MessagePane>
             ) : (

@@ -652,6 +652,7 @@ export const CallOverlay = ({
   cameraOff,
   toggleMute,
   toggleCamera,
+  callStatus = "idle",
 }: {
   active: boolean;
   mode: string;
@@ -663,6 +664,7 @@ export const CallOverlay = ({
   cameraOff: boolean;
   toggleMute: () => void;
   toggleCamera: () => void;
+  callStatus?: "idle" | "calling" | "connecting" | "active";
 }) => {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -690,25 +692,41 @@ export const CallOverlay = ({
         className="fixed inset-0 z-[110] bg-zinc-950/90 backdrop-blur-2xl flex flex-col"
       >
         <div className="flex-1 relative p-6 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+          {/* Remote Video / Status */}
           <div className="relative aspect-video rounded-3xl bg-zinc-900 border border-white/5 overflow-hidden shadow-2xl">
-            <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
+            {callStatus === "active" && remoteStream ? (
+              <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
+            ) : (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+                <div className="h-24 w-24 rounded-full bg-violet-500/20 grid place-items-center relative">
+                  <User className="h-12 w-12 text-violet-400" />
+                  <motion.div 
+                    className="absolute inset-0 rounded-full border-2 border-violet-500/50"
+                    animate={{ scale: [1, 1.5], opacity: [1, 0] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  />
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-bold text-white mb-1">
+                    {callStatus === "calling" ? "Вызов..." : 
+                     callStatus === "connecting" ? "Подключение..." : "Ожидание..."}
+                  </p>
+                  <p className="text-xs text-zinc-500 uppercase tracking-widest animate-pulse">
+                    Ждем ответа собеседника
+                  </p>
+                </div>
+              </div>
+            )}
             <div className="absolute bottom-4 left-4 px-3 py-1 bg-black/40 backdrop-blur-md rounded-lg text-xs font-medium">
               Собеседник
             </div>
-            {!remoteStream && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-                <div className="h-20 w-20 rounded-full bg-violet-500/20 grid place-items-center animate-pulse">
-                  <User className="h-10 w-10 text-violet-400" />
-                </div>
-                <p className="text-sm text-zinc-400">Ожидание подключения...</p>
-              </div>
-            )}
           </div>
 
+          {/* Local Video */}
           <div className="relative aspect-video rounded-3xl bg-zinc-900 border border-white/5 overflow-hidden shadow-2xl">
             <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
             <div className="absolute bottom-4 left-4 px-3 py-1 bg-black/40 backdrop-blur-md rounded-lg text-xs font-medium">
-              Вы (Вы)
+              Вы
             </div>
             {cameraOff && (
               <div className="absolute inset-0 bg-zinc-900 flex items-center justify-center">
