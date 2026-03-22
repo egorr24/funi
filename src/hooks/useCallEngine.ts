@@ -72,7 +72,20 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
       iceServers: [
         { urls: "stun:stun.l.google.com:19302" },
         { urls: "stun:stun1.l.google.com:19302" },
+        { urls: "stun:stun2.l.google.com:19302" },
+        { urls: "stun:stun3.l.google.com:19302" },
+        { urls: "stun:stun4.l.google.com:19302" },
+        { urls: "stun:stun.ekiga.net" },
+        { urls: "stun:stun.ideasip.com" },
+        { urls: "stun:stun.rixtelecom.se" },
+        { urls: "stun:stun.schlund.de" },
+        { urls: "stun:stun.stunprotocol.org:3478" },
+        { urls: "stun:stun.voiparound.com" },
+        { urls: "stun:stun.voipbuster.com" },
+        { urls: "stun:stun.voipstunt.com" },
+        { urls: "stun:stun.voxgratia.org" },
       ],
+      iceCandidatePoolSize: 10,
     });
 
     peer.onicecandidate = (event) => {
@@ -100,10 +113,10 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
     return peer;
   }, [socket, cleanup]);
 
-  // Начало звонка (Outgoing) - ТЕПЕРЬ ПО CHAT_ID
-  const start = useCallback(async (chatId: string, fromName: string, callMode: CallMode = "video") => {
+  // Начало звонка (Outgoing) - ТЕПЕРЬ С ТАРГЕТОМ ДЛЯ ГЛОБАЛЬНОГО ВЫЗОВА
+  const start = useCallback(async (chatId: string, targetId: string, fromName: string, callMode: CallMode = "video") => {
     if (inCall) return;
-    console.log(`[CALL] Room-based start. Chat: ${chatId}, From: ${fromName}`);
+    console.log(`[CALL] Starting call. Chat: ${chatId}, Target: ${targetId}, From: ${fromName}`);
     
     try {
       const constraints = { audio: true, video: callMode !== "audio" };
@@ -114,21 +127,22 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
       setIsOutgoing(true);
       setCallStatus("ringing");
       chatIdRef.current = chatId;
+      targetIdRef.current = targetId;
 
-      // Мы не создаем peer здесь, так как не знаем КТО ответит.
-      // Мы создаем его, когда получим call:answer.
-      // Но нам нужно подготовить offer.
       const tempPeer = new RTCPeerConnection({
-        iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" },
+          { urls: "stun:stun1.l.google.com:19302" },
+          { urls: "stun:stun2.l.google.com:19302" },
+        ]
       });
       stream.getTracks().forEach(track => tempPeer.addTrack(track, stream));
       const offer = await tempPeer.createOffer();
       await tempPeer.setLocalDescription(offer);
       
-      // Сохраняем временный peer, чтобы потом заменить его на настоящий с нужным targetId
       peerRef.current = tempPeer;
       
-      socket?.emit("call:offer", { chatId, fromName, offer, mode: callMode });
+      socket?.emit("call:offer", { chatId, targetId, fromName, offer, mode: callMode });
     } catch (err) {
       console.error("[CALL] Start call error:", err);
       cleanup();

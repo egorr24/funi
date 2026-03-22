@@ -120,13 +120,17 @@ io.on('connection', (socket) => {
     socket.join(chatId);
   });
 
-  // КОМНАТНЫЙ СИГНАЛИНГ ДЛЯ ЗВОНКОВ (БОЛЕЕ НАДЕЖНЫЙ)
-  socket.on('call:offer', ({ chatId, fromName, offer, mode }) => {
-    const room = io.sockets.adapter.rooms.get(chatId);
-    const roomSize = room ? room.size : 0;
-    console.log(`[CALL] Offer from ${userId} (${fromName}) in chat ${chatId}. Room size: ${roomSize}`);
-    // Рассылаем предложение всем в комнате чата
+  // ГЛОБАЛЬНЫЙ СИГНАЛИНГ ДЛЯ ЗВОНКОВ (ЧЕРЕЗ КОМНАТУ И ПЕРСОНАЛЬНО)
+  socket.on('call:offer', ({ chatId, targetId, fromName, offer, mode }) => {
+    console.log(`[CALL] Offer from ${userId} to ${targetId} (Chat: ${chatId})`);
+    
+    // 1. Отправляем в комнату чата (если кто-то там есть)
     socket.to(chatId).emit('call:offer', { from: userId, fromName, offer, mode, chatId });
+    
+    // 2. Отправляем персонально пользователю (чтобы звонок прошел, даже если другой чат открыт)
+    if (targetId && targetId !== userId) {
+      io.to(targetId).emit('call:offer', { from: userId, fromName, offer, mode, chatId });
+    }
   });
 
   socket.on('call:answer', ({ targetId, answer, chatId }) => {

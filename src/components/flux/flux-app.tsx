@@ -267,7 +267,23 @@ export const FluxApp = () => {
 
   const startCall = useCallback((mode: "audio" | "video") => {
     if (!activeChat || !session?.user?.id) return;
-    call.start(activeChat.id, session.user?.name || "Anonymous", mode);
+    
+    // Получаем список участников чата, чтобы найти ID собеседника
+    fetch(`/api/chats/${activeChat.id}/members`)
+      .then(res => res.json())
+      .then(members => {
+        const other = members.find((m: any) => m.userId !== session.user?.id);
+        if (other) {
+          call.start(activeChat.id, other.userId, session.user?.name || "Anonymous", mode);
+        } else {
+          // Если это чат с самим собой или ошибка — звоним в комнату чата
+          call.start(activeChat.id, "", session.user?.name || "Anonymous", mode);
+        }
+      })
+      .catch(() => {
+        // Фолбэк на комнатный звонок если API упал
+        call.start(activeChat.id, "", session.user?.name || "Anonymous", mode);
+      });
   }, [activeChat, session?.user, call]);
 
   const handleFileUpload = useCallback(async (file: File) => {
