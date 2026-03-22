@@ -70,11 +70,13 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
     console.log(`[CALL] Creating PeerConnection. Target: ${targetId}, Chat: ${chatId}`);
     const peer = new RTCPeerConnection({
       iceServers: [
+        // Google STUN servers
         { urls: "stun:stun.l.google.com:19302" },
         { urls: "stun:stun1.l.google.com:19302" },
         { urls: "stun:stun2.l.google.com:19302" },
         { urls: "stun:stun3.l.google.com:19302" },
         { urls: "stun:stun4.l.google.com:19302" },
+        // Public STUN servers
         { urls: "stun:stun.ekiga.net" },
         { urls: "stun:stun.ideasip.com" },
         { urls: "stun:stun.rixtelecom.se" },
@@ -84,6 +86,9 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
         { urls: "stun:stun.voipbuster.com" },
         { urls: "stun:stun.voipstunt.com" },
         { urls: "stun:stun.voxgratia.org" },
+        { urls: "stun:stun.services.mozilla.com" },
+        // Open Relay (Community TURN/STUN)
+        { urls: "stun:openrelay.metered.ca:80" },
       ],
       iceCandidatePoolSize: 10,
     });
@@ -95,8 +100,19 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
     };
 
     peer.ontrack = (event) => {
-      console.log("[CALL] Received remote track");
-      setRemoteStream(event.streams[0]);
+      console.log("[CALL] Received remote track:", event.track.kind);
+      if (event.streams && event.streams[0]) {
+        setRemoteStream(event.streams[0]);
+      } else {
+        // Создаем поток из отдельного трека, если потока нет в событии
+        setRemoteStream(prev => {
+          if (prev) {
+            prev.addTrack(event.track);
+            return new MediaStream(prev.getTracks());
+          }
+          return new MediaStream([event.track]);
+        });
+      }
       setCallStatus("active");
     };
 
@@ -226,7 +242,18 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
         };
 
         peer.ontrack = (event) => {
-          setRemoteStream(event.streams[0]);
+          console.log("[CALL] Received remote track (outgoing):", event.track.kind);
+          if (event.streams && event.streams[0]) {
+            setRemoteStream(event.streams[0]);
+          } else {
+            setRemoteStream(prev => {
+              if (prev) {
+                prev.addTrack(event.track);
+                return new MediaStream(prev.getTracks());
+              }
+              return new MediaStream([event.track]);
+            });
+          }
           setCallStatus("active");
         };
 
