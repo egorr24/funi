@@ -303,6 +303,8 @@ export const FluxApp = () => {
     }
   };
 
+  const [replyTo, setReplyTo] = useState<FluxMessage | null>(null);
+
   // Reaction logic
   const addReaction = (messageId: string, emoji: string) => {
     if (socket.socket && activeChat && session?.user?.id) {
@@ -325,6 +327,19 @@ export const FluxApp = () => {
         }
         return m;
       }));
+    }
+  };
+
+  const deleteMessage = async (messageId: string) => {
+    if (!activeChat || !socket.socket) return;
+    try {
+      const res = await fetch(`/api/messages/${messageId}`, { method: "DELETE" });
+      if (res.ok) {
+        socket.socket.emit("message:delete", { messageId, chatId: activeChat.id });
+        setMessages(current => current.filter(m => m.id !== messageId));
+      }
+    } catch (err) {
+      console.error("Delete failed", err);
     }
   };
 
@@ -451,6 +466,8 @@ export const FluxApp = () => {
     }
 
     if (!customText) setInput("");
+    const currentReply = replyTo;
+    setReplyTo(null);
 
     // Оптимистичное обновление UI
     const tempId = Math.random().toString(36).substring(7);
@@ -466,6 +483,11 @@ export const FluxApp = () => {
       createdAt: new Date().toISOString(),
       status: "SENT",
       reactions: [],
+      replyTo: currentReply ? {
+        id: currentReply.id,
+        body: currentReply.decryptedBody,
+        senderName: currentReply.senderName
+      } : undefined
     };
 
     setMessages((current) => [...current, optimisticMessage]);
@@ -491,6 +513,7 @@ export const FluxApp = () => {
           encryptedBody: textToSend,
           encryptedAes: "unsupported",
           iv: "unsupported",
+          replyToId: currentReply?.id
         }),
       });
 
@@ -511,7 +534,7 @@ export const FluxApp = () => {
       if (!customText) setInput(textToSend);
       setMessages((current) => current.filter(m => m.id !== tempId));
     }
-  }, [input, activeChat, session?.user, socket.socket]);
+  }, [input, activeChat, session?.user, socket.socket, replyTo]);
 
   const sendCallLink = useCallback(() => {
     if (!activeChat) return;
@@ -632,9 +655,27 @@ export const FluxApp = () => {
                       mine={message.senderId === session?.user?.id}
                       onImageClick={(url) => setViewingPhoto(url)}
                       onReaction={(emoji) => addReaction(message.id, emoji)}
+                      onReply={() => setReplyTo(message)}
+                      onDelete={() => deleteMessage(message.id)}
                     />
                   ))}
                 </MessageScroll>
+
+                {replyTo && (
+                  <div className="px-6 py-2 bg-white/5 border-t border-white/5 flex items-center justify-between animate-in slide-in-from-bottom-2">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <div className="w-1 h-8 bg-violet-500 rounded-full" />
+                      <div className="flex flex-col text-xs truncate">
+                        <span className="font-bold text-violet-400">Ответ {replyTo.senderName}</span>
+                        <span className="text-zinc-400 truncate">{replyTo.decryptedBody}</span>
+                      </div>
+                    </div>
+                    <button onClick={() => setReplyTo(null)} className="p-1 hover:bg-white/10 rounded-full transition-colors">
+                      <X className="h-4 w-4 text-zinc-500" />
+                    </button>
+                  </div>
+                )}
+
                 <TypingIndicator visible={typingInActiveChat.length > 0} userNames={typingInActiveChat} />
                 
                   {isRecording ? (

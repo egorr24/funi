@@ -49,35 +49,30 @@ export const NavSidebar = ({
   onTabChange: (tab: string) => void;
   className?: string;
 }) => (
-  <div className={`flex lg:flex-col items-center lg:py-6 bg-black/40 border-r border-white/5 gap-4 fixed bottom-0 left-0 right-0 h-16 lg:static lg:h-auto lg:w-[72px] z-50 ${className}`}>
-    <div className="lg:mb-4 hidden lg:block">
-      <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-violet-600 to-fuchsia-600 grid place-items-center shadow-lg shadow-violet-500/20">
-        <span className="font-bold text-lg italic text-white">F</span>
-      </div>
-    </div>
-    <div className="flex lg:flex-col items-center justify-around lg:justify-start gap-4 w-full lg:w-auto px-4 lg:px-0">
+  <div className={`flex lg:flex-col items-center lg:py-8 bg-[#0a0a0c] border-r border-white/5 gap-6 fixed bottom-0 left-0 right-0 h-20 lg:static lg:h-auto lg:w-[100px] z-50 ${className}`}>
+    <div className="flex lg:flex-col items-center justify-around lg:justify-start gap-8 w-full lg:w-auto px-4 lg:px-0">
       <NavIcon
         active={activeTab === "chats"}
         onClick={() => onTabChange("chats")}
-        icon={<MessageSquare className="h-6 w-6" />}
+        icon={<MessageSquare className="h-7 w-7" />}
         label="Чаты"
       />
       <NavIcon
         active={activeTab === "profile"}
         onClick={() => onTabChange("profile")}
-        icon={<User className="h-6 w-6" />}
+        icon={<User className="h-7 w-7" />}
         label="Профиль"
       />
       <NavIcon
         active={activeTab === "notifications"}
         onClick={() => onTabChange("notifications")}
-        icon={<Bell className="h-6 w-6" />}
+        icon={<Bell className="h-7 w-7" />}
         label="Уведомления"
       />
       <NavIcon
         active={activeTab === "settings"}
         onClick={() => onTabChange("settings")}
-        icon={<Settings className="h-6 w-6" />}
+        icon={<Settings className="h-7 w-7" />}
         label="Настройки"
       />
     </div>
@@ -97,18 +92,20 @@ const NavIcon = ({
 }) => (
   <button
     onClick={onClick}
-    className={`group relative p-3 rounded-2xl transition-all ${
-      active ? "bg-violet-500/20 text-violet-400" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
-    }`}
-    title={label}
+    className="group relative flex flex-col items-center gap-1 transition-all duration-300"
   >
-    {icon}
-    {active && (
-      <motion.div
-        layoutId="nav-active"
-        className="absolute left-0 top-1/4 bottom-1/4 w-1 bg-violet-500 rounded-r-full"
-      />
-    )}
+    <div
+      className={`relative h-14 w-14 rounded-[22px] flex items-center justify-center transition-all duration-300 ${
+        active 
+          ? "bg-[#2d1b4d] text-[#a855f7] shadow-[0_0_20px_rgba(168,85,247,0.15)]" 
+          : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+      }`}
+    >
+      {active && (
+        <div className="absolute left-[-12px] top-1/2 -translate-y-1/2 w-1.5 h-8 bg-[#a855f7] rounded-full shadow-[0_0_15px_rgba(168,85,247,0.6)]" />
+      )}
+      {icon}
+    </div>
   </button>
 );
 
@@ -420,20 +417,35 @@ export const MessageBubble = ({
   message, 
   mine,
   onImageClick,
-  onReaction
+  onReaction,
+  onReply,
+  onDelete
 }: { 
   message: FluxMessage; 
   mine: boolean;
   onImageClick?: (url: string) => void;
   onReaction?: (emoji: string) => void;
+  onReply?: () => void;
+  onDelete?: () => void;
 }) => (
   <motion.div
     initial={{ opacity: 0, y: 10, scale: 0.95 }}
     animate={{ opacity: 1, y: 0, scale: 1 }}
-    className={`max-w-[85%] lg:max-w-[70%] rounded-2xl px-4 py-2 shadow-lg shadow-black/5 group relative ${
+    className={`max-w-[85%] lg:max-w-[70%] rounded-[24px] px-5 py-3 shadow-lg shadow-black/5 group relative ${
       mine ? "ml-auto bg-violet-600/90 text-white rounded-tr-none" : "bg-zinc-800/80 text-zinc-100 rounded-tl-none border border-white/5"
     }`}
   >
+    <div className={`absolute ${mine ? "-left-20" : "-right-20"} top-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1`}>
+      <button onClick={onReply} className="p-2 hover:bg-white/10 rounded-full transition-colors" title="Reply">
+        <Share className="h-4 w-4 rotate-180" />
+      </button>
+      {mine && (
+        <button onClick={onDelete} className="p-2 hover:bg-red-500/20 text-red-400 rounded-full transition-colors" title="Delete">
+          <X className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+
     {!mine && onReaction && (
       <div className="absolute -right-12 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
         {["👍", "❤️", "🔥", "😂"].map(emoji => (
@@ -445,6 +457,13 @@ export const MessageBubble = ({
             {emoji}
           </button>
         ))}
+      </div>
+    )}
+
+    {message.replyTo && (
+      <div className={`mb-2 p-2 rounded-xl border-l-4 text-[11px] bg-black/20 ${mine ? "border-violet-400" : "border-zinc-500"}`}>
+        <div className="font-bold mb-0.5">{message.replyTo.senderName}</div>
+        <div className="opacity-70 truncate">{message.replyTo.body}</div>
       </div>
     )}
 
@@ -460,9 +479,16 @@ export const MessageBubble = ({
       <video src={message.mediaUrl} controls className="rounded-xl mb-2 max-h-60 w-full" />
     )}
     {message.mediaType === "audio" && message.mediaUrl && (
-      <audio src={message.mediaUrl} controls className="mb-2 w-full h-10 filter invert brightness-200" />
+      <div className="flex items-center gap-3 mb-2 bg-black/20 p-3 rounded-2xl">
+        <div className="h-10 w-10 rounded-full bg-violet-500 flex items-center justify-center">
+          <Mic className="h-5 w-5 text-white" />
+        </div>
+        <div className="flex-1">
+          <VoiceWaveform points={message.waveform || Array.from({length: 20}, () => Math.random() * 20 + 5)} />
+        </div>
+      </div>
     )}
-    <div className="text-sm leading-relaxed whitespace-pre-wrap">{message.decryptedBody}</div>
+    <div className="text-sm leading-relaxed whitespace-pre-wrap font-medium">{message.decryptedBody}</div>
     
     {message.reactions && message.reactions.length > 0 && (
       <div className="mt-2 flex flex-wrap gap-1">
@@ -479,7 +505,7 @@ export const MessageBubble = ({
     )}
 
     <div className="mt-1 flex items-center justify-end gap-1.5 opacity-60">
-      <span className="text-[10px] uppercase font-medium">
+      <span className="text-[10px] uppercase font-bold tracking-wider">
         {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
       </span>
       {mine && (
