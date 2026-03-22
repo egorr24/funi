@@ -375,7 +375,7 @@ export const ChatHeader = ({
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
             <input
               type="text"
-              placeholder="Search messages..."
+              placeholder="Поиск сообщений..."
               value={searchValue}
               onChange={(e) => onSearchChange(e.target.value)}
               className="w-32 lg:w-48 h-8 pl-8 pr-3 bg-white/5 border border-white/5 rounded-full text-xs focus:outline-none focus:ring-1 focus:ring-violet-500/50 transition-all"
