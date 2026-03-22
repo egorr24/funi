@@ -96,7 +96,7 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
   // Начало звонка (Outgoing)
   const start = useCallback(async (targetId: string, fromName: string, callMode: CallMode = "video") => {
     if (inCall) return;
-    console.log("[CALL] Starting outgoing call to", targetId, "as", fromName);
+    console.log(`[CALL] Starting outgoing call. Target: ${targetId}, MyName: ${fromName}, SocketConnected: ${socket?.connected}, SocketID: ${socket?.id}`);
     
     try {
       const constraints = { audio: true, video: callMode !== "audio" };

@@ -70,25 +70,45 @@ const io = socketIo(server, {
 });
 app.set('io', io);
 
-// Карта онлайн-пользователей: userId -> Set(socketIds)
 const onlineUsers = new Map();
+
+// Периодическая проверка (каждые 30 сек выводим кто в сети)
+setInterval(() => {
+  if (onlineUsers.size > 0) {
+    console.log(`[STATUS] Online users: ${Array.from(onlineUsers.keys()).join(', ')}`);
+  }
+}, 30000);
 
 io.on('connection', (socket) => {
   const userId = socket.handshake.auth.userId;
   
-  if (userId) {
-    socket.join(userId);
-    
-    // Добавляем сокет в карту онлайн-пользователей
-    if (!onlineUsers.has(userId)) {
-      onlineUsers.set(userId, new Set());
+  const registerUser = (uid) => {
+    if (!uid) return;
+    socket.join(uid);
+    if (!onlineUsers.has(uid)) {
+      onlineUsers.set(uid, new Set());
     }
-    onlineUsers.get(userId).add(socket.id);
-    
-    console.log(`[CONN] User ${userId} connected. Total users: ${onlineUsers.size}. All IDs: ${Array.from(onlineUsers.keys()).join(', ')}`);
-  } else {
-    console.warn(`[CONN] Socket connected without userId: ${socket.id}`);
+    onlineUsers.get(uid).add(socket.id);
+    console.log(`[CONN] User ${uid} registered (Socket: ${socket.id}). Total: ${onlineUsers.size}`);
+  };
+
+  if (userId && userId !== 'u_me') {
+    registerUser(userId);
   }
+
+  // Принудительная регистрация/обновление статуса
+  socket.on('user:online', ({ userId: uid }) => {
+    if (uid && uid !== 'u_me') {
+      registerUser(uid);
+    }
+  });
+
+  socket.on('heartbeat', () => {
+    if (userId && userId !== 'u_me') {
+      registerUser(userId);
+    }
+    socket.emit('heartbeat:ack');
+  });
 
   // Обработка сообщений в реальном времени
   socket.on('message:queue', async (message) => {

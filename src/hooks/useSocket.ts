@@ -27,7 +27,25 @@ export const useSocket = (userId: string) => {
     s.on("connect", () => {
       setConnected(true);
       setSocket(s);
-      console.log("> Connected to Socket.io server");
+      console.log(`> Socket connected! (ID: ${s.id}, UserID: ${userId})`);
+      
+      // Сразу сообщаем серверу, что мы онлайн
+      s.emit("user:online", { userId });
+      
+      // Запускаем сердцебиение
+      const heartbeat = setInterval(() => {
+        if (s.connected) {
+          s.emit("heartbeat");
+        }
+      }, 10000); // каждые 10 секунд
+      
+      s.on("heartbeat:ack", () => {
+        // Сервер подтвердил статус
+      });
+
+      return () => {
+        clearInterval(heartbeat);
+      };
     });
 
     s.on("disconnect", () => {
