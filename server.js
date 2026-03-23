@@ -28,14 +28,16 @@ if (cloudName && apiKey && apiSecret) {
 }
 
 // Настройка Multer для хранения файлов на Railway (в папке uploads)
-const uploadDir = path.join(__dirname, 'uploads');
+const uploadDir = path.join(process.cwd(), 'public', 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
-  console.log(`> Created upload directory: ${uploadDir}`);
+  console.log(`[INIT] Created upload directory: ${uploadDir}`);
 }
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
+    // Гарантируем, что папка существует перед записью
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
@@ -179,7 +181,7 @@ io.on('connection', (socket) => {
 // 3. MIDDLEWARE
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
 
 // API для загрузки медиа
 app.post('/api/upload', upload.single('file'), async (req, res) => {
@@ -189,13 +191,17 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
   }
   
   try {
+    // Читаем переменные ПРЯМО ТУТ, чтобы быть уверенными
     const cloudName = (process.env.CLOUDINARY_CLOUD_NAME || '').trim();
     const apiKey = (process.env.CLOUDINARY_API_KEY || '').trim();
     const apiSecret = (process.env.CLOUDINARY_API_SECRET || '').trim();
 
+    console.log(`[UPLOAD] Processing file: ${req.file.filename}`);
+    console.log(`[UPLOAD] Cloudinary config check: Name=${!!cloudName}, Key=${!!apiKey}, Secret=${!!apiSecret}`);
+
     // Если Cloudinary настроен, загружаем туда для постоянного хранения
     if (cloudName && apiKey && apiSecret) {
-      console.log(`[UPLOAD] Starting Cloudinary upload for: ${req.file.filename}`);
+      console.log(`[UPLOAD] Cloudinary credentials found. Uploading...`);
       
       const result = await cloudinary.uploader.upload(req.file.path, {
         folder: 'flux_uploads',
@@ -208,7 +214,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       try {
         fs.unlinkSync(req.file.path);
       } catch (e) {
-        console.warn(`[UPLOAD] Could not delete temp file: ${req.file.path}`, e);
+        console.warn(`[UPLOAD] Temp file delete failed: ${e.message}`);
       }
 
       return res.json({ 
@@ -219,10 +225,13 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       });
     }
 
-    // Иначе сохраняем локально (временное хранилище на Railway)
-    console.log(`[UPLOAD] Falling back to local storage for: ${req.file.filename}`);
+    // Иначе сохраняем локально (в папку public/uploads)
+    console.warn(`[UPLOAD] NO Cloudinary credentials! Saving to public/uploads (TEMPORARY).`);
     const protocol = req.headers['x-forwarded-proto'] || 'https';
-    const url = `${protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    const host = req.get('host');
+    const url = `${protocol}://${host}/uploads/${req.file.filename}`;
+    
+    console.log(`[UPLOAD] Local URL generated: ${url}`);
     
     res.json({ 
       url, 
@@ -231,11 +240,11 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
             req.file.mimetype.startsWith('audio/') ? 'audio' : 'file'
     });
   } catch (err) {
-    console.error('[UPLOAD] Critical error:', err);
+    console.error('[UPLOAD] CRITICAL ERROR:', err);
     res.status(500).json({ 
       error: 'Upload failed', 
       details: err.message,
-      code: err.http_code || 500 
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
   }
 });
