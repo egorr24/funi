@@ -12,15 +12,19 @@ require('dotenv').config();
 
 // Настройка Cloudinary для постоянного хранения
 console.log('> Checking Cloudinary configuration...');
-if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+const cloudName = (process.env.CLOUDINARY_CLOUD_NAME || '').trim();
+const apiKey = (process.env.CLOUDINARY_API_KEY || '').trim();
+const apiSecret = (process.env.CLOUDINARY_API_SECRET || '').trim();
+
+if (cloudName && apiKey && apiSecret) {
   cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
+    cloud_name: cloudName,
+    api_key: apiKey,
+    api_secret: apiSecret
   });
-  console.log('> Cloudinary configured successfully.');
+  console.log('> Cloudinary configured successfully (keys trimmed).');
 } else {
-  console.warn('> WARNING: Cloudinary credentials missing. Media will not persist after redeploy!');
+  console.warn('> WARNING: Cloudinary credentials missing or incomplete.');
 }
 
 // Настройка Multer для хранения файлов на Railway (в папке uploads)
@@ -179,20 +183,33 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // API для загрузки медиа
 app.post('/api/upload', upload.single('file'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  if (!req.file) {
+    console.error('[UPLOAD] No file in request');
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
   
   try {
+    const cloudName = (process.env.CLOUDINARY_CLOUD_NAME || '').trim();
+    const apiKey = (process.env.CLOUDINARY_API_KEY || '').trim();
+    const apiSecret = (process.env.CLOUDINARY_API_SECRET || '').trim();
+
     // Если Cloudinary настроен, загружаем туда для постоянного хранения
-    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
-      console.log(`> Uploading to Cloudinary: ${req.file.filename}`);
+    if (cloudName && apiKey && apiSecret) {
+      console.log(`[UPLOAD] Starting Cloudinary upload for: ${req.file.filename}`);
       
       const result = await cloudinary.uploader.upload(req.file.path, {
         folder: 'flux_uploads',
         resource_type: 'auto'
       });
 
+      console.log(`[UPLOAD] Cloudinary success: ${result.secure_url}`);
+
       // Удаляем временный файл после загрузки в облако
-      fs.unlinkSync(req.file.path);
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (e) {
+        console.warn(`[UPLOAD] Could not delete temp file: ${req.file.path}`, e);
+      }
 
       return res.json({ 
         url: result.secure_url, 
@@ -203,7 +220,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     }
 
     // Иначе сохраняем локально (временное хранилище на Railway)
-    console.log(`> Saving file locally (temporary): ${req.file.filename}`);
+    console.log(`[UPLOAD] Falling back to local storage for: ${req.file.filename}`);
     const protocol = req.headers['x-forwarded-proto'] || 'https';
     const url = `${protocol}://${req.get('host')}/uploads/${req.file.filename}`;
     
@@ -214,8 +231,12 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
             req.file.mimetype.startsWith('audio/') ? 'audio' : 'file'
     });
   } catch (err) {
-    console.error('Upload error details:', err);
-    res.status(500).json({ error: 'Upload failed', details: err.message });
+    console.error('[UPLOAD] Critical error:', err);
+    res.status(500).json({ 
+      error: 'Upload failed', 
+      details: err.message,
+      code: err.http_code || 500 
+    });
   }
 });
 
