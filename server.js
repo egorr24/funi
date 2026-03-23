@@ -201,8 +201,15 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 
     // Если Cloudinary настроен, загружаем туда для постоянного хранения
     if (cloudName && apiKey && apiSecret) {
-      console.log(`[UPLOAD] Cloudinary credentials found. Uploading...`);
+      console.log(`[UPLOAD] Cloudinary config check: Name=${cloudName.substring(0, 3)}... , Key=${apiKey.substring(0, 3)}...`);
       
+      // Принудительно настраиваем Cloudinary прямо здесь
+      cloudinary.config({
+        cloud_name: cloudName,
+        api_key: apiKey,
+        api_secret: apiSecret
+      });
+
       const result = await cloudinary.uploader.upload(req.file.path, {
         folder: 'flux_uploads',
         resource_type: 'auto'
