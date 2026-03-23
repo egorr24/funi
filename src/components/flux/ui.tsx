@@ -427,95 +427,119 @@ export const MessageBubble = ({
   onReaction?: (emoji: string) => void;
   onReply?: () => void;
   onDelete?: () => void;
-}) => (
-  <motion.div
-    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-    animate={{ opacity: 1, y: 0, scale: 1 }}
-    className={`max-w-[85%] lg:max-w-[70%] rounded-[24px] px-5 py-3 shadow-lg shadow-black/5 group relative ${
-      mine ? "ml-auto bg-violet-600/90 text-white rounded-tr-none" : "bg-zinc-800/80 text-zinc-100 rounded-tl-none border border-white/5"
-    }`}
-  >
-    <div className={`absolute ${mine ? "-left-20" : "-right-20"} top-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1`}>
-      <button onClick={onReply} className="p-2 hover:bg-white/10 rounded-full transition-colors" title="Reply">
-        <Share className="h-4 w-4 rotate-180" />
-      </button>
-      {mine && (
-        <button onClick={onDelete} className="p-2 hover:bg-red-500/20 text-red-400 rounded-full transition-colors" title="Delete">
-          <X className="h-4 w-4" />
+}) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      className={`max-w-[85%] lg:max-w-[70%] rounded-[24px] px-5 py-3 shadow-lg shadow-black/5 group relative ${
+        mine ? "ml-auto bg-violet-600/90 text-white rounded-tr-none" : "bg-zinc-800/80 text-zinc-100 rounded-tl-none border border-white/5"
+      }`}
+    >
+      <div className={`absolute ${mine ? "-left-20" : "-right-20"} top-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1`}>
+        <button onClick={onReply} className="p-2 hover:bg-white/10 rounded-full transition-colors" title="Reply">
+          <Share className="h-4 w-4 rotate-180" />
         </button>
-      )}
-    </div>
-
-    {!mine && onReaction && (
-      <div className="absolute -right-12 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
-        {["👍", "❤️", "🔥", "😂"].map(emoji => (
-          <button 
-            key={emoji}
-            onClick={() => onReaction(emoji)}
-            className="w-8 h-8 rounded-full bg-zinc-900 border border-white/10 flex items-center justify-center text-sm hover:bg-zinc-800 hover:scale-110 transition-all"
-          >
-            {emoji}
+        {mine && (
+          <button onClick={onDelete} className="p-2 hover:bg-red-500/20 text-red-400 rounded-full transition-colors" title="Delete">
+            <X className="h-4 w-4" />
           </button>
-        ))}
+        )}
       </div>
-    )}
 
-    {message.replyTo && (
-      <div className={`mb-2 p-2 rounded-xl border-l-4 text-[11px] bg-black/20 ${mine ? "border-violet-400" : "border-zinc-500"}`}>
-        <div className="font-bold mb-0.5">{message.replyTo.senderName}</div>
-        <div className="opacity-70 truncate">{message.replyTo.body}</div>
-      </div>
-    )}
-
-    {message.mediaType === "image" && message.mediaUrl && (
-      <div className="relative overflow-hidden rounded-xl mb-2 cursor-pointer group/img" onClick={() => onImageClick?.(message.mediaUrl!)}>
-        <img src={message.mediaUrl} alt="media" className="max-h-60 w-full object-cover transition-transform group-hover/img:scale-105" />
-        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/img:opacity-100 transition-opacity grid place-items-center">
-          <Maximize2 className="h-6 w-6 text-white" />
+      {!mine && onReaction && (
+        <div className="absolute -right-12 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
+          {["👍", "❤️", "🔥", "😂"].map(emoji => (
+            <button 
+              key={emoji}
+              onClick={() => onReaction(emoji)}
+              className="w-8 h-8 rounded-full bg-zinc-900 border border-white/10 flex items-center justify-center text-sm hover:bg-zinc-800 hover:scale-110 transition-all"
+            >
+              {emoji}
+            </button>
+          ))}
         </div>
-      </div>
-    )}
-    {message.mediaType === "video" && message.mediaUrl && (
-      <video src={message.mediaUrl} controls className="rounded-xl mb-2 max-h-60 w-full" />
-    )}
-    {message.mediaType === "audio" && message.mediaUrl && (
-      <div className="flex items-center gap-3 mb-2 bg-black/20 p-3 rounded-2xl">
-        <div className="h-10 w-10 rounded-full bg-violet-500 flex items-center justify-center">
-          <Mic className="h-5 w-5 text-white" />
-        </div>
-        <div className="flex-1">
-          <VoiceWaveform points={message.waveform || Array.from({length: 20}, () => Math.random() * 20 + 5)} />
-        </div>
-      </div>
-    )}
-    <div className="text-sm leading-relaxed whitespace-pre-wrap font-medium">{message.decryptedBody}</div>
-    
-    {message.reactions && message.reactions.length > 0 && (
-      <div className="mt-2 flex flex-wrap gap-1">
-        {Array.from(new Set(message.reactions.map(r => r.emoji))).map(emoji => {
-          const count = message.reactions!.filter(r => r.emoji === emoji).length;
-          return (
-            <div key={emoji} className="px-1.5 py-0.5 rounded-full bg-black/20 border border-white/5 text-[10px] flex items-center gap-1">
-              <span>{emoji}</span>
-              <span className="font-bold opacity-80">{count}</span>
-            </div>
-          );
-        })}
-      </div>
-    )}
-
-    <div className="mt-1 flex items-center justify-end gap-1.5 opacity-60">
-      <span className="text-[10px] uppercase font-bold tracking-wider">
-        {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-      </span>
-      {mine && (
-        <span className="text-[10px]">
-          {message.status === "READ" ? <CheckCheck className="h-3 w-3" /> : <Check className="h-3 w-3" />}
-        </span>
       )}
-    </div>
-  </motion.div>
-);
+
+      {message.replyTo && (
+        <div className={`mb-2 p-2 rounded-xl border-l-4 text-[11px] bg-black/20 ${mine ? "border-violet-400" : "border-zinc-500"}`}>
+          <div className="font-bold mb-0.5">{message.replyTo.senderName}</div>
+          <div className="opacity-70 truncate">{message.replyTo.body}</div>
+        </div>
+      )}
+
+      {message.mediaType === "image" && message.mediaUrl && (
+        <div className="relative overflow-hidden rounded-xl mb-2 cursor-pointer group/img" onClick={() => onImageClick?.(message.mediaUrl!)}>
+          <img src={message.mediaUrl} alt="media" className="max-h-60 w-full object-cover transition-transform group-hover/img:scale-105" />
+          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/img:opacity-100 transition-opacity grid place-items-center">
+            <Maximize2 className="h-6 w-6 text-white" />
+          </div>
+        </div>
+      )}
+      {message.mediaType === "video" && message.mediaUrl && (
+        <video src={message.mediaUrl} controls className="rounded-xl mb-2 max-h-60 w-full" />
+      )}
+      {message.mediaType === "audio" && message.mediaUrl && (
+        <div className="flex items-center gap-3 mb-2 bg-black/20 p-3 rounded-2xl">
+          <button 
+            onClick={togglePlay}
+            className="h-10 w-10 rounded-full bg-violet-500 flex items-center justify-center hover:scale-105 transition-transform active:scale-95"
+          >
+            {isPlaying ? <X className="h-5 w-5 text-white" /> : <Mic className="h-5 w-5 text-white" />}
+          </button>
+          <div className="flex-1">
+            <VoiceWaveform points={message.waveform || Array.from({length: 20}, () => Math.random() * 20 + 5)} />
+          </div>
+          <audio 
+            ref={audioRef} 
+            src={message.mediaUrl} 
+            onEnded={() => setIsPlaying(false)}
+            className="hidden" 
+          />
+        </div>
+      )}
+      <div className="text-sm leading-relaxed whitespace-pre-wrap font-medium">{message.decryptedBody}</div>
+      
+      {message.reactions && message.reactions.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {Array.from(new Set(message.reactions.map(r => r.emoji))).map(emoji => {
+            const count = message.reactions!.filter(r => r.emoji === emoji).length;
+            return (
+              <div key={emoji} className="px-1.5 py-0.5 rounded-full bg-black/20 border border-white/5 text-[10px] flex items-center gap-1">
+                <span>{emoji}</span>
+                <span className="font-bold opacity-80">{count}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="mt-1 flex items-center justify-end gap-1.5 opacity-60">
+        <span className="text-[10px] uppercase font-bold tracking-wider">
+          {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </span>
+        {mine && (
+          <span className="text-[10px]">
+            {message.status === "READ" ? <CheckCheck className="h-3 w-3" /> : <Check className="h-3 w-3" />}
+          </span>
+        )}
+      </div>
+    </motion.div>
+  );
+};
 
 export const PhotoViewer = ({ url, onClose }: { url: string | null; onClose: () => void }) => (
   <AnimatePresence>

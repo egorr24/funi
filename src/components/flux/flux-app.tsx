@@ -226,10 +226,25 @@ export const FluxApp = () => {
 
     socket.socket.on("new_message", handleNewMessage);
     socket.socket.on("chat:new", handleNewChat);
+    socket.socket.on("message:reaction", ({ messageId, emoji, userId }: any) => {
+      setMessages(current => current.map(m => {
+        if (m.id === messageId) {
+          const reactions = m.reactions || [];
+          const otherReactions = reactions.filter(r => r.userId !== userId);
+          return { ...m, reactions: [...otherReactions, { emoji, userId }] };
+        }
+        return m;
+      }));
+    });
+    socket.socket.on("message:delete", ({ messageId }: any) => {
+      setMessages(current => current.filter(m => m.id !== messageId));
+    });
     
     return () => {
       socket.socket?.off("new_message", handleNewMessage);
       socket.socket?.off("chat:new", handleNewChat);
+      socket.socket?.off("message:reaction");
+      socket.socket?.off("message:delete");
     };
   }, [socket.socket, chatId]);
 
@@ -262,9 +277,11 @@ export const FluxApp = () => {
     if (!activeChat) return [];
     let filtered = messages.filter((message) => message.chatId === activeChat.id);
     if (messageSearch) {
+      const searchLower = messageSearch.toLowerCase();
       filtered = filtered.filter(m => 
-        m.decryptedBody.toLowerCase().includes(messageSearch.toLowerCase()) ||
-        m.senderName.toLowerCase().includes(messageSearch.toLowerCase())
+        (m.decryptedBody && m.decryptedBody.toLowerCase().includes(searchLower)) ||
+        (m.encryptedBody && m.encryptedBody.toLowerCase().includes(searchLower)) ||
+        (m.senderName && m.senderName.toLowerCase().includes(searchLower))
       );
     }
     return filtered;

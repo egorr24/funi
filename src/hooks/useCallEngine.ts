@@ -89,6 +89,22 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
         { urls: "stun:stun.services.mozilla.com" },
         // Open Relay (Community TURN/STUN)
         { urls: "stun:openrelay.metered.ca:80" },
+        // Платные/Надежные TURN серверы (Пример для Railway)
+        {
+          urls: "turn:openrelay.metered.ca:80",
+          username: "openrelayproject",
+          credential: "openrelayproject"
+        },
+        {
+          urls: "turn:openrelay.metered.ca:443",
+          username: "openrelayproject",
+          credential: "openrelayproject"
+        },
+        {
+          urls: "turn:openrelay.metered.ca:443?transport=tcp",
+          username: "openrelayproject",
+          credential: "openrelayproject"
+        }
       ],
       iceCandidatePoolSize: 10,
     });
