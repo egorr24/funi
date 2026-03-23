@@ -182,8 +182,28 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   
   try {
-    // Возвращаемся к локальному хранилищу по просьбе пользователя
-    console.log(`> Saving file locally: ${req.file.filename}`);
+    // Если Cloudinary настроен, загружаем туда для постоянного хранения
+    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+      console.log(`> Uploading to Cloudinary: ${req.file.filename}`);
+      
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: 'flux_uploads',
+        resource_type: 'auto'
+      });
+
+      // Удаляем временный файл после загрузки в облако
+      fs.unlinkSync(req.file.path);
+
+      return res.json({ 
+        url: result.secure_url, 
+        type: req.file.mimetype.startsWith('image/') ? 'image' : 
+              req.file.mimetype.startsWith('video/') ? 'video' : 
+              req.file.mimetype.startsWith('audio/') ? 'audio' : 'file'
+      });
+    }
+
+    // Иначе сохраняем локально (временное хранилище на Railway)
+    console.log(`> Saving file locally (temporary): ${req.file.filename}`);
     const protocol = req.headers['x-forwarded-proto'] || 'https';
     const url = `${protocol}://${req.get('host')}/uploads/${req.file.filename}`;
     
