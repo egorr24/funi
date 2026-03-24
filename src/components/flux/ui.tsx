@@ -481,57 +481,61 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
       canvas.width = img.width * scale;
       canvas.height = img.height * scale;
 
-      // СОЛНЕЧНЫЙ ФАНТОМ (Neural Ghost v10: Solar Reveal)
-      // Белый фон, темный негатив и экстремальный стробоскоп
-      const sliceCount = 128; 
+      // FINAL PROTOCOL (Neural Ghost v11)
+      // Разделение на цветовые каналы (R, G, B) для создания темпоральных хроматических аберраций
+      const sliceCount = 128;
 
       const render = () => {
         frameCounter.current++;
         const sliceWidth = canvas.width / sliceCount;
-        
-        // 1. БАЗОВЫЙ БЕЛЫЙ ФОН (Ослепление)
-        ctx.fillStyle = "#fff";
+
+        // 1. BLACK RESET (Основа для сброса экспозиции)
+        ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // 2. СТРОБОСКОП ЯРКОСТИ (Anti-Exposure)
-        // Каждые 2 кадра — вспышка чистого белого поверх всего
-        const isFlashFrame = frameCounter.current % 2 === 0;
+        // 2. TEMPORAL-CHROMATIC ABERRATION
+        // Каждые 3 кадра отрисовывается один цветовой канал со сдвигом
+        // Глаз собирает их в полноцветное изображение, камера — нет
+        const channel = frameCounter.current % 3;
+        let operation = 'color';
+        let color = '#f00'; // Red
+        let offset = -1; // Сдвиг влево
 
-        if (!isFlashFrame) {
-          // ФАЗА ОТРИСОВКИ «ПРИЗРАКА»
-          const phase = Math.floor(frameCounter.current / 2) % 2;
-
-          for (let i = 0; i < sliceCount; i++) {
-            const x = i * sliceWidth;
-            const isMainPhase = (i % 2 === phase);
-            
-            if (isMainPhase) {
-              // РИСУЕМ ТЕМНЫЙ НЕГАТИВ (Как просил пользователь: "картинка черная")
-              // Низкая прозрачность (0.12) делает её невидимой для камеры на белом фоне
-              ctx.filter = `invert(1) contrast(1.5) brightness(0.5)`;
-              ctx.globalAlpha = 0.12; 
-            } else {
-              ctx.globalAlpha = 0.03;
-            }
-            
-            ctx.drawImage(
-              img, 
-              (i * img.width) / sliceCount, 0, img.width / sliceCount, img.height,
-              x, 0, sliceWidth, canvas.height
-            );
-          }
+        if (channel === 1) {
+          operation = 'color';
+          color = '#0f0'; // Green
+          offset = 0; // Центр
+        } else if (channel === 2) {
+          operation = 'color';
+          color = '#00f'; // Blue
+          offset = 1; // Сдвиг вправо
         }
 
-        // 3. БЕЛЫЙ ШУМ (Destroy Denoising)
-        ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
-        for(let i=0; i<30; i++) {
+        // Рисуем монохромное изображение
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        // Накладываем цветовой канал
+        ctx.globalCompositeOperation = operation;
+        ctx.fillStyle = color;
+        ctx.fillRect(offset, 0, canvas.width, canvas.height);
+        ctx.globalCompositeOperation = 'source-over';
+
+        // 3. ASYNCHRONOUS SLICE SEQUENCING (Anti-HDR)
+        // Скрываем случайные полосы в каждом кадре
+        ctx.globalCompositeOperation = 'destination-out';
+        for (let i = 0; i < sliceCount / 2; i++) {
+          const randomIndex = Math.floor(Math.random() * sliceCount);
+          ctx.fillRect(randomIndex * sliceWidth, 0, sliceWidth, canvas.height);
+        }
+        ctx.globalCompositeOperation = 'source-over';
+
+        // 4. LUMINANCE MICRO-BURSTS (Sensor Attack)
+        ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+        for(let i=0; i<5; i++) {
           ctx.fillRect(Math.random()*canvas.width, Math.random()*canvas.height, 1, 1);
         }
 
-        ctx.filter = 'none';
-        ctx.globalAlpha = 1.0;
-
-        // ULTRA-FAST JITTER
+        // 5. ULTRA-FAST JITTER
         const jitter = 0.1 + Math.random() * 0.5;
         setTimeout(() => {
             animationRef.current = requestAnimationFrame(render);
@@ -553,17 +557,17 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
         className={`w-full h-auto transition-opacity duration-300 ${!revealed ? "opacity-0" : "opacity-100"}`}
       />
       {!revealed && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 bg-white transition-colors duration-500">
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 bg-black transition-colors duration-500">
           <motion.div 
-            animate={{ opacity: [0.1, 0.3, 0.1] }}
-            transition={{ duration: 1, repeat: Infinity }}
-            className="h-16 w-16 rounded-[24px] bg-zinc-100 border border-zinc-200 flex items-center justify-center mb-4"
+            animate={{ opacity: [0.2, 0.5, 0.2] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+            className="h-16 w-16 rounded-[24px] bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mb-4"
           >
-            <Shield className="h-8 w-8 text-zinc-400" />
+            <Shield className="h-8 w-8 text-violet-400" />
           </motion.div>
-          <p className="text-[12px] font-black text-zinc-800 uppercase tracking-[0.3em] mb-2">Solar Reveal Protection</p>
-          <p className="text-[9px] text-zinc-400 text-center leading-relaxed italic">
-            Система ослепления активна. Нажмите для безопасного просмотра в режиме «Призрака».
+          <p className="text-[12px] font-black text-white uppercase tracking-[0.3em] mb-2">Final Protocol Active</p>
+          <p className="text-[9px] text-zinc-500 text-center leading-relaxed italic">
+            Технология темпоральной хроматической аберрации. Изображение существует только в вашем восприятии.
           </p>
         </div>
       )}
