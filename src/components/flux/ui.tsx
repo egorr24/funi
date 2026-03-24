@@ -418,31 +418,41 @@ export const MoireOverlay = ({ viewerName }: { viewerName?: string }) => (
     {/* НЕЙРОННЫЙ ПРИЗРАК: Высокочастотные микро-вспышки */}
     <motion.div 
       className="absolute inset-0 bg-white mix-blend-overlay"
-      animate={{ opacity: [0, 0.15, 0] }}
-      transition={{ duration: 0.01, repeat: Infinity }}
+      animate={{ 
+        opacity: [0, 0.1, 0, 0.15, 0],
+        backgroundColor: ["#fff", "#f0f", "#fff", "#0ff", "#fff"] 
+      }}
+      transition={{ duration: 0.05, repeat: Infinity, ease: "linear" }}
     />
 
-    {/* ДИНАМИЧЕСКИЙ ГРИД С ПОСТОЯННОЙ СМЕНОЙ ФАЗЫ */}
+    {/* ДИНАМИЧЕСКИЙ ГРИД С ПОСТОЯННОЙ СМЕНОЙ ФАЗЫ (Anti-Focus) */}
     <motion.div 
-      className="absolute inset-[-200%] opacity-20"
-      animate={{ rotate: [0, 360] }}
-      transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+      className="absolute inset-[-200%] opacity-30"
+      animate={{ 
+        rotate: [0, 360],
+        scale: [1, 1.1, 1]
+      }}
+      transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
       style={{
-        backgroundImage: `radial-gradient(circle, #fff 1px, transparent 1px)`,
-        backgroundSize: '4px 4px'
+        backgroundImage: `radial-gradient(circle, #fff 0.5px, transparent 0.5px)`,
+        backgroundSize: '3px 3px'
       }}
     />
 
-    {/* КВАНТОВЫЙ ВОДЯНОЙ ЗНАК */}
+    {/* КВАНТОВЫЙ ВОДЯНОЙ ЗНАК С ЦВЕТОВЫМ ШИФТОМ */}
     <div className="absolute inset-0 flex flex-col justify-around">
       {[1, 2, 3].map(i => (
         <motion.div 
           key={i}
-          className="whitespace-nowrap text-[10px] font-black text-white/20 uppercase tracking-[1.5em]"
-          animate={{ x: i % 2 === 0 ? ["-100%", "100%"] : ["100%", "-100%"] }}
-          transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+          className="whitespace-nowrap text-[10px] font-black uppercase tracking-[1.5em]"
+          style={{ color: i % 2 === 0 ? '#a855f7' : '#ec4899' }}
+          animate={{ 
+            x: i % 2 === 0 ? ["-100%", "100%"] : ["100%", "-100%"],
+            opacity: [0.1, 0.3, 0.1]
+          }}
+          transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
         >
-          {Array(5).fill(`• SENSOR BREAK ACTIVE • ${viewerName || 'ENCRYPTED'} • `).join("")}
+          {Array(5).fill(`• PHANTOM PROTOCOL ACTIVE • ${viewerName || 'ENCRYPTED'} • `).join("")}
         </motion.div>
       ))}
     </div>
@@ -471,37 +481,43 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
       canvas.width = img.width * scale;
       canvas.height = img.height * scale;
 
-      // ДИНАМИЧЕСКИЙ СЛАЙС-ЭНДЖИН (Rolling Shutter Desync)
-      // Постоянно меняем количество полос, чтобы камера не могла "поймать" ритм
-      const getDynamicSliceCount = () => 96 + Math.floor(Math.sin(frameCounter.current * 0.1) * 32);
+      // ФАНТОМНЫЙ ПРОТОКОЛ (Neural Ghost v6)
+      // Разработан для полной деградации изображения на любой камере при сохранении POV для глаза
+      const getDynamicSliceCount = () => 112 + Math.floor(Math.sin(frameCounter.current * 0.15) * 48);
 
       const render = () => {
         frameCounter.current++;
         const currentSliceCount = getDynamicSliceCount();
         const currentSliceWidth = canvas.width / currentSliceCount;
         
-        // Очищаем кадр темным фоном для сброса экспозиции камеры
+        // Очищаем кадр темным фоном (Black Reset для экспозиции)
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // ТЕХНОЛОГИЯ «CHROMATIC COMPLEMENTARY PULSING»
-        // Вместо простой инверсии используем комплементарные сдвиги. 
-        // Глаз усредняет их в 0, камера получает экстремальный цветовой шум.
+        // ТЕХНОЛОГИЯ «METAMERIC COMPLEMENTARY PULSING»
+        // Используем пары цветов, которые глаз усредняет в норму, а сенсор видит как шум
         const phase = frameCounter.current % 2;
-        const colorShift = phase === 0 ? 30 : -30; // Небольшой сдвиг для глаза, огромный для камеры при суммировании
+        const colorShift = phase === 0 ? 45 : -45; // Увеличен сдвиг для v6
         
+        // TEMPORAL LUMINANCE MASKING (TLM)
+        // Микро-колебания яркости (Flicker) для дестабилизации HDR-алгоритмов
+        const tlmBoost = 0.9 + Math.sin(frameCounter.current * 0.4) * 0.1;
+
         for (let i = 0; i < currentSliceCount; i++) {
-          const x = i * currentSliceWidth;
+          // SUB-PIXEL PHASE SHIFT
+          // Сдвигаем каждый слайс на доли пикселя для предотвращения "прилипания" фокуса
+          const subpixelOffset = Math.cos(frameCounter.current * 0.3 + i) * 0.5;
+          const x = i * currentSliceWidth + subpixelOffset;
+          
           const isMainPhase = (i % 2 === phase);
           
-          // Эффект "биения" цвета и яркости (Bayer Interference)
-          // Используем hue-rotate и контраст, которые "сводят с ума" ISP камер
           if (isMainPhase) {
-            ctx.filter = `hue-rotate(${colorShift}deg) saturate(1.2) contrast(1.1)`;
+            ctx.filter = `hue-rotate(${colorShift}deg) saturate(1.4) contrast(1.2) brightness(${tlmBoost})`;
             ctx.globalAlpha = 1.0;
           } else {
-            ctx.filter = `hue-rotate(${-colorShift}deg) saturate(0.8) contrast(0.9)`;
-            ctx.globalAlpha = 0.08; // Минимальное заполнение для сохранения структуры в глазу
+            // Пассивная фаза теперь имеет "метамерный шум" (Metameric Noise)
+            ctx.filter = `hue-rotate(${-colorShift}deg) saturate(0.6) contrast(0.8) brightness(${0.1 * tlmBoost})`;
+            ctx.globalAlpha = 0.05;
           }
           
           ctx.drawImage(
@@ -513,33 +529,32 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
         ctx.filter = 'none';
         ctx.globalAlpha = 1.0;
 
-        // BAYER FILTER INTERFERENCE (Микро-паттерны против ISP)
-        // Накладываем шум, который вызывает ошибки интерполяции цвета на матрице
-        if (frameCounter.current % 2 === 0) {
-          ctx.fillStyle = 'rgba(255, 0, 255, 0.02)'; // Magenta шум
-        } else {
-          ctx.fillStyle = 'rgba(0, 255, 0, 0.02)';   // Green шум (самый чувствительный для Bayer)
+        // MOIRE BOMB (Nyquist Grid Attack)
+        // Генерируем высокочастотную сетку, нацеленную на предел разрешения ISP
+        ctx.fillStyle = phase === 0 ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)';
+        for (let y = 0; y < canvas.height; y += 1) {
+          if (y % 2 === 0) {
+            for (let x = (frameCounter.current % 3); x < canvas.width; x += 3) {
+              ctx.fillRect(x, y, 1, 1);
+            }
+          }
         }
-        
-        // Рисуем "шахматку" для сбития дебайеризации
-        for (let y = 0; y < canvas.height; y += 2) {
-          for (let x = (frameCounter.current % 2); x < canvas.width; x += 2) {
+
+        // BAYER INTERFERENCE (Anti-Debayering)
+        // Специальные цветовые точки для вызова хроматических аберраций на сенсоре
+        ctx.fillStyle = phase === 0 ? 'rgba(255, 0, 255, 0.03)' : 'rgba(0, 255, 0, 0.03)';
+        for (let y = 1; y < canvas.height; y += 4) {
+          for (let x = (frameCounter.current % 4); x < canvas.width; x += 4) {
             ctx.fillRect(x, y, 1, 1);
           }
         }
 
-        // HDR & AUTO-EXPOSURE ATTACK
-        // Короткие вспышки, которые перегружают буфер экспозиции камеры
-        const flash = Math.random() > 0.95 ? 0.15 : 0;
-        if (flash > 0) {
-          ctx.fillStyle = `rgba(255, 255, 255, ${flash})`;
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
-
-        // ULTRA-JITTER
+        // ULTRA-JITTER & DESYNC
+        // Рандомизированная задержка для разрушения временной корреляции кадров
+        const jitter = 0.2 + Math.random() * 1.8;
         setTimeout(() => {
             animationRef.current = requestAnimationFrame(render);
-        }, 0.5 + Math.random() * 1.5); 
+        }, jitter); 
       };
       
       render();
