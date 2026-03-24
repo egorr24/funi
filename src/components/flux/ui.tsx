@@ -414,14 +414,14 @@ export const MessageScroll = ({ children }: PropsWithChildren) => (
 );
 
 export const MoireOverlay = ({ viewerName }: { viewerName?: string }) => (
-  <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl z-30">
-    {/* Сверхплотная интерференционная сетка (Оптическая Блокада) */}
+  <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl z-30 select-none">
+    {/* СВЕРХПЛОТНАЯ СЕТКА С ИНВЕРСИЕЙ (Difference Mask) */}
     <motion.div 
-      className="absolute inset-[-300%] opacity-90"
+      className="absolute inset-[-400%] opacity-100 mix-blend-difference"
       animate={{ 
-        x: ["-10%", "10%"],
-        y: ["-5%", "5%"],
-        rotate: [0, 2, -2, 0]
+        x: ["-5%", "5%"],
+        y: ["-2%", "2%"],
+        rotate: [0, 0.5, -0.5, 0]
       }}
       transition={{ 
         duration: 0.01, 
@@ -430,47 +430,47 @@ export const MoireOverlay = ({ viewerName }: { viewerName?: string }) => (
       }}
       style={{
         backgroundImage: `
-          repeating-linear-gradient(0deg, transparent, transparent 0.5px, rgba(255,255,255,0.4) 0.5px, rgba(255,255,255,0.4) 1px),
-          repeating-linear-gradient(90deg, transparent, transparent 0.5px, rgba(0,0,0,0.6) 0.5px, rgba(0,0,0,0.6) 1px),
-          repeating-linear-gradient(45deg, transparent, transparent 1px, rgba(255,255,255,0.3) 1px, rgba(255,255,255,0.3) 2px),
-          repeating-linear-gradient(-45deg, transparent, transparent 1px, rgba(0,0,0,0.4) 1px, rgba(0,0,0,0.4) 2px)
+          repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255,255,255,0.4) 1px, rgba(255,255,255,0.4) 2px),
+          repeating-linear-gradient(90deg, transparent, transparent 1px, rgba(255,255,255,0.4) 1px, rgba(255,255,255,0.4) 2px),
+          repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(255,255,255,0.3) 2px, rgba(255,255,255,0.3) 3px)
         `,
-        backgroundSize: '1.5px 1.5px, 2px 2px, 2.5px 2.5px, 3px 3px'
+        backgroundSize: '2.5px 2.5px, 3px 3px, 4.5px 4.5px'
       }}
     />
 
-    {/* Ослепляющее плазменное мерцание (Overexposure) */}
+    {/* ДИНАМИЧЕСКИЙ ЦИФРОВОЙ ШУМ (Noise Shimmer) */}
     <motion.div 
-      className="absolute inset-0"
+      className="absolute inset-0 opacity-[0.15]"
       animate={{ 
-        backgroundColor: [
-          "rgba(255,255,255,0)", 
-          "rgba(255,255,255,0.25)", 
-          "rgba(255,255,255,0)", 
-          "rgba(168,85,247,0.15)",
-          "rgba(255,255,255,0)"
-        ] 
+        backgroundPosition: ["0% 0%", "100% 100%"]
       }}
-      transition={{ duration: 0.05, repeat: Infinity }}
+      transition={{ duration: 0.1, repeat: Infinity, ease: "linear" }}
+      style={{
+        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+      }}
+    />
+
+    {/* Ослепляющее мерцание (Temporal Flicker) */}
+    <motion.div 
+      className="absolute inset-0 bg-white"
+      animate={{ opacity: [0, 0.12, 0] }}
+      transition={{ duration: 0.02, repeat: Infinity }}
       style={{ mixBlendMode: 'overlay' }}
     />
 
-    {/* Динамический водяной знак (Защита от утечек) */}
-    <div className="absolute inset-0 flex flex-col justify-around rotate-[-15deg] scale-125 opacity-30 select-none">
-      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => (
+    {/* Защитный водяной знак (Identification) */}
+    <div className="absolute inset-0 flex flex-col justify-around rotate-[-15deg] scale-150 opacity-25">
+      {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
         <motion.div 
           key={i}
-          animate={{ x: i % 2 === 0 ? ["-40%", "40%"] : ["40%", "-40%"] }}
-          transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
-          className="whitespace-nowrap text-[14px] font-black tracking-[1.2em] text-white uppercase drop-shadow-[0_0_5px_rgba(0,0,0,1)]"
+          animate={{ x: i % 2 === 0 ? ["-20%", "20%"] : ["20%", "-20%"] }}
+          transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+          className="whitespace-nowrap text-[12px] font-black tracking-[1em] text-white uppercase"
         >
-          {Array(15).fill(`• FLUX SECURITY • ${viewerName || 'SECRET'} • `).join("")}
+          {Array(10).fill(`• FLUX PROTOCOL • ${viewerName || 'ENCRYPTED'} • `).join("")}
         </motion.div>
       ))}
     </div>
-
-    {/* Цветовая деструкция для сенсоров камер */}
-    <div className="absolute inset-0 bg-gradient-to-br from-red-500/20 via-blue-500/20 to-green-500/20 mix-blend-color-dodge animate-spin-slow" />
   </div>
 );
 
@@ -508,7 +508,7 @@ export const MessageBubble = ({
 
   const handleStartPeek = () => {
     if (!message.isSecure || peekTimer !== null) return;
-    setPeekTimer(20); // 20 секунд на просмотр
+    setPeekTimer(30); // 30 секунд на просмотр
     setIsRevealed(true);
   };
 
@@ -566,38 +566,36 @@ export const MessageBubble = ({
 
       {message.mediaType === "image" && message.mediaUrl && (
         <div 
-          className="relative overflow-hidden rounded-xl mb-2 cursor-pointer group/img bg-black aspect-square max-h-[400px]" 
+          className="relative overflow-hidden rounded-xl mb-2 cursor-pointer group/img bg-black/40 min-h-[120px]" 
           onClick={handleStartPeek}
         >
-          {/* Слой с изображением */}
+          {/* Слой с изображением (виден всегда после активации) */}
           <img 
             src={message.mediaUrl} 
             alt="media" 
-            className={`w-full h-full object-cover transition-all duration-700 ${
-              !isRevealed ? "opacity-0 scale-110 blur-3xl grayscale" : "opacity-100 scale-100 blur-0"
+            className={`w-full max-h-80 object-contain transition-all duration-1000 ${
+              !isRevealed ? "opacity-0 blur-2xl grayscale brightness-50" : "opacity-100 blur-0 grayscale-0 brightness-100"
             }`}
           />
 
-          {/* Агрессивная Оптическая Блокада - активна всегда при просмотре */}
+          {/* Агрессивная синтетическая помеха */}
           {message.isSecure && isRevealed && <MoireOverlay viewerName={viewerName} />}
           
           {/* Заглушка до активации */}
           {message.isSecure && !isRevealed && (
-            <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-zinc-900/95 backdrop-blur-2xl">
-              <div className="h-20 w-20 rounded-[32px] bg-red-500/20 border border-red-500/50 flex items-center justify-center mb-5 animate-pulse">
-                <Shield className="h-10 w-10 text-red-400" />
+            <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-zinc-950/80 backdrop-blur-xl border border-white/5">
+              <div className="h-14 w-14 rounded-2xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center mb-3">
+                <Shield className="h-7 w-7 text-violet-400" />
               </div>
-              <p className="text-sm font-black text-white uppercase tracking-[0.2em] mb-2 text-center px-4">ВНИМАНИЕ: СЕКРЕТНЫЙ ОБЪЕКТ</p>
-              <p className="text-[10px] text-zinc-500 text-center px-8 leading-relaxed italic">
-                Активация на 20 секунд. Фото содержит оптическую ловушку для камер. Скриншоты и пересъемка бесполезны.
-              </p>
+              <p className="text-[10px] font-black text-white uppercase tracking-[0.3em] mb-1">Скрытый контент</p>
+              <p className="text-[9px] text-zinc-500 text-center px-6">Просмотр на 30 сек. Активна защита от пересъемки.</p>
             </div>
           )}
 
-          {/* Счетчик времени */}
+          {/* Счетчик времени (не мешает просмотру) */}
           {peekTimer !== null && (
-            <div className="absolute top-4 right-4 z-50 h-10 w-10 rounded-2xl bg-black/80 backdrop-blur-xl border border-white/20 flex items-center justify-center text-xs font-black text-red-500 shadow-2xl animate-bounce">
-              {peekTimer}
+            <div className="absolute top-2 right-2 z-50 px-2 py-1 rounded-lg bg-black/80 backdrop-blur-md border border-white/10 text-[9px] font-bold text-violet-400 tabular-nums">
+              {peekTimer}s
             </div>
           )}
 
