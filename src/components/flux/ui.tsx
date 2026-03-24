@@ -415,53 +415,34 @@ export const MessageScroll = ({ children }: PropsWithChildren) => (
 
 export const MoireOverlay = ({ viewerName }: { viewerName?: string }) => (
   <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl z-30 select-none">
-    {/* PHASE-SHIFT JAMMER: Сверхбыстрая инверсия фаз */}
-    {/* Для глаза это прозрачный слой, для камеры - жесткие полосы из-за несовпадения частоты кадров */}
+    {/* НЕЙРОННЫЙ ПРИЗРАК: Высокочастотные микро-вспышки */}
     <motion.div 
-      className="absolute inset-0 bg-white mix-blend-difference"
-      animate={{ opacity: [0, 0.8, 0] }}
-      transition={{ 
-        duration: 0.01, 
-        repeat: Infinity,
-        ease: "linear"
-      }}
+      className="absolute inset-0 bg-white mix-blend-overlay"
+      animate={{ opacity: [0, 0.15, 0] }}
+      transition={{ duration: 0.01, repeat: Infinity }}
     />
 
-    {/* ROLLING SHUTTER TRAP: Вертикальные сканирующие линии */}
-    {/* Создают эффект "зебры" на матрицах камер смартфонов */}
+    {/* ДИНАМИЧЕСКИЙ ГРИД С ПОСТОЯННОЙ СМЕНОЙ ФАЗЫ */}
     <motion.div 
-      className="absolute inset-[-100%] opacity-40"
-      animate={{ x: ["-50%", "50%"] }}
-      transition={{ duration: 0.05, repeat: Infinity, ease: "linear" }}
+      className="absolute inset-[-200%] opacity-20"
+      animate={{ rotate: [0, 360] }}
+      transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
       style={{
-        backgroundImage: `repeating-linear-gradient(90deg, #000 0, #000 1px, transparent 1px, transparent 4px)`,
-        backgroundSize: '10px 100%'
+        backgroundImage: `radial-gradient(circle, #fff 1px, transparent 1px)`,
+        backgroundSize: '4px 4px'
       }}
     />
 
-    {/* AI-SABOTEUR: Микро-шум для взлома алгоритмов резкости */}
-    <motion.div 
-      className="absolute inset-0 opacity-20 mix-blend-overlay"
-      animate={{ 
-        backgroundPosition: ["0% 0%", "100% 100%"]
-      }}
-      transition={{ duration: 0.02, repeat: Infinity, ease: "linear" }}
-      style={{
-        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.99' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23n)'/%3E%3C/svg%3E")`,
-        backgroundSize: '50px 50px'
-      }}
-    />
-
-    {/* КВАНТОВЫЙ ВОДЯНОЙ ЗНАК: Движется так быстро, что глаз видит дымку, а камера - текст */}
-    <div className="absolute inset-0 flex flex-col justify-around rotate-[-10deg]">
-      {[1, 2, 3, 4].map(i => (
+    {/* КВАНТОВЫЙ ВОДЯНОЙ ЗНАК */}
+    <div className="absolute inset-0 flex flex-col justify-around">
+      {[1, 2, 3].map(i => (
         <motion.div 
           key={i}
-          className="whitespace-nowrap text-[12px] font-black text-white/40 uppercase tracking-[2em]"
+          className="whitespace-nowrap text-[10px] font-black text-white/20 uppercase tracking-[1.5em]"
           animate={{ x: i % 2 === 0 ? ["-100%", "100%"] : ["100%", "-100%"] }}
-          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+          transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
         >
-          {Array(5).fill(`• CLASSIFIED • ${viewerName || 'TOP SECRET'} • `).join("")}
+          {Array(5).fill(`• SENSOR BREAK ACTIVE • ${viewerName || 'ENCRYPTED'} • `).join("")}
         </motion.div>
       ))}
     </div>
@@ -471,6 +452,7 @@ export const MoireOverlay = ({ viewerName }: { viewerName?: string }) => (
 export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, revealed: boolean, viewerName?: string }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>();
+  const frameCounter = useRef(0);
 
   useEffect(() => {
     if (!revealed || !url || !canvasRef.current) return;
@@ -489,18 +471,35 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
       canvas.width = img.width * scale;
       canvas.height = img.height * scale;
 
+      const sliceCount = 32; // Количество вертикальных полос
+      const sliceWidth = canvas.width / sliceCount;
+
       const render = () => {
-        // Отрисовка с микро-вибрацией (для глаза незаметно, для камеры - размытие)
-        const jitterX = (Math.random() - 0.5) * 0.5;
-        const jitterY = (Math.random() - 0.5) * 0.5;
+        frameCounter.current++;
         
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, jitterX, jitterY, canvas.width, canvas.height);
-        
-        // Добавляем невидимый цифровой "яд" в пиксели
-        ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.02})`;
+        // Очищаем кадр темным фоном для сброса экспозиции камеры
+        ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // ТЕМПОРАЛЬНАЯ СБОРКА: Отрисовываем только четные или нечетные полосы
+        // Человеческий глаз видит целую картинку, камера - только половину полос
+        const phase = frameCounter.current % 2;
         
+        for (let i = phase; i < sliceCount; i += 2) {
+          const x = i * sliceWidth;
+          ctx.drawImage(
+            img, 
+            (i * img.width) / sliceCount, 0, img.width / sliceCount, img.height,
+            x, 0, sliceWidth, canvas.height
+          );
+        }
+
+        // КВАНТОВЫЙ ШУМ (Сбивает автофокус)
+        ctx.globalCompositeOperation = 'overlay';
+        ctx.fillStyle = `rgba(${Math.random()*255}, ${Math.random()*255}, ${Math.random()*255}, 0.05)`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.globalCompositeOperation = 'source-over';
+
         animationRef.current = requestAnimationFrame(render);
       };
       
@@ -513,18 +512,20 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
   }, [url, revealed]);
 
   return (
-    <div className="relative w-full overflow-hidden min-h-[200px] bg-zinc-900">
+    <div className="relative w-full overflow-hidden min-h-[250px] bg-zinc-950 border border-white/5 rounded-xl">
       <canvas 
         ref={canvasRef} 
-        className={`w-full h-auto transition-opacity duration-500 ${!revealed ? "opacity-0" : "opacity-100"}`}
-        style={{ imageRendering: 'pixelated' }}
+        className={`w-full h-auto transition-opacity duration-300 ${!revealed ? "opacity-0" : "opacity-100"}`}
       />
       {!revealed && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className="h-14 w-14 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-4">
-            <Shield className="h-7 w-7 text-red-500 animate-pulse" />
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-6">
+          <div className="h-16 w-16 rounded-[24px] bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mb-4">
+            <Shield className="h-8 w-8 text-violet-400" />
           </div>
-          <p className="text-[11px] font-black text-white uppercase tracking-[0.5em]">Quantum Protection</p>
+          <p className="text-[12px] font-black text-white uppercase tracking-[0.3em] mb-2">Neural Ghost Protection</p>
+          <p className="text-[9px] text-zinc-500 text-center leading-relaxed italic">
+            Технология темпоральной сборки активна. Изображение существует только в вашем восприятии. Камеры зафиксируют лишь цифровой шум.
+          </p>
         </div>
       )}
     </div>
