@@ -612,15 +612,15 @@ export const FluxApp = () => {
   return (
     <div style={{ background: variables.background, boxShadow: `inset 0 0 160px ${variables.glow}` }} className="h-screen w-full overflow-hidden">
       <PhotoViewer url={viewingPhoto} onClose={() => setViewingPhoto(null)} />
-      {call.incomingCall && (
-        <IncomingCallModal 
-          from={call.incomingCall.fromName || call.incomingCall.from}
-          mode={call.incomingCall.mode}
-          onAccept={call.acceptCall}
-          onReject={call.rejectCall}
-        />
-      )}
       <AnimatePresence>
+        {call.incomingCall && (
+          <IncomingCallModal 
+            from={call.incomingCall.fromName || call.incomingCall.from}
+            mode={call.incomingCall.mode}
+            onAccept={call.acceptCall}
+            onReject={call.rejectCall}
+          />
+        )}
         {call.inCall && (
           <CallOverlay 
             active={call.inCall} 

@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -12,8 +12,9 @@ export async function GET(
   }
 
   try {
+    const { id } = await params;
     const members = await prisma.chatMember.findMany({
-      where: { chatId: params.id },
+      where: { chatId: id },
       include: { user: true },
     });
 

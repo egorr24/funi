@@ -48,7 +48,8 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
     setIsOutgoing(false);
     setCallStatus("idle");
     setFailReason(null);
-    setIncomingCall(null);
+    // НЕ сбрасываем incomingCall здесь, чтобы модалка не пропадала при пересоздании Peer
+    // setIncomingCall(null);
     setMuted(false);
     setCameraOff(false);
   }, [localStream]);
@@ -62,6 +63,7 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
         chatId: chatIdRef.current 
       });
     }
+    setIncomingCall(null); // Сбрасываем входящий звонок при завершении
     cleanup();
   }, [socket, cleanup]);
 
@@ -242,13 +244,29 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
     setIncomingCall(null);
   }, [incomingCall, socket]);
 
+  const inCallRef = useRef(false);
+  const incomingCallRef = useRef<IncomingCall | null>(null);
+  const isOutgoingRef = useRef(false);
+
+  useEffect(() => {
+    inCallRef.current = inCall;
+  }, [inCall]);
+
+  useEffect(() => {
+    incomingCallRef.current = incomingCall;
+  }, [incomingCall]);
+
+  useEffect(() => {
+    isOutgoingRef.current = isOutgoing;
+  }, [isOutgoing]);
+
   // Обработка входящих событий сокета
   useEffect(() => {
     if (!socket) return;
 
     const handleOffer = async ({ from, fromName, offer, mode: offerMode, chatId }: any) => {
-      console.log(`[CALL] Offer from ${fromName}. Current inCall: ${inCall}, incoming: ${!!incomingCall}`);
-      if (inCall || incomingCall) {
+      console.log(`[CALL] Offer from ${fromName}. Current inCall: ${inCallRef.current}, incoming: ${!!incomingCallRef.current}`);
+      if (inCallRef.current || incomingCallRef.current) {
         console.log("[CALL] Busy, sending busy signal");
         socket.emit("call:busy", { targetId: from });
         return;
@@ -260,7 +278,7 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
       console.log("[CALL] Answer received. Current state:", peerRef.current?.signalingState);
       
       const peer = peerRef.current;
-      if (!peer || !isOutgoing) return;
+      if (!peer || !isOutgoingRef.current) return;
 
       // Если мы уже в стабильном состоянии, возможно это дубликат ответа
       if (peer.signalingState === "stable") {
@@ -314,6 +332,7 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
 
     const handleEnd = () => {
       console.log("[CALL] Call ended by remote");
+      setIncomingCall(null);
       cleanup();
     };
 
@@ -337,7 +356,7 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
       socket.off("call:end", handleEnd);
       socket.off("call:busy", handleBusy);
     };
-  }, [socket, inCall, incomingCall, isOutgoing, cleanup]);
+  }, [socket, cleanup]); // Зависим только от сокета и мемоизированного cleanup
 
   const toggleMute = useCallback(() => {
     if (localStream) {
