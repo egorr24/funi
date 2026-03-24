@@ -415,59 +415,66 @@ export const MessageScroll = ({ children }: PropsWithChildren) => (
 
 export const MoireOverlay = ({ viewerName }: { viewerName?: string }) => (
   <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl z-30 select-none">
-    {/* СВЕРХПЛОТНАЯ СЕТКА С ИНВЕРСИЕЙ (Difference Mask) */}
+    {/* СУПЕР-АГРЕССИВНАЯ СЕТКА (МЯСОРУБКА) */}
     <motion.div 
-      className="absolute inset-[-400%] opacity-100 mix-blend-difference"
+      className="absolute inset-[-500%] opacity-100 mix-blend-difference"
       animate={{ 
-        x: ["-5%", "5%"],
-        y: ["-2%", "2%"],
-        rotate: [0, 0.5, -0.5, 0]
+        x: ["-10%", "10%"],
+        y: ["-4%", "4%"],
+        rotate: [0, 1, -1, 0]
       }}
       transition={{ 
-        duration: 0.01, 
+        duration: 0.008, // Еще быстрее!
         repeat: Infinity, 
         repeatType: "reverse" 
       }}
       style={{
         backgroundImage: `
-          repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255,255,255,0.4) 1px, rgba(255,255,255,0.4) 2px),
-          repeating-linear-gradient(90deg, transparent, transparent 1px, rgba(255,255,255,0.4) 1px, rgba(255,255,255,0.4) 2px),
-          repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(255,255,255,0.3) 2px, rgba(255,255,255,0.3) 3px)
+          repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255,255,255,0.6) 1px, rgba(255,255,255,0.6) 2px),
+          repeating-linear-gradient(90deg, transparent, transparent 1px, rgba(0,0,0,0.8) 1px, rgba(0,0,0,0.8) 2px),
+          repeating-linear-gradient(45deg, transparent, transparent 1.5px, rgba(255,255,255,0.5) 1.5px, rgba(255,255,255,0.5) 3px),
+          repeating-linear-gradient(-45deg, transparent, transparent 1.5px, rgba(0,0,0,0.6) 1.5px, rgba(0,0,0,0.6) 3px)
         `,
-        backgroundSize: '2.5px 2.5px, 3px 3px, 4.5px 4.5px'
+        backgroundSize: '2px 2px, 2.5px 2.5px, 4px 4px, 5px 5px'
       }}
     />
 
-    {/* ДИНАМИЧЕСКИЙ ЦИФРОВОЙ ШУМ (Noise Shimmer) */}
+    {/* ДИНАМИЧЕСКИЕ ЦВЕТОВЫЕ БЛОКИ ДЛЯ ОСЛЕПЛЕНИЯ СЕНСОРА */}
     <motion.div 
-      className="absolute inset-0 opacity-[0.15]"
+      className="absolute inset-0 opacity-40 mix-blend-overlay"
       animate={{ 
         backgroundPosition: ["0% 0%", "100% 100%"]
       }}
-      transition={{ duration: 0.1, repeat: Infinity, ease: "linear" }}
+      transition={{ duration: 0.05, repeat: Infinity, ease: "linear" }}
       style={{
-        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+        backgroundImage: `
+          linear-gradient(45deg, #ff0000 25%, transparent 25%),
+          linear-gradient(-45deg, #00ff00 25%, transparent 25%),
+          linear-gradient(45deg, transparent 75%, #0000ff 75%),
+          linear-gradient(-45deg, transparent 75%, #ffff00 75%)
+        `,
+        backgroundSize: '4px 4px'
       }}
     />
 
-    {/* Ослепляющее мерцание (Temporal Flicker) */}
+    {/* СВЕРХВЫСОКОЧАСТОТНОЕ МЕРЦАНИЕ (temporal noise) */}
     <motion.div 
       className="absolute inset-0 bg-white"
-      animate={{ opacity: [0, 0.12, 0] }}
-      transition={{ duration: 0.02, repeat: Infinity }}
+      animate={{ opacity: [0, 0.25, 0] }}
+      transition={{ duration: 0.01, repeat: Infinity }}
       style={{ mixBlendMode: 'overlay' }}
     />
 
-    {/* Защитный водяной знак (Identification) */}
-    <div className="absolute inset-0 flex flex-col justify-around rotate-[-15deg] scale-150 opacity-25">
-      {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+    {/* ЗАЩИТНЫЙ ВОДЯНОЙ ЗНАК - КРУПНЕЕ И ЯРЧЕ */}
+    <div className="absolute inset-0 flex flex-col justify-around rotate-[-15deg] scale-150 opacity-50">
+      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => (
         <motion.div 
           key={i}
-          animate={{ x: i % 2 === 0 ? ["-20%", "20%"] : ["20%", "-20%"] }}
-          transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-          className="whitespace-nowrap text-[12px] font-black tracking-[1em] text-white uppercase"
+          animate={{ x: i % 2 === 0 ? ["-40%", "40%"] : ["40%", "-40%"] }}
+          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+          className="whitespace-nowrap text-[16px] font-black tracking-[1.5em] text-white uppercase drop-shadow-[0_0_8px_rgba(0,0,0,1)]"
         >
-          {Array(10).fill(`• FLUX PROTOCOL • ${viewerName || 'ENCRYPTED'} • `).join("")}
+          {Array(10).fill(`• FORBIDDEN • ${viewerName || 'UNKNOWN'} • SENSOR BREAK • `).join("")}
         </motion.div>
       ))}
     </div>
@@ -566,42 +573,54 @@ export const MessageBubble = ({
 
       {message.mediaType === "image" && message.mediaUrl && (
         <div 
-          className="relative overflow-hidden rounded-xl mb-2 cursor-pointer group/img bg-black/40 min-h-[120px]" 
+          className={`relative overflow-hidden rounded-xl mb-2 group/img bg-zinc-900/50 min-h-[120px] select-none ${
+            message.isSecure ? "cursor-help pointer-events-auto" : "cursor-pointer"
+          }`}
           onClick={handleStartPeek}
+          onContextMenu={(e) => message.isSecure && e.preventDefault()}
+          onDragStart={(e) => message.isSecure && e.preventDefault()}
         >
-          {/* Слой с изображением (виден всегда после активации) */}
-          <img 
-            src={message.mediaUrl} 
-            alt="media" 
-            className={`w-full max-h-80 object-contain transition-all duration-1000 ${
-              !isRevealed ? "opacity-0 blur-2xl grayscale brightness-50" : "opacity-100 blur-0 grayscale-0 brightness-100"
-            }`}
-          />
+          {/* СКРЫТИЕ ПРЯМОГО URL: Используем div с background-image для защищенных фото */}
+          {message.isSecure ? (
+            <div 
+              className={`w-full h-80 bg-center bg-cover transition-all duration-1000 ${
+                !isRevealed ? "opacity-0 blur-3xl scale-125" : "opacity-100 blur-0 scale-100"
+              }`}
+              style={{ 
+                backgroundImage: isRevealed ? `url(${message.mediaUrl})` : 'none',
+                WebkitUserSelect: 'none',
+                userSelect: 'none'
+              }}
+            />
+          ) : (
+            <img 
+              src={message.mediaUrl} 
+              alt="media" 
+              className="w-full max-h-80 object-contain"
+              onClick={() => onImageClick?.(message.mediaUrl!)}
+            />
+          )}
 
-          {/* Агрессивная синтетическая помеха */}
+          {/* СУПЕР-ЗАЩИТА ПРИ ПРОСМОТРЕ */}
           {message.isSecure && isRevealed && <MoireOverlay viewerName={viewerName} />}
           
-          {/* Заглушка до активации */}
+          {/* ЗАГЛУШКА ДО АКТИВАЦИИ */}
           {message.isSecure && !isRevealed && (
-            <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-zinc-950/80 backdrop-blur-xl border border-white/5">
-              <div className="h-14 w-14 rounded-2xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center mb-3">
-                <Shield className="h-7 w-7 text-violet-400" />
+            <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-zinc-950 backdrop-blur-3xl border border-white/10">
+              <div className="h-16 w-16 rounded-[24px] bg-red-600/20 border border-red-500/40 flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(220,38,38,0.2)]">
+                <Shield className="h-8 w-8 text-red-500" />
               </div>
-              <p className="text-[10px] font-black text-white uppercase tracking-[0.3em] mb-1">Скрытый контент</p>
-              <p className="text-[9px] text-zinc-500 text-center px-6">Просмотр на 30 сек. Активна защита от пересъемки.</p>
+              <p className="text-[12px] font-black text-white uppercase tracking-[0.4em] mb-1">SENSOR BREAKER ACTIVE</p>
+              <p className="text-[9px] text-zinc-500 text-center px-8 leading-relaxed">
+                Защита от пересъемки. Ссылка на фото скрыта. Просмотр ограничен.
+              </p>
             </div>
           )}
 
-          {/* Счетчик времени (не мешает просмотру) */}
+          {/* ТАЙМЕР (ВЕРХНИЙ СЛОЙ) */}
           {peekTimer !== null && (
-            <div className="absolute top-2 right-2 z-50 px-2 py-1 rounded-lg bg-black/80 backdrop-blur-md border border-white/10 text-[9px] font-bold text-violet-400 tabular-nums">
-              {peekTimer}s
-            </div>
-          )}
-
-          {!message.isSecure && (
-            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/img:opacity-100 transition-opacity grid place-items-center z-20">
-              <Maximize2 className="h-6 w-6 text-white" />
+            <div className="absolute top-3 right-3 z-50 px-3 py-1.5 rounded-full bg-red-600/90 backdrop-blur-md border border-red-400/50 text-[10px] font-black text-white shadow-[0_0_15px_rgba(220,38,38,0.5)] animate-pulse">
+              DESTRUCT IN {peekTimer}S
             </div>
           )}
         </div>
