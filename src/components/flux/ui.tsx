@@ -905,7 +905,6 @@ export const CallOverlay = ({
           </button>
         </div>
       </motion.div>
-    </AnimatePresence>
   );
 };
 
