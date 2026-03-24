@@ -481,34 +481,24 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
       canvas.width = img.width * scale;
       canvas.height = img.height * scale;
 
-      // БЕЛЫЙ СТРОБОСКОП (Neural Ghost v9: White Strobe)
-      // Чередуем ослепляюще белые кадры и изображение для обмана сенсора через POV
+      // СОЛНЕЧНЫЙ ФАНТОМ (Neural Ghost v10: Solar Reveal)
+      // Белый фон, темный негатив и экстремальный стробоскоп
       const sliceCount = 128; 
 
       const render = () => {
         frameCounter.current++;
         const sliceWidth = canvas.width / sliceCount;
         
-        // ОПРЕДЕЛЯЕМ ФАЗУ: Вспышка или Изображение
-        // Камера зафиксирует либо белый лист, либо пересвеченную кашу
-        const isStrobeFrame = frameCounter.current % 2 === 0;
+        // 1. БАЗОВЫЙ БЕЛЫЙ ФОН (Ослепление)
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        if (isStrobeFrame) {
-          // ФАЗА А: Ослепляющий белый (Exposure Reset)
-          ctx.fillStyle = "#fff";
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          
-          // Добавляем микро-шум в белый кадр для сбития автофокуса
-          ctx.fillStyle = "rgba(200, 200, 200, 0.1)";
-          for(let i=0; i<20; i++) {
-            ctx.fillRect(Math.random()*canvas.width, Math.random()*canvas.height, 2, 2);
-          }
-        } else {
-          // ФАЗА Б: Отрисовка изображения (Shadow Phase)
-          // Очищаем светло-серым, чтобы уменьшить контраст для камеры
-          ctx.fillStyle = "#eee";
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // 2. СТРОБОСКОП ЯРКОСТИ (Anti-Exposure)
+        // Каждые 2 кадра — вспышка чистого белого поверх всего
+        const isFlashFrame = frameCounter.current % 2 === 0;
 
+        if (!isFlashFrame) {
+          // ФАЗА ОТРИСОВКИ «ПРИЗРАКА»
           const phase = Math.floor(frameCounter.current / 2) % 2;
 
           for (let i = 0; i < sliceCount; i++) {
@@ -516,11 +506,12 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
             const isMainPhase = (i % 2 === phase);
             
             if (isMainPhase) {
-              // Рисуем картинку с низким контрастом, чтобы она "растворилась" в белых кадрах для камеры
-              ctx.filter = `contrast(0.8) brightness(0.9) saturate(1.2)`;
-              ctx.globalAlpha = 0.7; // Для глаза это будет выглядеть как ~35% яркости из-за стробоскопа
+              // РИСУЕМ ТЕМНЫЙ НЕГАТИВ (Как просил пользователь: "картинка черная")
+              // Низкая прозрачность (0.12) делает её невидимой для камеры на белом фоне
+              ctx.filter = `invert(1) contrast(1.5) brightness(0.5)`;
+              ctx.globalAlpha = 0.12; 
             } else {
-              ctx.globalAlpha = 0.1;
+              ctx.globalAlpha = 0.03;
             }
             
             ctx.drawImage(
@@ -531,11 +522,17 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
           }
         }
 
+        // 3. БЕЛЫЙ ШУМ (Destroy Denoising)
+        ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+        for(let i=0; i<30; i++) {
+          ctx.fillRect(Math.random()*canvas.width, Math.random()*canvas.height, 1, 1);
+        }
+
         ctx.filter = 'none';
         ctx.globalAlpha = 1.0;
 
         // ULTRA-FAST JITTER
-        const jitter = 0.1 + Math.random() * 0.9;
+        const jitter = 0.1 + Math.random() * 0.5;
         setTimeout(() => {
             animationRef.current = requestAnimationFrame(render);
         }, jitter); 
@@ -556,13 +553,17 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
         className={`w-full h-auto transition-opacity duration-300 ${!revealed ? "opacity-0" : "opacity-100"}`}
       />
       {!revealed && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center p-6">
-          <div className="h-16 w-16 rounded-[24px] bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mb-4">
-            <Shield className="h-8 w-8 text-violet-400" />
-          </div>
-          <p className="text-[12px] font-black text-white uppercase tracking-[0.3em] mb-2">Neural Ghost Protection</p>
-          <p className="text-[9px] text-zinc-500 text-center leading-relaxed italic">
-            Технология темпоральной сборки активна. Изображение существует только в вашем восприятии. Камеры зафиксируют лишь цифровой шум.
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 bg-white transition-colors duration-500">
+          <motion.div 
+            animate={{ opacity: [0.1, 0.3, 0.1] }}
+            transition={{ duration: 1, repeat: Infinity }}
+            className="h-16 w-16 rounded-[24px] bg-zinc-100 border border-zinc-200 flex items-center justify-center mb-4"
+          >
+            <Shield className="h-8 w-8 text-zinc-400" />
+          </motion.div>
+          <p className="text-[12px] font-black text-zinc-800 uppercase tracking-[0.3em] mb-2">Solar Reveal Protection</p>
+          <p className="text-[9px] text-zinc-400 text-center leading-relaxed italic">
+            Система ослепления активна. Нажмите для безопасного просмотра в режиме «Призрака».
           </p>
         </div>
       )}
