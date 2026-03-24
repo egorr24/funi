@@ -667,7 +667,7 @@ export const FluxApp = () => {
                   {visibleMessages.map((message) => (
                     <MessageBubble
                       key={message.id}
-                      message={{ ...message, waveform, decryptedBody: message.encryptedBody }}
+                      message={{ ...message, waveform, decryptedBody: message.decryptedBody || message.encryptedBody }}
                       mine={message.senderId === session?.user?.id}
                       onImageClick={(url) => setViewingPhoto(url)}
                       onReaction={(emoji) => addReaction(message.id, emoji)}

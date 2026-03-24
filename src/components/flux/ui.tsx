@@ -476,8 +476,10 @@ export const MessageBubble = ({
 
       {message.replyTo && (
         <div className={`mb-2 p-2 rounded-xl border-l-4 text-[11px] bg-black/20 ${mine ? "border-violet-400" : "border-zinc-500"}`}>
-          <div className="font-bold mb-0.5">{message.replyTo.senderName}</div>
-          <div className="opacity-70 truncate">{message.replyTo.body}</div>
+          <div className="font-bold mb-0.5 text-violet-400">{message.replyTo.senderName}</div>
+          <div className="opacity-70 truncate text-zinc-300 italic">
+            «{message.replyTo.body}»
+          </div>
         </div>
       )}
 

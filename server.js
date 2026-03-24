@@ -118,24 +118,43 @@ io.on('connection', (socket) => {
 
   // Обработка сообщений в реальном времени
   socket.on('message:queue', async (message) => {
+    console.log(`[MSG] New message in chat: ${message.chatId}`);
     socket.to(message.chatId).emit('new_message', message);
+  });
+
+  // Добавление реакций
+  socket.on('message:reaction', (payload) => {
+    console.log(`[REACTION] ${payload.emoji} in chat ${payload.chatId}`);
+    socket.to(payload.chatId).emit('message:reaction', payload);
+  });
+
+  // Удаление сообщений
+  socket.on('message:delete', (payload) => {
+    console.log(`[DELETE] Msg ${payload.messageId} in chat ${payload.chatId}`);
+    socket.to(payload.chatId).emit('message:delete', payload);
+  });
+
+  // Индикатор печатания
+  socket.on('presence:typing', (payload) => {
+    socket.to(payload.chatId).emit('presence:typing', payload);
   });
 
   // Вход в комнату чата
   socket.on('chat:join', ({ chatId }) => {
     socket.join(chatId);
+    console.log(`[CHAT] Socket ${socket.id} joined room ${chatId}`);
   });
 
-  // ГЛОБАЛЬНЫЙ СИГНАЛИНГ ДЛЯ ЗВОНКОВ (ЧЕРЕЗ КОМНАТУ И ПЕРСОНАЛЬНО)
+  // ГЛОБАЛЬНЫЙ СИГНАЛИНГ ДЛЯ ЗВОНКОВ
   socket.on('call:offer', ({ chatId, targetId, fromName, offer, mode }) => {
     console.log(`[CALL] Offer from ${userId} to ${targetId} (Chat: ${chatId})`);
     
-    // 1. Отправляем в комнату чата (если кто-то там есть)
-    socket.to(chatId).emit('call:offer', { from: userId, fromName, offer, mode, chatId });
-    
-    // 2. Отправляем персонально пользователю (чтобы звонок прошел, даже если другой чат открыт)
+    // 1. Пытаемся отправить персонально пользователю (по его userId-комнате)
     if (targetId && targetId !== userId) {
       io.to(targetId).emit('call:offer', { from: userId, fromName, offer, mode, chatId });
+    } else {
+      // Если targetId нет (групповой?), шлем в комнату чата
+      socket.to(chatId).emit('call:offer', { from: userId, fromName, offer, mode, chatId });
     }
   });
 
@@ -163,8 +182,16 @@ io.on('connection', (socket) => {
     io.to(targetId).emit('call:busy', { from: userId });
   });
 
+  socket.on('message:delivered', (payload) => {
+    socket.to(payload.chatId).emit('message:delivered', payload);
+  });
+
+  socket.on('message:read', (payload) => {
+    socket.to(payload.chatId).emit('message:read', payload);
+  });
+
   socket.on('chat:new', ({ targetId, chat }) => {
-    io.to(targetId).emit('chat:new', chat);
+    if (targetId) io.to(targetId).emit('chat:new', chat);
   });
 
   socket.on('disconnect', () => {
