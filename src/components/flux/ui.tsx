@@ -481,16 +481,17 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // 4-ФАЗНАЯ ТЕМПОРАЛЬНАЯ СБОРКА + CHROMA-SHIFT
-        // Камера зафиксирует только 1/4 полос, а инверсия каналов ослепит сенсор
-        const phase = frameCounter.current % 4;
+        // 2-ФАЗНАЯ ТЕМПОРАЛЬНАЯ СБОРКА ПРИ 128 ПОЛОСАХ
+        // 50% видимости достаточно для глаза, но 128 полос всё еще "разрывают" кадр для камеры
+        const phase = frameCounter.current % 2;
         
-        for (let i = phase; i < sliceCount; i += 4) {
+        for (let i = phase; i < sliceCount; i += 2) {
           const x = i * sliceWidth;
 
-          // Chroma-Shift: инвертируем цвета для каждой второй полосы в фазе
-          if ((i / 4) % 2 !== 0) {
-            ctx.filter = 'invert(1)';
+          // Chroma-Shift: используем hue-rotate. 
+          // Инверсия (invert) убивала яркость, hue-rotate сохраняет детали для глаза
+          if ((i / 2) % 2 !== 0) {
+            ctx.filter = 'hue-rotate(180deg) saturate(1.2)';
           } else {
             ctx.filter = 'none';
           }
@@ -511,11 +512,11 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
         ctx.globalCompositeOperation = 'source-over';
 
         // ДИНАМИЧЕСКАЯ ВИБРАЦИЯ ЧАСТОТЫ (JITTER)
-        // Меняем скорость для обхода алгоритмов стабилизации
-        setTimeout(() => {
-            animationRef.current = requestAnimationFrame(render);
-        }, Math.random() * 5); // Случайная задержка до 5 мс
-      };
+         // Уменьшаем до 2мс, чтобы глаз не видел подергиваний
+         setTimeout(() => {
+             animationRef.current = requestAnimationFrame(render);
+         }, Math.random() * 2); 
+        };
       
       render();
     };
