@@ -419,23 +419,23 @@ export const MoireOverlay = ({ viewerName }: { viewerName?: string }) => (
     <motion.div 
       className="absolute inset-0 bg-white mix-blend-overlay"
       animate={{ 
-        opacity: [0, 0.1, 0, 0.15, 0],
+        opacity: [0, 0.05, 0, 0.08, 0],
         backgroundColor: ["#fff", "#f0f", "#fff", "#0ff", "#fff"] 
       }}
-      transition={{ duration: 0.05, repeat: Infinity, ease: "linear" }}
+      transition={{ duration: 0.1, repeat: Infinity, ease: "linear" }}
     />
 
     {/* ДИНАМИЧЕСКИЙ ГРИД С ПОСТОЯННОЙ СМЕНОЙ ФАЗЫ (Anti-Focus) */}
     <motion.div 
-      className="absolute inset-[-200%] opacity-30"
+      className="absolute inset-[-200%] opacity-15"
       animate={{ 
         rotate: [0, 360],
-        scale: [1, 1.1, 1]
+        scale: [1, 1.05, 1]
       }}
-      transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+      transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
       style={{
         backgroundImage: `radial-gradient(circle, #fff 0.5px, transparent 0.5px)`,
-        backgroundSize: '3px 3px'
+        backgroundSize: '4px 4px'
       }}
     />
 
@@ -444,15 +444,15 @@ export const MoireOverlay = ({ viewerName }: { viewerName?: string }) => (
       {[1, 2, 3].map(i => (
         <motion.div 
           key={i}
-          className="whitespace-nowrap text-[10px] font-black uppercase tracking-[1.5em]"
+          className="whitespace-nowrap text-[9px] font-black uppercase tracking-[1.2em]"
           style={{ color: i % 2 === 0 ? '#a855f7' : '#ec4899' }}
           animate={{ 
             x: i % 2 === 0 ? ["-100%", "100%"] : ["100%", "-100%"],
-            opacity: [0.1, 0.3, 0.1]
+            opacity: [0.05, 0.15, 0.05]
           }}
-          transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
+          transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
         >
-          {Array(5).fill(`• PHANTOM PROTOCOL ACTIVE • ${viewerName || 'ENCRYPTED'} • `).join("")}
+          {Array(5).fill(`• NEURAL GHOST v7 • ${viewerName || 'ENCRYPTED'} • `).join("")}
         </motion.div>
       ))}
     </div>
@@ -481,77 +481,67 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
       canvas.width = img.width * scale;
       canvas.height = img.height * scale;
 
-      // ФАНТОМНЫЙ ПРОТОКОЛ (Neural Ghost v6)
-      // Разработан для полной деградации изображения на любой камере при сохранении POV для глаза
-      const getDynamicSliceCount = () => 112 + Math.floor(Math.sin(frameCounter.current * 0.15) * 48);
+      // КАЛИБРОВКА ЧИТАЕМОСТИ (Neural Ghost v7)
+      // Возвращаем четкость для глаза, сохраняя разрушительный эффект для камер
+      const sliceCount = 128; 
 
       const render = () => {
         frameCounter.current++;
-        const currentSliceCount = getDynamicSliceCount();
-        const currentSliceWidth = canvas.width / currentSliceCount;
+        const sliceWidth = canvas.width / sliceCount;
         
         // Очищаем кадр темным фоном (Black Reset для экспозиции)
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // ТЕХНОЛОГИЯ «METAMERIC COMPLEMENTARY PULSING»
-        // Используем пары цветов, которые глаз усредняет в норму, а сенсор видит как шум
+        // ТЕХНОЛОГИЯ «RETINA-STABLE COMPLEMENTARY PULSING»
+        // Снижен сдвиг до 15 градусов для идеальной читаемости глазом
         const phase = frameCounter.current % 2;
-        const colorShift = phase === 0 ? 45 : -45; // Увеличен сдвиг для v6
+        const colorShift = phase === 0 ? 15 : -15; 
         
-        // TEMPORAL LUMINANCE MASKING (TLM)
-        // Микро-колебания яркости (Flicker) для дестабилизации HDR-алгоритмов
-        const tlmBoost = 0.9 + Math.sin(frameCounter.current * 0.4) * 0.1;
+        // СТАБИЛИЗАЦИЯ ЯРКОСТИ (TLM Lite)
+        const tlmBoost = 0.98 + Math.sin(frameCounter.current * 0.2) * 0.02;
 
-        for (let i = 0; i < currentSliceCount; i++) {
-          // SUB-PIXEL PHASE SHIFT
-          // Сдвигаем каждый слайс на доли пикселя для предотвращения "прилипания" фокуса
-          const subpixelOffset = Math.cos(frameCounter.current * 0.3 + i) * 0.5;
-          const x = i * currentSliceWidth + subpixelOffset;
-          
+        for (let i = 0; i < sliceCount; i++) {
+          const x = i * sliceWidth;
           const isMainPhase = (i % 2 === phase);
           
           if (isMainPhase) {
-            ctx.filter = `hue-rotate(${colorShift}deg) saturate(1.4) contrast(1.2) brightness(${tlmBoost})`;
+            ctx.filter = `hue-rotate(${colorShift}deg) saturate(1.1) brightness(${tlmBoost})`;
             ctx.globalAlpha = 1.0;
           } else {
-            // Пассивная фаза теперь имеет "метамерный шум" (Metameric Noise)
-            ctx.filter = `hue-rotate(${-colorShift}deg) saturate(0.6) contrast(0.8) brightness(${0.1 * tlmBoost})`;
-            ctx.globalAlpha = 0.05;
+            // Пассивная фаза теперь ярче (40%) для комфорта глаза
+            ctx.filter = `hue-rotate(${-colorShift}deg) saturate(0.9) brightness(${0.4 * tlmBoost})`;
+            ctx.globalAlpha = 0.4;
           }
           
           ctx.drawImage(
             img, 
-            (i * img.width) / currentSliceCount, 0, img.width / currentSliceCount, img.height,
-            x, 0, currentSliceWidth, canvas.height
+            (i * img.width) / sliceCount, 0, img.width / sliceCount, img.height,
+            x, 0, sliceWidth, canvas.height
           );
         }
         ctx.filter = 'none';
         ctx.globalAlpha = 1.0;
 
-        // MOIRE BOMB (Nyquist Grid Attack)
-        // Генерируем высокочастотную сетку, нацеленную на предел разрешения ISP
-        ctx.fillStyle = phase === 0 ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)';
-        for (let y = 0; y < canvas.height; y += 1) {
-          if (y % 2 === 0) {
-            for (let x = (frameCounter.current % 3); x < canvas.width; x += 3) {
-              ctx.fillRect(x, y, 1, 1);
-            }
+        // SUBTLE MOIRE BOMB (Anti-Sensor)
+        // Микро-сетка с пониженной прозрачностью для сохранения четкости
+        ctx.fillStyle = phase === 0 ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)';
+        for (let y = 0; y < canvas.height; y += 2) {
+          for (let x = (frameCounter.current % 3); x < canvas.width; x += 3) {
+            ctx.fillRect(x, y, 1, 1);
           }
         }
 
-        // BAYER INTERFERENCE (Anti-Debayering)
-        // Специальные цветовые точки для вызова хроматических аберраций на сенсоре
-        ctx.fillStyle = phase === 0 ? 'rgba(255, 0, 255, 0.03)' : 'rgba(0, 255, 0, 0.03)';
+        // BAYER INTERFERENCE (Subtle)
+        ctx.fillStyle = phase === 0 ? 'rgba(255, 0, 255, 0.015)' : 'rgba(0, 255, 0, 0.015)';
         for (let y = 1; y < canvas.height; y += 4) {
           for (let x = (frameCounter.current % 4); x < canvas.width; x += 4) {
             ctx.fillRect(x, y, 1, 1);
           }
         }
 
-        // ULTRA-JITTER & DESYNC
-        // Рандомизированная задержка для разрушения временной корреляции кадров
-        const jitter = 0.2 + Math.random() * 1.8;
+        // STABLE JITTER
+        const jitter = 1.0 + Math.random() * 1.0;
         setTimeout(() => {
             animationRef.current = requestAnimationFrame(render);
         }, jitter); 
