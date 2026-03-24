@@ -200,7 +200,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     console.log(`[UPLOAD] Cloudinary config check: Name=${!!cloudName}, Key=${!!apiKey}, Secret=${!!apiSecret}`);
 
     // Если Cloudinary настроен, загружаем туда для постоянного хранения
-    if (cloudName && apiKey && apiSecret) {
+    if (cloudName && apiKey && apiSecret && !cloudName.includes("Root") && !cloudName.includes("root")) {
       console.log(`[UPLOAD] Cloudinary config check: Name=${cloudName.substring(0, 3)}... , Key=${apiKey.substring(0, 3)}...`);
       
       // Принудительно настраиваем Cloudinary прямо здесь
@@ -219,7 +219,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 
       // Удаляем временный файл после загрузки в облако
       try {
-        fs.unlinkSync(req.file.path);
+        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
       } catch (e) {
         console.warn(`[UPLOAD] Temp file delete failed: ${e.message}`);
       }
@@ -233,7 +233,11 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     }
 
     // Иначе сохраняем локально (в папку public/uploads)
-    console.warn(`[UPLOAD] NO Cloudinary credentials! Saving to public/uploads (TEMPORARY).`);
+    if (cloudName.toLowerCase().includes("root")) {
+      console.warn(`[UPLOAD] WARNING: Cloudinary Cloud Name is set to 'Root'. This is likely a configuration error in Railway.`);
+    } else {
+      console.warn(`[UPLOAD] NO Cloudinary credentials! Saving to public/uploads (TEMPORARY).`);
+    }
     const protocol = req.headers['x-forwarded-proto'] || 'https';
     const host = req.get('host');
     const url = `${protocol}://${host}/uploads/${req.file.filename}`;

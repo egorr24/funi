@@ -38,6 +38,9 @@ export async function GET(request: NextRequest) {
         reactions: {
           include: { user: true },
         },
+        replyTo: {
+          include: { sender: true }
+        }
       },
     });
 
@@ -59,6 +62,11 @@ export async function GET(request: NextRequest) {
         userId: r.userId,
         userName: r.user.name,
       })),
+      replyTo: m.replyTo ? {
+        id: m.replyTo.id,
+        body: m.replyTo.encryptedBody, // Use encryptedBody since it's the main content field
+        senderName: m.replyTo.sender.name
+      } : undefined
     })));
   } catch (error) {
     console.error("Error fetching messages:", error);
@@ -109,6 +117,9 @@ export async function POST(request: NextRequest) {
       },
       include: {
         sender: true,
+        replyTo: {
+          include: { sender: true }
+        }
       },
     });
 
@@ -123,6 +134,11 @@ export async function POST(request: NextRequest) {
       createdAt: message.createdAt.toISOString(),
       status: message.status,
       reactions: [],
+      replyTo: message.replyTo ? {
+        id: message.replyTo.id,
+        body: message.replyTo.encryptedBody,
+        senderName: message.replyTo.sender.name
+      } : undefined
     });
   } catch (error) {
     console.error("Error creating message:", error);

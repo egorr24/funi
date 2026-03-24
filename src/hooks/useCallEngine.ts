@@ -259,29 +259,43 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
 
     const handleAnswer = async ({ from, answer }: any) => {
       console.log("[CALL] Answer received. Current state:", peerRef.current?.signalingState);
-      if (peerRef.current && isOutgoing) {
-        const peer = peerRef.current;
-        
-        if (peer.signalingState !== "have-local-offer") {
-          console.warn("[CALL] Signaling state is not have-local-offer, ignoring answer. State:", peer.signalingState);
-          return;
-        }
+      
+      const peer = peerRef.current;
+      if (!peer || !isOutgoing) return;
 
-        try {
-          await peer.setRemoteDescription(new RTCSessionDescription(answer));
-          console.log("[CALL] Remote description set successfully (answer)");
-          setCallStatus("active");
-          
-          while (iceCandidatesBuffer.current.length > 0) {
-            const candidate = iceCandidatesBuffer.current.shift();
-            if (candidate) {
-              await peer.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => {
-                console.error("[CALL] Error adding buffered ICE candidate", e);
-              });
-            }
-          }
-        } catch (err) {
-          console.error("[CALL] Critical error setting remote answer:", err);
+      // Если мы уже в стабильном состоянии, возможно это дубликат ответа
+      if (peer.signalingState === "stable") {
+        console.log("[CALL] Signaling state is already stable, ignoring duplicate answer");
+        setCallStatus("active");
+        return;
+      }
+
+      if (peer.signalingState !== "have-local-offer") {
+        console.warn("[CALL] Signaling state is not have-local-offer, ignoring answer. State:", peer.signalingState);
+        return;
+      }
+
+      try {
+        await peer.setRemoteDescription(new RTCSessionDescription(answer));
+        console.log("[CALL] Remote description set successfully (answer)");
+        setCallStatus("active");
+        
+        // Добавляем накопленные ICE кандидаты
+        const candidates = [...iceCandidatesBuffer.current];
+        iceCandidatesBuffer.current = [];
+        
+        for (const candidate of candidates) {
+          await peer.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => {
+            console.error("[CALL] Error adding buffered ICE candidate", e);
+          });
+        }
+      } catch (err) {
+        console.error("[CALL] Critical error setting remote answer:", err);
+        // Не очищаем сразу, даем шанс на переподключение если это возможно
+        // Но если это критическая ошибка SDP, то cleanup
+        if (err instanceof Error && err.name === "InvalidStateError") {
+          console.warn("[CALL] InvalidStateError during setRemoteDescription, might be already handled");
+        } else {
           cleanup();
         }
       }

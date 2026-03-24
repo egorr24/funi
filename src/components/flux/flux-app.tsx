@@ -242,22 +242,29 @@ export const FluxApp = () => {
     };
 
     const handleTyping = ({ chatId: tChatId, userName, isTyping }: any) => {
+      // Не показываем индикатор для самого себя
+      if (userName === session?.user?.name) return;
+
       setTypingUsers(prev => {
         const current = prev[tChatId] || [];
-        if (isTyping && !current.includes(userName)) {
+        if (isTyping) {
+          if (current.includes(userName)) return prev;
           return { ...prev, [tChatId]: [...current, userName] };
-        } else if (!isTyping) {
+        } else {
           return { ...prev, [tChatId]: current.filter(u => u !== userName) };
         }
-        return prev;
       });
+
+      // Автоматически убираем через 3 секунды, если не пришло событие остановки
       if (isTyping) {
-        setTimeout(() => {
-          setTypingUsers(prev => ({
-            ...prev,
-            [tChatId]: (prev[tChatId] || []).filter(u => u !== userName)
-          }));
-        }, 3000);
+        const timeoutId = setTimeout(() => {
+          setTypingUsers(prev => {
+            const current = prev[tChatId] || [];
+            if (!current.includes(userName)) return prev;
+            return { ...prev, [tChatId]: current.filter(u => u !== userName) };
+          });
+        }, 3500);
+        return () => clearTimeout(timeoutId);
       }
     };
 
@@ -325,14 +332,34 @@ export const FluxApp = () => {
       });
   }, [activeChat, session?.user, call]);
 
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const handleTyping = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
+    
     if (socket.socket && activeChat) {
-      socket.socket.emit("presence:typing", {
-        chatId: activeChat.id,
-        userName: session?.user?.name || "Someone",
-        isTyping: e.target.value.length > 0
-      });
+      // Отправляем событие начала печатания только если раньше не печатали
+      if (!typingTimeoutRef.current) {
+        socket.socket.emit("presence:typing", {
+          chatId: activeChat.id,
+          userName: session?.user?.name || "Someone",
+          isTyping: true
+        });
+      }
+
+      // Сбрасываем таймер остановки
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      
+      typingTimeoutRef.current = setTimeout(() => {
+        if (socket.socket && activeChat) {
+          socket.socket.emit("presence:typing", {
+            chatId: activeChat.id,
+            userName: session?.user?.name || "Someone",
+            isTyping: false
+          });
+        }
+        typingTimeoutRef.current = null;
+      }, 3000);
     }
   };
 
