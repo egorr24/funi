@@ -70,26 +70,12 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
     console.log(`[CALL] Creating PeerConnection. Target: ${targetId}, Chat: ${chatId}`);
     const peer = new RTCPeerConnection({
       iceServers: [
-        // Google STUN servers
         { urls: "stun:stun.l.google.com:19302" },
         { urls: "stun:stun1.l.google.com:19302" },
         { urls: "stun:stun2.l.google.com:19302" },
         { urls: "stun:stun3.l.google.com:19302" },
         { urls: "stun:stun4.l.google.com:19302" },
-        // Public STUN servers
-        { urls: "stun:stun.ekiga.net" },
-        { urls: "stun:stun.ideasip.com" },
-        { urls: "stun:stun.rixtelecom.se" },
-        { urls: "stun:stun.schlund.de" },
-        { urls: "stun:stun.stunprotocol.org:3478" },
-        { urls: "stun:stun.voiparound.com" },
-        { urls: "stun:stun.voipbuster.com" },
-        { urls: "stun:stun.voipstunt.com" },
-        { urls: "stun:stun.voxgratia.org" },
-        { urls: "stun:stun.services.mozilla.com" },
-        // Open Relay (Community TURN/STUN)
-        { urls: "stun:openrelay.metered.ca:80" },
-        // Платные/Надежные TURN серверы (Пример для Railway)
+        // Metered TURN (Free tier)
         {
           urls: "turn:openrelay.metered.ca:80",
           username: "openrelayproject",
@@ -104,14 +90,27 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
           urls: "turn:openrelay.metered.ca:443?transport=tcp",
           username: "openrelayproject",
           credential: "openrelayproject"
-        }
+        },
+        // Добавляем дополнительные STUN для надежности
+        { urls: "stun:stun.nextcloud.com:443" },
+        { urls: "stun:stun.stunprotocol.org" }
       ],
       iceCandidatePoolSize: 10,
+      iceTransportPolicy: "all"
     });
 
     peer.onicecandidate = (event) => {
       if (event.candidate && socket) {
+        console.log(`[CALL] Generated ICE candidate: ${event.candidate.type}`);
         socket.emit("call:ice", { targetId, candidate: event.candidate, chatId });
+      }
+    };
+
+    peer.oniceconnectionstatechange = () => {
+      console.log("[CALL] ICE Connection state:", peer.iceConnectionState);
+      if (peer.iceConnectionState === "failed") {
+        console.error("[CALL] ICE Connection failed. Try to restart ICE...");
+        peer.restartIce();
       }
     };
 

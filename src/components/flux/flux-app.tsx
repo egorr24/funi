@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useEffect, useCallback } from "react";
+import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { AnimatePresence } from "framer-motion";
 import { useSession, signOut } from "next-auth/react";
 import { useCallEngine } from "@/src/hooks/useCallEngine";
@@ -180,17 +180,34 @@ export const FluxApp = () => {
     }
   }, [chatId, socket.socket]);
 
+  const markAsRead = useCallback(async (cId: string) => {
+    if (!session?.user?.id) return;
+    try {
+      await fetch("/api/messages/read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatId: cId }),
+      });
+      if (socket.socket) {
+        socket.socket.emit("message:read", { chatId: cId, userId: session.user.id });
+      }
+    } catch (err) {
+      console.error("Mark as read failed", err);
+    }
+  }, [session?.user?.id, socket.socket]);
+
   // Fetch messages when chatId changes
   useEffect(() => {
     fetchMessages();
-    // При переключении чата сбрасываем непрочитанные локально
+    // При переключении чата сбрасываем непрочитанные локально и в БД
     if (chatId) {
       setChatsData(current => current.map(chat => {
         if (chat.id === chatId) return { ...chat, unreadCount: 0 };
         return chat;
       }));
+      markAsRead(chatId);
     }
-  }, [fetchMessages, chatId]);
+  }, [fetchMessages, chatId, markAsRead]);
 
   // Consolidate all socket listeners
   useEffect(() => {
@@ -203,6 +220,8 @@ export const FluxApp = () => {
           if (current.some(m => m.id === message.id)) return current;
           return [...current, message];
         });
+        // Если чат активен, помечаем сообщение прочитанным
+        markAsRead(message.chatId);
       }
       setChatsData(current => current.map(chat => {
         if (chat.id === message.chatId) {
@@ -365,23 +384,38 @@ export const FluxApp = () => {
 
   const [replyTo, setReplyTo] = useState<FluxMessage | null>(null);
 
-  const addReaction = (messageId: string, emoji: string) => {
+  const addReaction = async (messageId: string, emoji: string) => {
     if (socket.socket && activeChat && session?.user?.id) {
       const userId = session.user.id;
-      socket.socket.emit("message:reaction", {
-        messageId,
-        chatId: activeChat.id,
-        emoji,
-        userId
-      });
+      
+      // Оптимистичное обновление
       setMessages(current => current.map(m => {
         if (m.id === messageId) {
           const reactions = m.reactions || [];
           const otherReactions = reactions.filter(r => r.userId !== userId);
-          return { ...m, reactions: [...otherReactions, { emoji, userId }] };
+          return { ...m, reactions: [...otherReactions, { emoji, userId, userName: session.user?.name || "You" }] };
         }
         return m;
       }));
+
+      try {
+        const res = await fetch(`/api/messages/${messageId}/reactions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ emoji }),
+        });
+
+        if (res.ok) {
+          socket.socket.emit("message:reaction", {
+            messageId,
+            chatId: activeChat.id,
+            emoji,
+            userId
+          });
+        }
+      } catch (err) {
+        console.error("Reaction failed", err);
+      }
     }
   };
 
