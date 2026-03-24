@@ -6,8 +6,7 @@ export type MediaKind = "image" | "video" | "audio" | "file";
 
 export type FluxReaction = {
   emoji: string;
-  count: number;
-  reacted: boolean;
+  userId: string;
 };
 
 export type FluxMessage = {
@@ -22,6 +21,11 @@ export type FluxMessage = {
   createdAt: string;
   status: DeliveryState;
   replyToId?: string;
+  replyTo?: {
+    id: string;
+    body: string;
+    senderName: string;
+  };
   mediaUrl?: string;
   mediaType?: MediaKind;
   waveform?: number[];
@@ -32,11 +36,13 @@ export type FluxChat = {
   id: string;
   title: string;
   avatar: string;
+  color?: string;
   folder: ChatFolder;
   unreadCount: number;
   pinned: boolean;
   typing: boolean;
   participants: string[];
+  otherUserId?: string;
   lastMessagePreview: string;
   updatedAt: string;
 };

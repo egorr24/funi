@@ -30,6 +30,7 @@ export async function GET() {
     const chats = chatMemberships.map((m) => {
       const chat = m.chat;
       const lastMessage = chat.messages[0];
+      const otherMember = chat.members.find(member => member.userId !== session.user?.id);
       
       return {
         id: chat.id,
@@ -39,6 +40,7 @@ export async function GET() {
         unreadCount: 0,
         pinned: chat.isPinned,
         typing: false,
+        otherUserId: otherMember?.userId,
         participants: chat.members.map(m => m.user.name || "Unknown"),
         lastMessagePreview: lastMessage ? lastMessage.encryptedBody : "No messages yet",
         updatedAt: chat.updatedAt.toISOString(),

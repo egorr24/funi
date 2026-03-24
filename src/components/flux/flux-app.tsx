@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useEffect, useCallback } from "react";
+import { AnimatePresence } from "framer-motion";
 import { useSession, signOut } from "next-auth/react";
 import { useCallEngine } from "@/src/hooks/useCallEngine";
 import { useSocket } from "@/src/hooks/useSocket";
 import { useThemeEngine } from "@/src/hooks/useThemeEngine";
 import { useWaveform } from "@/src/hooks/useWaveform";
 import { FluxMessage, FluxChat } from "@/src/types/flux";
+import { User, Settings, Shield, CheckCheck, Plus, Bell, X } from "lucide-react";
 import {
   AIInsightCard,
   CallOverlay,
@@ -190,20 +192,18 @@ export const FluxApp = () => {
     }
   }, [fetchMessages, chatId]);
 
-  // Handle incoming socket messages
+  // Consolidate all socket listeners
   useEffect(() => {
     if (!socket.socket) return;
+    const s = socket.socket;
 
     const handleNewMessage = (message: FluxMessage) => {
-      // Avoid duplicate messages if we are in the active chat and already added it
       if (message.chatId === chatId) {
         setMessages((current) => {
           if (current.some(m => m.id === message.id)) return current;
           return [...current, message];
         });
       }
-      
-      // Update last message in chatsData and increment unread if not active
       setChatsData(current => current.map(chat => {
         if (chat.id === message.chatId) {
           return {
@@ -224,9 +224,8 @@ export const FluxApp = () => {
       });
     };
 
-    socket.socket.on("new_message", handleNewMessage);
-    socket.socket.on("chat:new", handleNewChat);
-    socket.socket.on("message:reaction", ({ messageId, emoji, userId }: any) => {
+    const handleReaction = ({ messageId, emoji, userId }: any) => {
+      console.log("[SOCKET] Received reaction:", emoji, "from", userId);
       setMessages(current => current.map(m => {
         if (m.id === messageId) {
           const reactions = m.reactions || [];
@@ -235,29 +234,49 @@ export const FluxApp = () => {
         }
         return m;
       }));
-    });
-    socket.socket.on("message:delete", ({ messageId }: any) => {
+    };
+
+    const handleDelete = ({ messageId }: any) => {
+      console.log("[SOCKET] Received delete for message:", messageId);
       setMessages(current => current.filter(m => m.id !== messageId));
-    });
-    
+    };
+
+    const handleTyping = ({ chatId: tChatId, userName, isTyping }: any) => {
+      setTypingUsers(prev => {
+        const current = prev[tChatId] || [];
+        if (isTyping && !current.includes(userName)) {
+          return { ...prev, [tChatId]: [...current, userName] };
+        } else if (!isTyping) {
+          return { ...prev, [tChatId]: current.filter(u => u !== userName) };
+        }
+        return prev;
+      });
+      if (isTyping) {
+        setTimeout(() => {
+          setTypingUsers(prev => ({
+            ...prev,
+            [tChatId]: (prev[tChatId] || []).filter(u => u !== userName)
+          }));
+        }, 3000);
+      }
+    };
+
+    s.on("new_message", handleNewMessage);
+    s.on("chat:new", handleNewChat);
+    s.on("message:reaction", handleReaction);
+    s.on("message:delete", handleDelete);
+    s.on("users:online", (ids: string[]) => setOnlineUserIds(ids));
+    s.on("presence:typing", handleTyping);
+
     return () => {
-      socket.socket?.off("new_message", handleNewMessage);
-      socket.socket?.off("chat:new", handleNewChat);
-      socket.socket?.off("message:reaction");
-      socket.socket?.off("message:delete");
+      s.off("new_message", handleNewMessage);
+      s.off("chat:new", handleNewChat);
+      s.off("message:reaction", handleReaction);
+      s.off("message:delete", handleDelete);
+      s.off("users:online");
+      s.off("presence:typing", handleTyping);
     };
   }, [socket.socket, chatId]);
-
-  const chats = useMemo(() => {
-    return chatsData.filter((chat) => {
-      const folderMatch = folder === "ALL" || chat.folder === folder;
-      const searchMatch =
-        !search ||
-        chat.title.toLowerCase().includes(search.toLowerCase()) ||
-        chat.lastMessagePreview.toLowerCase().includes(search.toLowerCase());
-      return folderMatch && searchMatch;
-    });
-  }, [chatsData, folder, search]);
 
   const [onlineUserIds, setOnlineUserIds] = useState<string[]>([]);
   const [typingUsers, setTypingUsers] = useState<Record<string, string[]>>({}); // chatId -> [userName]
@@ -275,14 +294,15 @@ export const FluxApp = () => {
 
   const visibleMessages = useMemo(() => {
     if (!activeChat) return [];
-    let filtered = messages.filter((message) => message.chatId === activeChat.id);
+    let filtered = messages.filter((message) => message && message.chatId === activeChat.id);
     if (messageSearch) {
       const searchLower = messageSearch.toLowerCase();
-      filtered = filtered.filter(m => 
-        (m.decryptedBody && m.decryptedBody.toLowerCase().includes(searchLower)) ||
-        (m.encryptedBody && m.encryptedBody.toLowerCase().includes(searchLower)) ||
-        (m.senderName && m.senderName.toLowerCase().includes(searchLower))
-      );
+      filtered = filtered.filter(m => {
+        if (!m) return false;
+        const body = (m.decryptedBody || m.encryptedBody || "").toLowerCase();
+        const sender = (m.senderName || "").toLowerCase();
+        return body.includes(searchLower) || sender.includes(searchLower);
+      });
     }
     return filtered;
   }, [messages, activeChat, messageSearch]);
@@ -290,7 +310,6 @@ export const FluxApp = () => {
   const startCall = useCallback((mode: "audio" | "video") => {
     if (!activeChat || !session?.user?.id) return;
     
-    // Получаем список участников чата, чтобы найти ID собеседника
     fetch(`/api/chats/${activeChat.id}/members`)
       .then(res => res.json())
       .then(members => {
@@ -298,17 +317,14 @@ export const FluxApp = () => {
         if (other) {
           call.start(activeChat.id, other.userId, session.user?.name || "Anonymous", mode);
         } else {
-          // Если это чат с самим собой или ошибка — звоним в комнату чата
           call.start(activeChat.id, activeChat.id, session.user?.name || "Anonymous", mode);
         }
       })
       .catch(() => {
-        // Фолбэк на комнатный звонок если API упал
         call.start(activeChat.id, activeChat.id, session.user?.name || "Anonymous", mode);
       });
   }, [activeChat, session?.user, call]);
 
-  // Typing logic
   const handleTyping = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
     if (socket.socket && activeChat) {
@@ -322,23 +338,18 @@ export const FluxApp = () => {
 
   const [replyTo, setReplyTo] = useState<FluxMessage | null>(null);
 
-  // Reaction logic
   const addReaction = (messageId: string, emoji: string) => {
     if (socket.socket && activeChat && session?.user?.id) {
       const userId = session.user.id;
-      
       socket.socket.emit("message:reaction", {
         messageId,
         chatId: activeChat.id,
         emoji,
         userId
       });
-
-      // Локальное обновление с ограничением: 1 пользователь = 1 реакция на сообщение
       setMessages(current => current.map(m => {
         if (m.id === messageId) {
           const reactions = m.reactions || [];
-          // Удаляем старую реакцию этого пользователя, если она была
           const otherReactions = reactions.filter(r => r.userId !== userId);
           return { ...m, reactions: [...otherReactions, { emoji, userId }] };
         }
@@ -360,59 +371,16 @@ export const FluxApp = () => {
     }
   };
 
-  // Handle incoming socket events
-  useEffect(() => {
-    if (!socket.socket) return;
-
-    const s = socket.socket;
-
-    s.on("users:online", (ids: string[]) => setOnlineUserIds(ids));
-
-    s.on("presence:typing", ({ chatId: tChatId, userName, isTyping }: any) => {
-      setTypingUsers(prev => {
-        const current = prev[tChatId] || [];
-        if (isTyping && !current.includes(userName)) {
-          return { ...prev, [tChatId]: [...current, userName] };
-        } else if (!isTyping) {
-          return { ...prev, [tChatId]: current.filter(u => u !== userName) };
-        }
-        return prev;
-      });
-      // Auto-clear typing after 3s
-      if (isTyping) {
-        setTimeout(() => {
-          setTypingUsers(prev => ({
-            ...prev,
-            [tChatId]: (prev[tChatId] || []).filter(u => u !== userName)
-          }));
-        }, 3000);
-      }
+  const chats = useMemo(() => {
+    return chatsData.filter((chat) => {
+      const folderMatch = folder === "ALL" || chat.folder === folder;
+      const searchMatch =
+        !search ||
+        chat.title.toLowerCase().includes(search.toLowerCase()) ||
+        (chat.lastMessagePreview && chat.lastMessagePreview.toLowerCase().includes(search.toLowerCase()));
+      return folderMatch && searchMatch;
     });
-
-    s.on("message:reaction", ({ messageId, emoji, userId }: any) => {
-      console.log("[SOCKET] Received reaction:", emoji, "from", userId);
-      setMessages(current => current.map(m => {
-        if (m.id === messageId) {
-          const reactions = m.reactions || [];
-          // Удаляем старую реакцию этого пользователя, если она была (синхронизация)
-          const otherReactions = reactions.filter(r => r.userId !== userId);
-          return { ...m, reactions: [...otherReactions, { emoji, userId }] };
-        }
-        return m;
-      }));
-    });
-
-    s.on("message:delete", ({ messageId }: any) => {
-      setMessages(current => current.filter(m => m.id !== messageId));
-    });
-
-    return () => {
-      s.off("users:online");
-      s.off("presence:typing");
-      s.off("message:reaction");
-      s.off("message:delete");
-    };
-  }, [socket.socket]);
+  }, [chatsData, folder, search]);
 
   const handleFileUpload = useCallback(async (file: File) => {
     if (!activeChat || !session?.user?.id) return;
@@ -591,20 +559,24 @@ export const FluxApp = () => {
           onReject={call.rejectCall}
         />
       )}
-      <CallOverlay 
-                    active={call.inCall} 
-                    mode={call.mode} 
-                    onEnd={call.end} 
-                    onShare={call.shareScreen}
-                    localStream={call.localStream}
-                    remoteStream={call.remoteStream}
-                    muted={call.muted}
-                    cameraOff={call.cameraOff}
-                    toggleMute={call.toggleMute}
-                    toggleCamera={call.toggleCamera}
-                    callStatus={call.callStatus}
-                    failReason={call.failReason}
-                  />
+      <AnimatePresence>
+        {call.inCall && (
+          <CallOverlay 
+            active={call.inCall} 
+            mode={call.mode} 
+            onEnd={call.end} 
+            onShare={call.shareScreen}
+            localStream={call.localStream}
+            remoteStream={call.remoteStream}
+            muted={call.muted}
+            cameraOff={call.cameraOff}
+            toggleMute={call.toggleMute}
+            toggleCamera={call.toggleCamera}
+            callStatus={call.callStatus}
+            failReason={call.failReason}
+          />
+        )}
+      </AnimatePresence>
       <CreateChatModal
         isOpen={isCreateChatOpen}
         onClose={() => setIsCreateChatOpen(false)}
@@ -625,16 +597,16 @@ export const FluxApp = () => {
               <FolderTabs active={folder} onSelect={setFolder} />
               <NeonDivider />
               <ChatList>
-                {chats.map((chat) => (
-                  <ChatListItem 
-                    key={chat.id} 
-                    chat={chat} 
-                    active={chat.id === chatId} 
-                    onClick={() => setChatId(chat.id)} 
-                    isOnline={onlineUserIds.includes(chat.id)}
-                  />
-                ))}
-              </ChatList>
+                  {chats.map((chat) => (
+                    <ChatListItem
+                      key={chat.id}
+                      chat={chat}
+                      active={chatId === chat.id}
+                      onClick={() => setChatId(chat.id)}
+                      isOnline={chat.otherUserId ? onlineUserIds.includes(chat.otherUserId) : false}
+                    />
+                  ))}
+                </ChatList>
             </Sidebar>
 
             {activeChat ? (
