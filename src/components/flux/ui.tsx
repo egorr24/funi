@@ -481,61 +481,61 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
       canvas.width = img.width * scale;
       canvas.height = img.height * scale;
 
-      // ИНВЕРСНЫЙ ФАНТОМ (Neural Ghost v8: Light Trap)
-      // Ослепляем камеру белым фоном, пряча инвертированную картинку в тенях
+      // БЕЛЫЙ СТРОБОСКОП (Neural Ghost v9: White Strobe)
+      // Чередуем ослепляюще белые кадры и изображение для обмана сенсора через POV
       const sliceCount = 128; 
 
       const render = () => {
         frameCounter.current++;
         const sliceWidth = canvas.width / sliceCount;
         
-        // СВЕТОВАЯ ЛОВУШКА: Ослепительно белый фон заставляет камеру снижать ISO/Экспозицию
-        ctx.fillStyle = "#fff";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // ОПРЕДЕЛЯЕМ ФАЗУ: Вспышка или Изображение
+        // Камера зафиксирует либо белый лист, либо пересвеченную кашу
+        const isStrobeFrame = frameCounter.current % 2 === 0;
 
-        // ТЕХНОЛОГИЯ «SHADOW GHOSTING»
-        const phase = frameCounter.current % 2;
-        
-        // Динамическая яркость фона (Anti-HDR Flicker)
-        const bgFlicker = 0.95 + Math.sin(frameCounter.current * 0.3) * 0.05;
-        ctx.fillStyle = `rgba(255, 255, 255, ${bgFlicker})`;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        for (let i = 0; i < sliceCount; i++) {
-          const x = i * sliceWidth;
-          const isMainPhase = (i % 2 === phase);
+        if (isStrobeFrame) {
+          // ФАЗА А: Ослепляющий белый (Exposure Reset)
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
           
-          if (isMainPhase) {
-            // Инвертируем картинку (Негатив) и делаем её полупрозрачной
-            // Глаз видит темные детали на белом, камера считает их шумом в тенях
-            ctx.filter = `invert(1) contrast(1.4) brightness(0.7)`;
-            ctx.globalAlpha = 0.15; // Очень низкая прозрачность для ослепления камеры
-          } else {
-            // Вторая фаза еще слабее для поддержания структуры в глазу
-            ctx.filter = `invert(1) contrast(1.1) brightness(0.5)`;
-            ctx.globalAlpha = 0.05;
+          // Добавляем микро-шум в белый кадр для сбития автофокуса
+          ctx.fillStyle = "rgba(200, 200, 200, 0.1)";
+          for(let i=0; i<20; i++) {
+            ctx.fillRect(Math.random()*canvas.width, Math.random()*canvas.height, 2, 2);
           }
-          
-          ctx.drawImage(
-            img, 
-            (i * img.width) / sliceCount, 0, img.width / sliceCount, img.height,
-            x, 0, sliceWidth, canvas.height
-          );
+        } else {
+          // ФАЗА Б: Отрисовка изображения (Shadow Phase)
+          // Очищаем светло-серым, чтобы уменьшить контраст для камеры
+          ctx.fillStyle = "#eee";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          const phase = Math.floor(frameCounter.current / 2) % 2;
+
+          for (let i = 0; i < sliceCount; i++) {
+            const x = i * sliceWidth;
+            const isMainPhase = (i % 2 === phase);
+            
+            if (isMainPhase) {
+              // Рисуем картинку с низким контрастом, чтобы она "растворилась" в белых кадрах для камеры
+              ctx.filter = `contrast(0.8) brightness(0.9) saturate(1.2)`;
+              ctx.globalAlpha = 0.7; // Для глаза это будет выглядеть как ~35% яркости из-за стробоскопа
+            } else {
+              ctx.globalAlpha = 0.1;
+            }
+            
+            ctx.drawImage(
+              img, 
+              (i * img.width) / sliceCount, 0, img.width / sliceCount, img.height,
+              x, 0, sliceWidth, canvas.height
+            );
+          }
         }
+
         ctx.filter = 'none';
         ctx.globalAlpha = 1.0;
 
-        // WHITE NOISE BOMB (Burn the sensor)
-        // Высокочастотный белый шум, который выжигает пиксели на матрице камеры
-        ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255, 255, 255, 0.1)' : 'rgba(200, 200, 200, 0.05)';
-        for (let i = 0; i < 50; i++) {
-          const rx = Math.random() * canvas.width;
-          const ry = Math.random() * canvas.height;
-          ctx.fillRect(rx, ry, 2, 2);
-        }
-
-        // BAYER DESYNC JITTER
-        const jitter = 0.5 + Math.random() * 1.5;
+        // ULTRA-FAST JITTER
+        const jitter = 0.1 + Math.random() * 0.9;
         setTimeout(() => {
             animationRef.current = requestAnimationFrame(render);
         }, jitter); 
