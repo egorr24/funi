@@ -443,7 +443,7 @@ export const FluxApp = () => {
     });
   }, [chatsData, folder, search]);
 
-  const handleFileUpload = useCallback(async (file: File) => {
+  const handleFileUpload = useCallback(async (file: File, isSecure: boolean = false) => {
     if (!activeChat || !session?.user?.id) return;
     
     // Оптимистичное медиа-сообщение
@@ -453,12 +453,13 @@ export const FluxApp = () => {
       chatId: activeChat.id,
       senderId: session.user.id,
       senderName: session.user.name || "You",
-      encryptedBody: "Uploading...",
-      decryptedBody: "Uploading...",
+      encryptedBody: isSecure ? "Secure Image" : "Uploading...",
+      decryptedBody: isSecure ? "Secure Image" : "Uploading...",
       encryptedAes: "unsupported",
       iv: "unsupported",
       createdAt: new Date().toISOString(),
       status: "SENT",
+      isSecure,
       reactions: [],
       mediaType: file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'audio',
     };
@@ -481,11 +482,12 @@ export const FluxApp = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             chatId: activeChat.id,
-            encryptedBody: `Sent a ${type}`,
+            encryptedBody: isSecure ? `Sent a secure ${type}` : `Sent a ${type}`,
             encryptedAes: "unsupported",
             iv: "unsupported",
             mediaUrl: url,
             mediaType: type,
+            isSecure,
           }),
         });
 
@@ -750,7 +752,17 @@ export const FluxApp = () => {
                         input.accept = "image/*,video/*,audio/*";
                         input.onchange = (e) => {
                           const file = (e.target as HTMLInputElement).files?.[0];
-                          if (file) handleFileUpload(file);
+                          if (file) handleFileUpload(file, false);
+                        };
+                        input.click();
+                      }}
+                      onAttachSecure={() => {
+                        const input = document.createElement("input");
+                        input.type = "file";
+                        input.accept = "image/*,video/*,audio/*";
+                        input.onchange = (e) => {
+                          const file = (e.target as HTMLInputElement).files?.[0];
+                          if (file) handleFileUpload(file, true);
                         };
                         input.click();
                       }}

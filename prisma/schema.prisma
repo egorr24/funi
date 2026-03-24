@@ -75,6 +75,7 @@ model Message {
   mediaType     String?
   waveform      String?
   replyToId     String?
+  isSecure      Boolean       @default(false)
   status        MessageStatus @default(QUEUED)
   deliveredAt   DateTime?
   readAt        DateTime?

@@ -29,6 +29,7 @@ export type FluxMessage = {
   mediaUrl?: string;
   mediaType?: MediaKind;
   waveform?: number[];
+  isSecure?: boolean;
   reactions: FluxReaction[];
 };
 

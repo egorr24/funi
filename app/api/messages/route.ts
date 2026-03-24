@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
       mediaUrl: m.mediaUrl,
       mediaType: m.mediaType,
       waveform: m.waveform,
+      isSecure: m.isSecure,
       createdAt: m.createdAt.toISOString(),
       status: m.status,
       reactions: m.reactions.map(r => ({
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { chatId, encryptedBody, encryptedAes, iv, mediaUrl, mediaType, waveform, replyToId } = body;
+    const { chatId, encryptedBody, encryptedAes, iv, mediaUrl, mediaType, waveform, replyToId, isSecure } = body;
 
     if (!chatId || !encryptedBody || !encryptedAes || !iv) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -113,6 +114,7 @@ export async function POST(request: NextRequest) {
         mediaType,
         waveform,
         replyToId,
+        isSecure: !!isSecure,
         status: "SENT",
       },
       include: {
@@ -131,6 +133,7 @@ export async function POST(request: NextRequest) {
       encryptedBody: message.encryptedBody,
       encryptedAes: message.encryptedAes,
       iv: message.iv,
+      isSecure: message.isSecure,
       createdAt: message.createdAt.toISOString(),
       status: message.status,
       reactions: [],

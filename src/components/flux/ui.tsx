@@ -413,6 +413,31 @@ export const MessageScroll = ({ children }: PropsWithChildren) => (
   </motion.div>
 );
 
+export const MoireOverlay = () => (
+  <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl z-10">
+    <motion.div 
+      className="absolute inset-[-100%] opacity-40"
+      animate={{ 
+        x: ["-1%", "1%"],
+        y: ["-1%", "1%"]
+      }}
+      transition={{ 
+        duration: 0.05, 
+        repeat: Infinity, 
+        repeatType: "reverse" 
+      }}
+      style={{
+        backgroundImage: `
+          repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255,255,255,0.1) 1px, rgba(255,255,255,0.1) 2px),
+          repeating-linear-gradient(90deg, transparent, transparent 1px, rgba(255,255,255,0.1) 1px, rgba(255,255,255,0.1) 2px)
+        `,
+        backgroundSize: '3px 3px'
+      }}
+    />
+    <div className="absolute inset-0 bg-gradient-to-tr from-violet-500/10 via-transparent to-emerald-500/10 mix-blend-overlay" />
+  </div>
+);
+
 export const MessageBubble = ({ 
   message, 
   mine,
@@ -486,13 +511,11 @@ export const MessageBubble = ({
       {message.mediaType === "image" && message.mediaUrl && (
         <div className="relative overflow-hidden rounded-xl mb-2 cursor-pointer group/img" onClick={() => onImageClick?.(message.mediaUrl!)}>
           <img src={message.mediaUrl} alt="media" className="max-h-60 w-full object-cover transition-transform group-hover/img:scale-105" />
-          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/img:opacity-100 transition-opacity grid place-items-center">
+          {message.isSecure && <MoireOverlay />}
+          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/img:opacity-100 transition-opacity grid place-items-center z-20">
             <Maximize2 className="h-6 w-6 text-white" />
           </div>
         </div>
-      )}
-      {message.mediaType === "video" && message.mediaUrl && (
-        <video src={message.mediaUrl} controls className="rounded-xl mb-2 max-h-60 w-full" />
       )}
       {message.mediaType === "audio" && message.mediaUrl && (
         <div className="flex items-center gap-3 mb-2 bg-black/20 p-3 rounded-2xl">
@@ -682,6 +705,7 @@ export const Composer = ({
   onChange,
   onSend,
   onAttach,
+  onAttachSecure,
   onVoiceStart,
   isRecording = false
 }: {
@@ -689,18 +713,66 @@ export const Composer = ({
   onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onSend: () => void;
   onAttach?: () => void;
+  onAttachSecure?: () => void;
   onVoiceStart?: () => void;
   isRecording?: boolean;
-}) => (
-  <div className="p-4 bg-zinc-950/40 backdrop-blur-xl border-t border-white/5 flex items-end gap-3 z-10">
-    <button 
-      onClick={onAttach}
-      className="p-3 hover:bg-white/5 rounded-2xl text-zinc-400 hover:text-white transition-all group"
-    >
-      <Paperclip className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-    </button>
-    
-    <div className="flex-1 relative group">
+}) => {
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
+
+  return (
+    <div className="p-4 bg-zinc-950/40 backdrop-blur-xl border-t border-white/5 flex items-end gap-3 z-10 relative">
+      <div className="relative">
+        <button 
+          onClick={() => setShowAttachMenu(!showAttachMenu)}
+          className={`p-3 rounded-2xl transition-all group ${showAttachMenu ? "bg-violet-500/20 text-violet-400" : "hover:bg-white/5 text-zinc-400 hover:text-white"}`}
+        >
+          <Paperclip className={`w-5 h-5 transition-transform ${showAttachMenu ? "rotate-45" : "group-hover:rotate-12"}`} />
+        </button>
+
+        <AnimatePresence>
+          {showAttachMenu && (
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.9 }}
+              className="absolute bottom-16 left-0 w-56 bg-zinc-900 border border-white/10 rounded-2xl p-2 shadow-2xl z-50"
+            >
+              <button
+                onClick={() => {
+                  onAttach?.();
+                  setShowAttachMenu(false);
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors text-left"
+              >
+                <div className="h-8 w-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400">
+                  <Maximize2 className="h-4 w-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold">Обычное фото</div>
+                  <div className="text-[10px] text-zinc-500 italic">Стандартная отправка</div>
+                </div>
+              </button>
+              <button
+                onClick={() => {
+                  onAttachSecure?.();
+                  setShowAttachMenu(false);
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-violet-500/10 transition-colors text-left group"
+              >
+                <div className="h-8 w-8 rounded-lg bg-violet-500/20 flex items-center justify-center text-violet-400 group-hover:bg-violet-500 group-hover:text-white transition-colors">
+                  <Shield className="h-4 w-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-violet-400">Скрытое (Муар)</div>
+                  <div className="text-[10px] text-zinc-500 italic">Защита от пересъемки</div>
+                </div>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+      
+      <div className="flex-1 relative group">
       <textarea
         value={value}
         onChange={onChange}
