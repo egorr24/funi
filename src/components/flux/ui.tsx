@@ -481,17 +481,22 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // 2-ФАЗНАЯ ТЕМПОРАЛЬНАЯ СБОРКА С АДАПТИВНЫМ ЗАПОЛНЕНИЕМ
-        // Это восстанавливает яркость для глаза до 95%, но сохраняет 90% контрастности для камеры
+        // ТЕХНОЛОГИЯ «PERSISTENCE OF VISION» (POV-COLOR-FLIP)
+        // Каждое мгновение цвета инвертируются. Глаз усредняет их в норму, камера - в мусор.
+        const povPhase = frameCounter.current % 2;
+        
+        // 2-ФАЗНАЯ ТЕМПОРАЛЬНАЯ СБОРКА С POV-ИНВЕРСИЕЙ
         const phase = frameCounter.current % 2;
         
         for (let i = 0; i < sliceCount; i++) {
           const x = i * sliceWidth;
           const isMainPhase = (i % 2 === phase);
           
-          // Адаптивная прозрачность: 100% для активной фазы, 15% для пассивной
-          // Глаз видит почти целую картинку, камера - огромную разницу в яркости полос
-          ctx.globalAlpha = isMainPhase ? 1.0 : 0.15;
+          // POV-Инверсия: инвертируем всё изображение на каждом кадре для сенсора
+          // Для глаза: (Positive + Negative) / 2 = сероватая, но разборчивая картинка
+          // Для камеры: Либо негатив, либо позитив, либо каша
+          ctx.filter = povPhase === 0 ? 'none' : 'invert(1) hue-rotate(180deg)';
+          ctx.globalAlpha = isMainPhase ? 1.0 : 0.05;
           
           ctx.drawImage(
             img, 
@@ -499,21 +504,22 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
             x, 0, sliceWidth, canvas.height
           );
         }
+        ctx.filter = 'none';
         ctx.globalAlpha = 1.0;
 
-        // БИПОЛЯРНЫЙ КВАНТОВЫЙ ШУМ (Самоотмена для глаза)
-        // На каждом кадре шум меняет полярность. Глаз усредняет его в 0, камера видит шум.
-        ctx.globalCompositeOperation = 'overlay';
-        const noisePhase = frameCounter.current % 2 === 0 ? 1 : -1;
-        const noiseColor = 127 + (Math.random() * 128 * noisePhase);
-        ctx.fillStyle = `rgba(${noiseColor}, ${noiseColor}, ${noiseColor}, 0.08)`;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.globalCompositeOperation = 'source-over';
+        // SPATIAL ALIASING BAIT (Генератор неустранимого муара)
+        // Шахматный паттерн из микро-точек, меняющийся каждый кадр
+        ctx.fillStyle = povPhase === 0 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)';
+        for (let y = 0; y < canvas.height; y += 2) {
+          for (let x = (y % 4); x < canvas.width; x += 4) {
+            ctx.fillRect(x, y, 1, 1);
+          }
+        }
 
-        // LUMA-FLICKER: Микро-вибрация яркости для сбития автоэкспозиции
-        const flicker = 0.95 + (Math.sin(frameCounter.current * 0.5) * 0.05);
-        ctx.globalCompositeOperation = 'multiply';
-        ctx.fillStyle = `rgba(255, 255, 255, ${flicker})`;
+        // HDR OVERDRIVE: Вспышки яркости, выбивающие экспозицию (Anti-HDR)
+        const hdrBoost = Math.sin(frameCounter.current * 0.8) * 0.1;
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0, hdrBoost)})`;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.globalCompositeOperation = 'source-over';
 
