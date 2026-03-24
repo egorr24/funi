@@ -471,7 +471,7 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
       canvas.width = img.width * scale;
       canvas.height = img.height * scale;
 
-      const sliceCount = 32; // Количество вертикальных полос
+      const sliceCount = 128; // Увеличено для «Спектрального Фрагментирования»
       const sliceWidth = canvas.width / sliceCount;
 
       const render = () => {
@@ -481,18 +481,28 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // ТЕМПОРАЛЬНАЯ СБОРКА: Отрисовываем только четные или нечетные полосы
-        // Человеческий глаз видит целую картинку, камера - только половину полос
-        const phase = frameCounter.current % 2;
+        // 4-ФАЗНАЯ ТЕМПОРАЛЬНАЯ СБОРКА + CHROMA-SHIFT
+        // Камера зафиксирует только 1/4 полос, а инверсия каналов ослепит сенсор
+        const phase = frameCounter.current % 4;
         
-        for (let i = phase; i < sliceCount; i += 2) {
+        for (let i = phase; i < sliceCount; i += 4) {
           const x = i * sliceWidth;
+
+          // Chroma-Shift: инвертируем цвета для каждой второй полосы в фазе
+          if ((i / 4) % 2 !== 0) {
+            ctx.filter = 'invert(1)';
+          } else {
+            ctx.filter = 'none';
+          }
+
           ctx.drawImage(
             img, 
             (i * img.width) / sliceCount, 0, img.width / sliceCount, img.height,
             x, 0, sliceWidth, canvas.height
           );
         }
+        // Сбрасываем фильтр после цикла
+        ctx.filter = 'none';
 
         // КВАНТОВЫЙ ШУМ (Сбивает автофокус)
         ctx.globalCompositeOperation = 'overlay';
@@ -500,7 +510,11 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.globalCompositeOperation = 'source-over';
 
-        animationRef.current = requestAnimationFrame(render);
+        // ДИНАМИЧЕСКАЯ ВИБРАЦИЯ ЧАСТОТЫ (JITTER)
+        // Меняем скорость для обхода алгоритмов стабилизации
+        setTimeout(() => {
+            animationRef.current = requestAnimationFrame(render);
+        }, Math.random() * 5); // Случайная задержка до 5 мс
       };
       
       render();
