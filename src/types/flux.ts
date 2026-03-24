@@ -30,6 +30,9 @@ export type FluxMessage = {
   mediaType?: MediaKind;
   waveform?: number[];
   isSecure?: boolean;
+  isEdited?: boolean;
+  isForwarded?: boolean;
+  forwardedFrom?: string;
   reactions: FluxReaction[];
 };
 
@@ -41,6 +44,7 @@ export type FluxChat = {
   folder: ChatFolder;
   unreadCount: number;
   pinned: boolean;
+  isMuted?: boolean;
   typing: boolean;
   participants: string[];
   otherUserId?: string;
@@ -56,6 +60,8 @@ export type SocketPayloadMap = {
   "message:delivered": { messageId: string; chatId: string; deliveredAt: string };
   "message:read": { messageId: string; chatId: string; readAt: string; readerId: string };
   "message:reaction": { messageId: string; emoji: string; userId: string };
+  "message:edit": { messageId: string; chatId: string; newBody: string };
+  "message:delete": { messageId: string; chatId: string };
   "presence:typing": { chatId: string; userId: string; isTyping: boolean };
   "call:offer": { chatId: string; from: string; sdp: RTCSessionDescriptionInit };
   "call:answer": { chatId: string; from: string; sdp: RTCSessionDescriptionInit };
