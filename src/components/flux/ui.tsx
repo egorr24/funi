@@ -415,55 +415,107 @@ export const MessageScroll = ({ children }: PropsWithChildren) => (
 
 export const MoireOverlay = ({ viewerName }: { viewerName?: string }) => (
   <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl z-30 select-none">
-    {/* POV-ГЛУШИЛКА (Persistence of Vision Jammer) */}
-    {/* Сверхбыстрое переключение инверсии - для глаза это серый фон, для камеры - негатив или позитив */}
+    {/* CHROMA JAMMER: Сдвиг цветовых каналов на высокой частоте */}
+    {/* Для глаза это легкий шум, для камеры - неверная интерпретация цветов из-за Bayer-фильтра */}
     <motion.div 
-      className="absolute inset-0 bg-white mix-blend-difference"
-      animate={{ opacity: [0, 1, 0] }}
+      className="absolute inset-0 opacity-20 mix-blend-color"
+      animate={{ 
+        backgroundColor: ["#ff0000", "#00ff00", "#0000ff", "#ff0000"]
+      }}
       transition={{ 
-        duration: 0.016, // ~60fps - критическая частота для камер
+        duration: 0.02, 
         repeat: Infinity,
         ease: "linear"
       }}
     />
 
-    {/* EXPOSURE JAMMER (Взлом экспозиции) */}
-    {/* Медленные, но мощные изменения яркости в разных углах, заставляющие камеру "дышать" */}
+    {/* ДИНАМИЧЕСКИЙ МИКРО-КОНТРАСТ: Ломает алгоритмы резкости ИИ в смартфонах */}
     <motion.div 
-      className="absolute inset-[-50%] bg-gradient-to-tr from-white/20 via-transparent to-white/20"
+      className="absolute inset-0 opacity-30 mix-blend-overlay"
       animate={{ 
-        rotate: [0, 360],
-        opacity: [0.3, 0.6, 0.3]
+        backgroundPosition: ["0% 0%", "100% 100%"]
       }}
-      transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-    />
-
-    {/* ТОНКАЯ СЕТКА ПРОТИВ РОЛЛИНГ-ШАТТЕРА */}
-    <motion.div 
-      className="absolute inset-0 opacity-30"
-      animate={{ y: ["-2%", "2%"] }}
-      transition={{ duration: 0.05, repeat: Infinity, repeatType: "reverse" }}
+      transition={{ duration: 0.05, repeat: Infinity, ease: "linear" }}
       style={{
-        backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255,255,255,0.5) 1px, rgba(255,255,255,0.5) 2px)`,
-        backgroundSize: '100% 3px'
+        backgroundImage: `repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 1px, transparent 2px)`,
+        backgroundSize: '3px 3px'
       }}
     />
 
-    {/* ЗАЩИТНЫЙ ВОДЯНОЙ ЗНАК */}
-    <div className="absolute inset-0 flex flex-col justify-around rotate-[-15deg] scale-125 opacity-20">
-      {[1, 2, 3, 4, 5, 6].map(i => (
+    {/* ЖИВОЙ ВОДЯНОЙ ЗНАК: Постоянно движущиеся данные пользователя */}
+    <div className="absolute inset-0">
+      {[1, 2, 3].map(i => (
         <motion.div 
           key={i}
-          animate={{ x: i % 2 === 0 ? ["-10%", "10%"] : ["10%", "-10%"] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-          className="whitespace-nowrap text-[10px] font-black tracking-[0.8em] text-white uppercase"
+          className="absolute whitespace-nowrap text-[10px] font-black text-white/30 uppercase tracking-widest pointer-events-none"
+          animate={{ 
+            x: i === 1 ? ["-100%", "100%"] : i === 2 ? ["100%", "-100%"] : ["-50%", "50%"],
+            y: i === 1 ? "20%" : i === 2 ? "50%" : "80%"
+          }}
+          transition={{ 
+            duration: i === 1 ? 10 : i === 2 ? 12 : 15, 
+            repeat: Infinity, 
+            ease: "linear" 
+          }}
         >
-          {Array(10).fill(`• FLUX SECURITY • ${viewerName || 'ENCRYPTED'} • `).join("")}
+          {Array(5).fill(`PROTECTED BY FLUX • VIEWED BY ${viewerName || 'UNKNOWN USER'} • `).join("")}
         </motion.div>
       ))}
     </div>
+
+    {/* СКРЫТЫЙ ГРИД: Против склеивания панорам и ИИ-улучшения */}
+    <div 
+      className="absolute inset-0 opacity-10"
+      style={{
+        backgroundImage: `radial-gradient(circle, #fff 1px, transparent 1px)`,
+        backgroundSize: '15px 15px'
+      }}
+    />
   </div>
 );
+
+export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, revealed: boolean, viewerName?: string }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (!revealed || !url || !canvasRef.current) return;
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d', { alpha: false });
+    if (!ctx) return;
+
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = url;
+    img.onload = () => {
+      // Подгоняем размер под контейнер, сохраняя пропорции
+      const containerWidth = canvas.parentElement?.clientWidth || 400;
+      const scale = containerWidth / img.width;
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    };
+  }, [url, revealed]);
+
+  return (
+    <div className="relative w-full overflow-hidden">
+      <canvas 
+        ref={canvasRef} 
+        className={`w-full h-auto transition-all duration-700 ${!revealed ? "opacity-0 blur-3xl scale-110" : "opacity-100 blur-0 scale-100"}`}
+        onContextMenu={(e) => e.preventDefault()}
+      />
+      {!revealed && (
+        <div className="absolute inset-0 bg-zinc-950 flex flex-col items-center justify-center border border-white/5 rounded-xl">
+          <div className="h-12 w-12 rounded-2xl bg-violet-500/20 flex items-center justify-center mb-3">
+            <Shield className="h-6 w-6 text-violet-400" />
+          </div>
+          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Secret Object</p>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const MessageBubble = ({ 
   message, 
@@ -562,19 +614,13 @@ export const MessageBubble = ({
           }`}
           onClick={handleStartPeek}
           onContextMenu={(e) => message.isSecure && e.preventDefault()}
-          onDragStart={(e) => message.isSecure && e.preventDefault()}
         >
-          {/* СКРЫТИЕ ПРЯМОГО URL: Используем div с background-image для защищенных фото */}
+          {/* СКРЫТИЕ ПРЯМОГО URL ЧЕРЕЗ CANVAS ДЛЯ ЗАЩИЩЕННЫХ ФОТО */}
           {message.isSecure ? (
-            <div 
-              className={`w-full h-80 bg-center bg-cover transition-all duration-1000 ${
-                !isRevealed ? "opacity-0 blur-3xl scale-125" : "opacity-100 blur-0 scale-100"
-              }`}
-              style={{ 
-                backgroundImage: isRevealed ? `url(${message.mediaUrl})` : 'none',
-                WebkitUserSelect: 'none',
-                userSelect: 'none'
-              }}
+            <SecureCanvasImage 
+              url={message.mediaUrl} 
+              revealed={isRevealed} 
+              viewerName={viewerName}
             />
           ) : (
             <img 
@@ -588,23 +634,10 @@ export const MessageBubble = ({
           {/* СУПЕР-ЗАЩИТА ПРИ ПРОСМОТРЕ */}
           {message.isSecure && isRevealed && <MoireOverlay viewerName={viewerName} />}
           
-          {/* ЗАГЛУШКА ДО АКТИВАЦИИ */}
-          {message.isSecure && !isRevealed && (
-            <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-zinc-950 backdrop-blur-3xl border border-white/10">
-              <div className="h-16 w-16 rounded-[24px] bg-red-600/20 border border-red-500/40 flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(220,38,38,0.2)]">
-                <Shield className="h-8 w-8 text-red-500" />
-              </div>
-              <p className="text-[12px] font-black text-white uppercase tracking-[0.4em] mb-1">SENSOR BREAKER ACTIVE</p>
-              <p className="text-[9px] text-zinc-500 text-center px-8 leading-relaxed">
-                Защита от пересъемки. Ссылка на фото скрыта. Просмотр ограничен.
-              </p>
-            </div>
-          )}
-
           {/* ТАЙМЕР (ВЕРХНИЙ СЛОЙ) */}
           {peekTimer !== null && (
-            <div className="absolute top-3 right-3 z-50 px-3 py-1.5 rounded-full bg-red-600/90 backdrop-blur-md border border-red-400/50 text-[10px] font-black text-white shadow-[0_0_15px_rgba(220,38,38,0.5)] animate-pulse">
-              DESTRUCT IN {peekTimer}S
+            <div className="absolute top-3 right-3 z-50 px-2 py-1 rounded-lg bg-red-600/90 backdrop-blur-md text-[9px] font-black text-white shadow-xl">
+              {peekTimer}S
             </div>
           )}
         </div>
