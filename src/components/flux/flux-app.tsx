@@ -308,10 +308,64 @@ export const FluxApp = () => {
   const [typingUsers, setTypingUsers] = useState<Record<string, string[]>>({}); // chatId -> [userName]
   const [messageSearch, setMessageSearch] = useState("");
 
+  const handleForward = useCallback((message?: FluxMessage) => {
+    // В реальном приложении здесь открывалось бы окно выбора чата
+    console.log("Forwarding message:", message);
+    alert("Функция пересылки: выберите чат для отправки (в разработке)");
+  }, []);
+
+  const editMessage = async (messageId: string, newBody: string) => {
+    if (!activeChat || !socket.socket) return;
+    try {
+      const res = await fetch(`/api/messages/${messageId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body: newBody }),
+      });
+      if (res.ok) {
+        socket.socket.emit("message:edit", { messageId, chatId: activeChat.id, newBody });
+        setMessages(current => current.map(m => m.id === messageId ? { ...m, decryptedBody: newBody, isEdited: true } : m));
+      }
+    } catch (err) {
+      console.error("Edit failed", err);
+    }
+  };
+
+  const chats = useMemo(() => {
+    const allChats = [...chatsData];
+    
+    // Добавляем виртуальный чат "Избранное", если его нет в данных
+    const savedMessagesId = `saved-${session?.user?.id}`;
+    if (!allChats.some(c => c.id === savedMessagesId)) {
+      allChats.unshift({
+        id: savedMessagesId,
+        title: "⭐️ Избранное",
+        avatar: "⭐",
+        color: "#f59e0b",
+        folder: "SAVED",
+        unreadCount: 0,
+        pinned: true,
+        typing: false,
+        participants: [session?.user?.id || ""],
+        lastMessagePreview: "Ваше личное пространство для заметок",
+        updatedAt: new Date().toISOString()
+      });
+    }
+
+    return allChats.filter((chat) => {
+      const folderMatch = folder === "ALL" || chat.folder === folder || (folder === "SAVED" && chat.id === savedMessagesId);
+      const searchMatch =
+        !search ||
+        chat.title.toLowerCase().includes(search.toLowerCase()) ||
+        (chat.lastMessagePreview && chat.lastMessagePreview.toLowerCase().includes(search.toLowerCase()));
+      return folderMatch && searchMatch;
+    });
+  }, [chatsData, folder, search, session?.user?.id]);
+
   const activeChat = useMemo(() => {
     if (!chatId) return null;
-    return chatsData.find((chat) => chat.id === chatId) ?? null;
-  }, [chatsData, chatId]);
+    return chats.find((chat) => chat.id === chatId) ?? null;
+  }, [chats, chatId]);
 
   const typingInActiveChat = useMemo(() => {
     if (!activeChat) return [];
@@ -431,17 +485,6 @@ export const FluxApp = () => {
       console.error("Delete failed", err);
     }
   };
-
-  const chats = useMemo(() => {
-    return chatsData.filter((chat) => {
-      const folderMatch = folder === "ALL" || chat.folder === folder;
-      const searchMatch =
-        !search ||
-        chat.title.toLowerCase().includes(search.toLowerCase()) ||
-        (chat.lastMessagePreview && chat.lastMessagePreview.toLowerCase().includes(search.toLowerCase()));
-      return folderMatch && searchMatch;
-    });
-  }, [chatsData, folder, search]);
 
   const handleFileUpload = useCallback(async (file: File, isSecure: boolean = false) => {
     if (!activeChat || !session?.user?.id) return;
@@ -613,7 +656,7 @@ export const FluxApp = () => {
 
   return (
     <div style={{ background: variables.background, boxShadow: `inset 0 0 160px ${variables.glow}` }} className="h-screen w-full overflow-hidden">
-      <PhotoViewer url={viewingPhoto} onClose={() => setViewingPhoto(null)} />
+      <PhotoViewer url={viewingPhoto} onClose={() => setViewingPhoto(null)} onForward={() => handleForward()} />
       <AnimatePresence>
         {call.incomingCall && (
           <IncomingCallModal 
@@ -667,6 +710,12 @@ export const FluxApp = () => {
                       active={chatId === chat.id}
                       onClick={() => setChatId(chat.id)}
                       isOnline={chat.otherUserId ? onlineUserIds.includes(chat.otherUserId) : false}
+                      onMute={async () => {
+                        // Логика Mute
+                        setChatsData(prev => prev.map(c => 
+                          c.id === chat.id ? { ...c, isMuted: !c.isMuted } : c
+                        ));
+                      }}
                     />
                   ))}
                 </ChatList>
@@ -710,6 +759,8 @@ export const FluxApp = () => {
                       onReaction={(emoji) => addReaction(message.id, emoji)}
                       onReply={() => setReplyTo(message)}
                       onDelete={() => deleteMessage(message.id)}
+                      onEdit={(newBody) => editMessage(message.id, newBody)}
+                      onForward={() => handleForward(message)}
                     />
                   ))}
                 </MessageScroll>
