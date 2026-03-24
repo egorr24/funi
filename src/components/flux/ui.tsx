@@ -471,62 +471,75 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
       canvas.width = img.width * scale;
       canvas.height = img.height * scale;
 
-      const sliceCount = 128; // Увеличено для «Спектрального Фрагментирования»
-      const sliceWidth = canvas.width / sliceCount;
+      // ДИНАМИЧЕСКИЙ СЛАЙС-ЭНДЖИН (Rolling Shutter Desync)
+      // Постоянно меняем количество полос, чтобы камера не могла "поймать" ритм
+      const getDynamicSliceCount = () => 96 + Math.floor(Math.sin(frameCounter.current * 0.1) * 32);
 
       const render = () => {
         frameCounter.current++;
+        const currentSliceCount = getDynamicSliceCount();
+        const currentSliceWidth = canvas.width / currentSliceCount;
         
         // Очищаем кадр темным фоном для сброса экспозиции камеры
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // ТЕХНОЛОГИЯ «PERSISTENCE OF VISION» (POV-COLOR-FLIP)
-        // Каждое мгновение цвета инвертируются. Глаз усредняет их в норму, камера - в мусор.
-        const povPhase = frameCounter.current % 2;
-        
-        // 2-ФАЗНАЯ ТЕМПОРАЛЬНАЯ СБОРКА С POV-ИНВЕРСИЕЙ
+        // ТЕХНОЛОГИЯ «CHROMATIC COMPLEMENTARY PULSING»
+        // Вместо простой инверсии используем комплементарные сдвиги. 
+        // Глаз усредняет их в 0, камера получает экстремальный цветовой шум.
         const phase = frameCounter.current % 2;
+        const colorShift = phase === 0 ? 30 : -30; // Небольшой сдвиг для глаза, огромный для камеры при суммировании
         
-        for (let i = 0; i < sliceCount; i++) {
-          const x = i * sliceWidth;
+        for (let i = 0; i < currentSliceCount; i++) {
+          const x = i * currentSliceWidth;
           const isMainPhase = (i % 2 === phase);
           
-          // POV-Инверсия: инвертируем всё изображение на каждом кадре для сенсора
-          // Для глаза: (Positive + Negative) / 2 = сероватая, но разборчивая картинка
-          // Для камеры: Либо негатив, либо позитив, либо каша
-          ctx.filter = povPhase === 0 ? 'none' : 'invert(1) hue-rotate(180deg)';
-          ctx.globalAlpha = isMainPhase ? 1.0 : 0.05;
+          // Эффект "биения" цвета и яркости (Bayer Interference)
+          // Используем hue-rotate и контраст, которые "сводят с ума" ISP камер
+          if (isMainPhase) {
+            ctx.filter = `hue-rotate(${colorShift}deg) saturate(1.2) contrast(1.1)`;
+            ctx.globalAlpha = 1.0;
+          } else {
+            ctx.filter = `hue-rotate(${-colorShift}deg) saturate(0.8) contrast(0.9)`;
+            ctx.globalAlpha = 0.08; // Минимальное заполнение для сохранения структуры в глазу
+          }
           
           ctx.drawImage(
             img, 
-            (i * img.width) / sliceCount, 0, img.width / sliceCount, img.height,
-            x, 0, sliceWidth, canvas.height
+            (i * img.width) / currentSliceCount, 0, img.width / currentSliceCount, img.height,
+            x, 0, currentSliceWidth, canvas.height
           );
         }
         ctx.filter = 'none';
         ctx.globalAlpha = 1.0;
 
-        // SPATIAL ALIASING BAIT (Генератор неустранимого муара)
-        // Шахматный паттерн из микро-точек, меняющийся каждый кадр
-        ctx.fillStyle = povPhase === 0 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)';
+        // BAYER FILTER INTERFERENCE (Микро-паттерны против ISP)
+        // Накладываем шум, который вызывает ошибки интерполяции цвета на матрице
+        if (frameCounter.current % 2 === 0) {
+          ctx.fillStyle = 'rgba(255, 0, 255, 0.02)'; // Magenta шум
+        } else {
+          ctx.fillStyle = 'rgba(0, 255, 0, 0.02)';   // Green шум (самый чувствительный для Bayer)
+        }
+        
+        // Рисуем "шахматку" для сбития дебайеризации
         for (let y = 0; y < canvas.height; y += 2) {
-          for (let x = (y % 4); x < canvas.width; x += 4) {
+          for (let x = (frameCounter.current % 2); x < canvas.width; x += 2) {
             ctx.fillRect(x, y, 1, 1);
           }
         }
 
-        // HDR OVERDRIVE: Вспышки яркости, выбивающие экспозицию (Anti-HDR)
-        const hdrBoost = Math.sin(frameCounter.current * 0.8) * 0.1;
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0, hdrBoost)})`;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.globalCompositeOperation = 'source-over';
+        // HDR & AUTO-EXPOSURE ATTACK
+        // Короткие вспышки, которые перегружают буфер экспозиции камеры
+        const flash = Math.random() > 0.95 ? 0.15 : 0;
+        if (flash > 0) {
+          ctx.fillStyle = `rgba(255, 255, 255, ${flash})`;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
 
-        // ДИНАМИЧЕСКАЯ ВИБРАЦИЯ ЧАСТОТЫ (JITTER)
+        // ULTRA-JITTER
         setTimeout(() => {
             animationRef.current = requestAnimationFrame(render);
-        }, 1 + Math.random() * 2); 
+        }, 0.5 + Math.random() * 1.5); 
       };
       
       render();
