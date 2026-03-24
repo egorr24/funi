@@ -9,13 +9,28 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url);
-  const chatId = searchParams.get("chatId");
+  let chatId = searchParams.get("chatId");
 
   if (!chatId) {
     return NextResponse.json({ error: "chatId is required" }, { status: 400 });
   }
 
   try {
+    // Fallback для старых клиентских версий с виртуальным ID "saved-"
+    if (chatId.startsWith("saved-")) {
+      const savedChat = await prisma.chat.findFirst({
+        where: {
+          kind: "SAVED",
+          members: { some: { userId: session.user.id } }
+        }
+      });
+      if (savedChat) {
+        chatId = savedChat.id;
+      } else {
+        return NextResponse.json({ error: "Saved messages chat not found" }, { status: 404 });
+      }
+    }
+
     // Check if user is a member of the chat
     const membership = await prisma.chatMember.findUnique({
       where: {
@@ -83,10 +98,25 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { chatId, encryptedBody, encryptedAes, iv, mediaUrl, mediaType, waveform, replyToId, isSecure } = body;
+    let { chatId, encryptedBody, encryptedAes, iv, mediaUrl, mediaType, waveform, replyToId, isSecure } = body;
 
     if (!chatId || !encryptedBody || !encryptedAes || !iv) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    // Fallback для старых клиентских версий с виртуальным ID "saved-"
+    if (chatId.startsWith("saved-")) {
+      const savedChat = await prisma.chat.findFirst({
+        where: {
+          kind: "SAVED",
+          members: { some: { userId: session.user.id } }
+        }
+      });
+      if (savedChat) {
+        chatId = savedChat.id;
+      } else {
+        return NextResponse.json({ error: "Saved messages chat not found" }, { status: 404 });
+      }
     }
 
     // Check membership

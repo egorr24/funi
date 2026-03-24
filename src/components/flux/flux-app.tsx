@@ -332,40 +332,20 @@ export const FluxApp = () => {
   };
 
   const chats = useMemo(() => {
-    const allChats = [...chatsData];
-    
-    // Добавляем виртуальный чат "Избранное", если его нет в данных
-    const savedMessagesId = `saved-${session?.user?.id}`;
-    if (!allChats.some(c => c.id === savedMessagesId)) {
-      allChats.unshift({
-        id: savedMessagesId,
-        title: "⭐️ Избранное",
-        avatar: "⭐",
-        color: "#f59e0b",
-        folder: "SAVED",
-        unreadCount: 0,
-        pinned: true,
-        typing: false,
-        participants: [session?.user?.id || ""],
-        lastMessagePreview: "Ваше личное пространство для заметок",
-        updatedAt: new Date().toISOString()
-      });
-    }
-
-    return allChats.filter((chat) => {
-      const folderMatch = folder === "ALL" || chat.folder === folder || (folder === "SAVED" && chat.id === savedMessagesId);
+    return chatsData.filter((chat) => {
+      const folderMatch = folder === "ALL" || chat.folder === folder;
       const searchMatch =
         !search ||
         chat.title.toLowerCase().includes(search.toLowerCase()) ||
         (chat.lastMessagePreview && chat.lastMessagePreview.toLowerCase().includes(search.toLowerCase()));
       return folderMatch && searchMatch;
     });
-  }, [chatsData, folder, search, session?.user?.id]);
+  }, [chatsData, folder, search]);
 
   const activeChat = useMemo(() => {
     if (!chatId) return null;
-    return chats.find((chat) => chat.id === chatId) ?? null;
-  }, [chats, chatId]);
+    return chatsData.find((chat) => chat.id === chatId) ?? null;
+  }, [chatsData, chatId]);
 
   const typingInActiveChat = useMemo(() => {
     if (!activeChat) return [];

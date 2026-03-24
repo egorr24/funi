@@ -688,6 +688,8 @@ export const MessageBubble = ({
   onReaction,
   onReply,
   onDelete,
+  onEdit,
+  onForward,
   viewerName
 }: { 
   message: FluxMessage; 

@@ -9,6 +9,29 @@ export async function GET() {
   }
 
   try {
+    // 1. Ensure "Saved Messages" chat exists for this user
+    let savedChat = await prisma.chat.findFirst({
+      where: {
+        kind: "SAVED",
+        members: {
+          some: { userId: session.user.id }
+        }
+      }
+    });
+
+    if (!savedChat) {
+      savedChat = await prisma.chat.create({
+        data: {
+          title: "⭐️ Избранное",
+          kind: "SAVED",
+          isPinned: true,
+          members: {
+            create: { userId: session.user.id }
+          }
+        }
+      });
+    }
+
     const chatMemberships = await prisma.chatMember.findMany({
       where: { userId: session.user.id },
       include: {

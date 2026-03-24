@@ -12,6 +12,7 @@ enum ChatKind {
   WORK
   AI
   CHANNEL
+  SAVED
 }
 
 enum MessageStatus {
