@@ -806,7 +806,8 @@ export const Composer = ({
       </button>
     )}
   </div>
-);
+  );
+};
 
 export const MessageInput = ({
   value,
