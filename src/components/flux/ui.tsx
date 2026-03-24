@@ -417,50 +417,50 @@ export const MoireOverlay = ({ viewerName }: { viewerName?: string }) => (
   <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl z-30">
     {/* Сверхвысокочастотная сетка для муара */}
     <motion.div 
-      className="absolute inset-[-200%] opacity-60"
+      className="absolute inset-[-200%] opacity-80"
       animate={{ 
-        x: ["-2%", "2%"],
-        y: ["-2%", "2%"],
-        rotate: [0, 0.5, -0.5, 0]
+        x: ["-5%", "5%"],
+        y: ["-5%", "5%"],
+        rotate: [0, 1, -1, 0]
       }}
       transition={{ 
-        duration: 0.03, 
+        duration: 0.02, 
         repeat: Infinity, 
         repeatType: "reverse" 
       }}
       style={{
         backgroundImage: `
-          repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255,255,255,0.15) 1px, rgba(255,255,255,0.15) 2px),
-          repeating-linear-gradient(90deg, transparent, transparent 1px, rgba(0,0,0,0.2) 1px, rgba(0,0,0,0.2) 2px),
-          repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(168,85,247,0.1) 2px, rgba(168,85,247,0.1) 3px)
+          repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255,255,255,0.3) 1px, rgba(255,255,255,0.3) 2px),
+          repeating-linear-gradient(90deg, transparent, transparent 1px, rgba(0,0,0,0.4) 1px, rgba(0,0,0,0.4) 2px),
+          repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(168,85,247,0.2) 2px, rgba(168,85,247,0.2) 3px)
         `,
         backgroundSize: '2px 2px, 3px 3px, 5px 5px'
       }}
     />
 
-    {/* Высокочастотное мерцание яркости */}
+    {/* Высокочастотное мерцание яркости - УСИЛЕНО */}
     <motion.div 
       className="absolute inset-0 bg-white"
-      animate={{ opacity: [0, 0.07, 0] }}
-      transition={{ duration: 0.02, repeat: Infinity }}
+      animate={{ opacity: [0, 0.15, 0] }}
+      transition={{ duration: 0.015, repeat: Infinity }}
     />
 
-    {/* Динамический водяной знак */}
-    <div className="absolute inset-0 flex flex-col justify-around rotate-[-25deg] scale-150 opacity-20 select-none">
-      {[1, 2, 3, 4, 5].map(i => (
+    {/* Динамический водяной знак - УСИЛЕН */}
+    <div className="absolute inset-0 flex flex-col justify-around rotate-[-25deg] scale-150 opacity-40 select-none">
+      {[1, 2, 3, 4, 5, 6, 7].map(i => (
         <motion.div 
           key={i}
-          animate={{ x: i % 2 === 0 ? ["-20%", "20%"] : ["20%", "-20%"] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-          className="whitespace-nowrap text-[10px] font-black tracking-[0.5em] text-white uppercase"
+          animate={{ x: i % 2 === 0 ? ["-30%", "30%"] : ["30%", "-30%"] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+          className="whitespace-nowrap text-[12px] font-black tracking-[0.8em] text-white uppercase drop-shadow-lg"
         >
-          {Array(10).fill(`INTERNAL USE ONLY • ${viewerName || 'ENCRYPTED'} • `).join("")}
+          {Array(10).fill(`• ${viewerName || 'ENCRYPTED'} • UNAUTHORIZED PHOTO • `).join("")}
         </motion.div>
       ))}
     </div>
 
-    {/* Цветовая интерференция */}
-    <div className="absolute inset-0 bg-gradient-to-tr from-violet-500/20 via-transparent to-emerald-500/20 mix-blend-overlay animate-pulse" />
+    {/* Цветовой шум */}
+    <div className="absolute inset-0 bg-gradient-to-tr from-violet-600/30 via-transparent to-emerald-600/30 mix-blend-overlay animate-pulse" />
   </div>
 );
 
@@ -483,7 +483,45 @@ export const MessageBubble = ({
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isRevealed, setIsRevealed] = useState(false);
+  const [peekTimer, setPeekTimer] = useState<number | null>(null);
+  const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
+  const containerRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Обработка таймера и удаления
+  useEffect(() => {
+    if (peekTimer !== null && peekTimer > 0) {
+      const t = setTimeout(() => setPeekTimer(peekTimer - 1), 1000);
+      return () => clearTimeout(t);
+    } else if (peekTimer === 0) {
+      onDelete?.();
+    }
+  }, [peekTimer, onDelete]);
+
+  const handleStartPeek = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!message.isSecure || peekTimer !== null) return;
+    setPeekTimer(15); // 15 секунд на просмотр
+    setIsRevealed(true);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!isRevealed || !containerRef.current) return;
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    let clientX, clientY;
+    
+    if ('touches' in e) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+
+    const x = ((clientX - rect.left) / rect.width) * 100;
+    const y = ((clientY - rect.top) / rect.height) * 100;
+    setMousePos({ x, y });
+  };
 
   const togglePlay = () => {
     if (!audioRef.current) return;
@@ -539,29 +577,43 @@ export const MessageBubble = ({
 
       {message.mediaType === "image" && message.mediaUrl && (
         <div 
-          className="relative overflow-hidden rounded-xl mb-2 cursor-pointer group/img" 
-          onMouseDown={() => setIsRevealed(true)}
-          onMouseUp={() => setIsRevealed(false)}
-          onMouseLeave={() => setIsRevealed(false)}
-          onTouchStart={() => setIsRevealed(true)}
-          onTouchEnd={() => setIsRevealed(false)}
-          onClick={() => !message.isSecure && onImageClick?.(message.mediaUrl!)}
+          ref={containerRef}
+          className="relative overflow-hidden rounded-xl mb-2 cursor-crosshair group/img bg-black aspect-square max-h-[400px]" 
+          onMouseMove={handleMouseMove}
+          onTouchMove={handleMouseMove}
+          onClick={handleStartPeek}
         >
+          {/* Слой с изображением (скрыт маской) */}
           <img 
             src={message.mediaUrl} 
             alt="media" 
-            className={`max-h-60 w-full object-cover transition-all duration-500 ${
-              message.isSecure && !isRevealed ? "blur-3xl scale-110 grayscale" : "blur-0 scale-100"
-            }`} 
+            className={`w-full h-full object-cover transition-opacity duration-500 ${
+              !isRevealed ? "opacity-0" : "opacity-100"
+            }`}
+            style={isRevealed ? {
+              clipPath: `circle(60px at ${mousePos.x}% ${mousePos.y}%)`,
+              WebkitClipPath: `circle(60px at ${mousePos.x}% ${mousePos.y}%)`
+            } : {}}
           />
-          {message.isSecure && <MoireOverlay viewerName={viewerName} />}
+
+          {/* Защитные слои (муар и водяные знаки) - активны всегда при просмотре */}
+          {message.isSecure && isRevealed && <MoireOverlay viewerName={viewerName} />}
           
+          {/* Заглушка до активации */}
           {message.isSecure && !isRevealed && (
-            <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm transition-opacity">
-              <div className="h-12 w-12 rounded-full bg-violet-500/20 border border-violet-500/50 flex items-center justify-center mb-2 animate-pulse">
-                <Shield className="h-6 w-6 text-violet-400" />
+            <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-zinc-900/90 backdrop-blur-md">
+              <div className="h-16 w-16 rounded-3xl bg-violet-500/20 border border-violet-500/50 flex items-center justify-center mb-4">
+                <Shield className="h-8 w-8 text-violet-400" />
               </div>
-              <p className="text-[10px] font-bold text-violet-300 uppercase tracking-widest">Удерживайте для просмотра</p>
+              <p className="text-xs font-bold text-white uppercase tracking-widest mb-1 text-center px-4">Секретное фото</p>
+              <p className="text-[10px] text-zinc-500 text-center px-6">Нажмите, чтобы открыть на 15 секунд. После этого фото удалится.</p>
+            </div>
+          )}
+
+          {/* Счетчик времени */}
+          {peekTimer !== null && (
+            <div className="absolute top-3 right-3 z-50 h-8 w-8 rounded-full bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-[10px] font-bold text-violet-400 shadow-xl">
+              {peekTimer}
             </div>
           )}
 
