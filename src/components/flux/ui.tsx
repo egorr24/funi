@@ -415,44 +415,44 @@ export const MessageScroll = ({ children }: PropsWithChildren) => (
 
 export const MoireOverlay = ({ viewerName }: { viewerName?: string }) => (
   <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl z-30 select-none">
-    {/* НЕЙРОННЫЙ ПРИЗРАК: Высокочастотные микро-вспышки */}
+    {/* НЕЙРОННЫЙ ПРИЗРАК: Высокочастотные микро-вспышки (v8 Light Spectrum) */}
     <motion.div 
       className="absolute inset-0 bg-white mix-blend-overlay"
       animate={{ 
-        opacity: [0, 0.05, 0, 0.08, 0],
-        backgroundColor: ["#fff", "#f0f", "#fff", "#0ff", "#fff"] 
+        opacity: [0, 0.03, 0, 0.05, 0],
+        backgroundColor: ["#fff", "#f8fafc", "#fff", "#f1f5f9", "#fff"] 
       }}
-      transition={{ duration: 0.1, repeat: Infinity, ease: "linear" }}
+      transition={{ duration: 0.15, repeat: Infinity, ease: "linear" }}
     />
 
-    {/* ДИНАМИЧЕСКИЙ ГРИД С ПОСТОЯННОЙ СМЕНОЙ ФАЗЫ (Anti-Focus) */}
+    {/* ДИНАМИЧЕСКИЙ ГРИД С ПОСТОЯННОЙ СМЕНОЙ ФАЗЫ (Anti-Focus Light) */}
     <motion.div 
-      className="absolute inset-[-200%] opacity-15"
+      className="absolute inset-[-200%] opacity-10"
       animate={{ 
         rotate: [0, 360],
-        scale: [1, 1.05, 1]
+        scale: [1, 1.02, 1]
       }}
-      transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+      transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
       style={{
-        backgroundImage: `radial-gradient(circle, #fff 0.5px, transparent 0.5px)`,
-        backgroundSize: '4px 4px'
+        backgroundImage: `radial-gradient(circle, #000 0.3px, transparent 0.3px)`,
+        backgroundSize: '6px 6px'
       }}
     />
 
-    {/* КВАНТОВЫЙ ВОДЯНОЙ ЗНАК С ЦВЕТОВЫМ ШИФТОМ */}
+    {/* КВАНТОВЫЙ ВОДЯНОЙ ЗНАК С ЦВЕТОВЫМ ШИФТОМ (v8 Inverse) */}
     <div className="absolute inset-0 flex flex-col justify-around">
       {[1, 2, 3].map(i => (
         <motion.div 
           key={i}
-          className="whitespace-nowrap text-[9px] font-black uppercase tracking-[1.2em]"
-          style={{ color: i % 2 === 0 ? '#a855f7' : '#ec4899' }}
+          className="whitespace-nowrap text-[8px] font-black uppercase tracking-[1.5em]"
+          style={{ color: i % 2 === 0 ? '#6366f1' : '#8b5cf6' }}
           animate={{ 
             x: i % 2 === 0 ? ["-100%", "100%"] : ["100%", "-100%"],
-            opacity: [0.05, 0.15, 0.05]
+            opacity: [0.03, 0.1, 0.03]
           }}
-          transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
+          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
         >
-          {Array(5).fill(`• NEURAL GHOST v7 • ${viewerName || 'ENCRYPTED'} • `).join("")}
+          {Array(5).fill(`• INVERSE PHANTOM ACTIVE • v8 • ${viewerName || 'ENCRYPTED'} • `).join("")}
         </motion.div>
       ))}
     </div>
@@ -481,37 +481,39 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
       canvas.width = img.width * scale;
       canvas.height = img.height * scale;
 
-      // КАЛИБРОВКА ЧИТАЕМОСТИ (Neural Ghost v7)
-      // Возвращаем четкость для глаза, сохраняя разрушительный эффект для камер
+      // ИНВЕРСНЫЙ ФАНТОМ (Neural Ghost v8: Light Trap)
+      // Ослепляем камеру белым фоном, пряча инвертированную картинку в тенях
       const sliceCount = 128; 
 
       const render = () => {
         frameCounter.current++;
         const sliceWidth = canvas.width / sliceCount;
         
-        // Очищаем кадр темным фоном (Black Reset для экспозиции)
-        ctx.fillStyle = "#000";
+        // СВЕТОВАЯ ЛОВУШКА: Ослепительно белый фон заставляет камеру снижать ISO/Экспозицию
+        ctx.fillStyle = "#fff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // ТЕХНОЛОГИЯ «RETINA-STABLE COMPLEMENTARY PULSING»
-        // Снижен сдвиг до 15 градусов для идеальной читаемости глазом
+        // ТЕХНОЛОГИЯ «SHADOW GHOSTING»
         const phase = frameCounter.current % 2;
-        const colorShift = phase === 0 ? 15 : -15; 
         
-        // СТАБИЛИЗАЦИЯ ЯРКОСТИ (TLM Lite)
-        const tlmBoost = 0.98 + Math.sin(frameCounter.current * 0.2) * 0.02;
+        // Динамическая яркость фона (Anti-HDR Flicker)
+        const bgFlicker = 0.95 + Math.sin(frameCounter.current * 0.3) * 0.05;
+        ctx.fillStyle = `rgba(255, 255, 255, ${bgFlicker})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         for (let i = 0; i < sliceCount; i++) {
           const x = i * sliceWidth;
           const isMainPhase = (i % 2 === phase);
           
           if (isMainPhase) {
-            ctx.filter = `hue-rotate(${colorShift}deg) saturate(1.1) brightness(${tlmBoost})`;
-            ctx.globalAlpha = 1.0;
+            // Инвертируем картинку (Негатив) и делаем её полупрозрачной
+            // Глаз видит темные детали на белом, камера считает их шумом в тенях
+            ctx.filter = `invert(1) contrast(1.4) brightness(0.7)`;
+            ctx.globalAlpha = 0.15; // Очень низкая прозрачность для ослепления камеры
           } else {
-            // Пассивная фаза теперь ярче (40%) для комфорта глаза
-            ctx.filter = `hue-rotate(${-colorShift}deg) saturate(0.9) brightness(${0.4 * tlmBoost})`;
-            ctx.globalAlpha = 0.4;
+            // Вторая фаза еще слабее для поддержания структуры в глазу
+            ctx.filter = `invert(1) contrast(1.1) brightness(0.5)`;
+            ctx.globalAlpha = 0.05;
           }
           
           ctx.drawImage(
@@ -523,25 +525,17 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
         ctx.filter = 'none';
         ctx.globalAlpha = 1.0;
 
-        // SUBTLE MOIRE BOMB (Anti-Sensor)
-        // Микро-сетка с пониженной прозрачностью для сохранения четкости
-        ctx.fillStyle = phase === 0 ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)';
-        for (let y = 0; y < canvas.height; y += 2) {
-          for (let x = (frameCounter.current % 3); x < canvas.width; x += 3) {
-            ctx.fillRect(x, y, 1, 1);
-          }
+        // WHITE NOISE BOMB (Burn the sensor)
+        // Высокочастотный белый шум, который выжигает пиксели на матрице камеры
+        ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255, 255, 255, 0.1)' : 'rgba(200, 200, 200, 0.05)';
+        for (let i = 0; i < 50; i++) {
+          const rx = Math.random() * canvas.width;
+          const ry = Math.random() * canvas.height;
+          ctx.fillRect(rx, ry, 2, 2);
         }
 
-        // BAYER INTERFERENCE (Subtle)
-        ctx.fillStyle = phase === 0 ? 'rgba(255, 0, 255, 0.015)' : 'rgba(0, 255, 0, 0.015)';
-        for (let y = 1; y < canvas.height; y += 4) {
-          for (let x = (frameCounter.current % 4); x < canvas.width; x += 4) {
-            ctx.fillRect(x, y, 1, 1);
-          }
-        }
-
-        // STABLE JITTER
-        const jitter = 1.0 + Math.random() * 1.0;
+        // BAYER DESYNC JITTER
+        const jitter = 0.5 + Math.random() * 1.5;
         setTimeout(() => {
             animationRef.current = requestAnimationFrame(render);
         }, jitter); 
