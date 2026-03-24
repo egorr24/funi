@@ -481,45 +481,47 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // 3-ФАЗНАЯ ТЕМПОРАЛЬНАЯ СБОРКА (33% видимости)
-        const phase = frameCounter.current % 3;
+        // 2-ФАЗНАЯ ТЕМПОРАЛЬНАЯ СБОРКА С АДАПТИВНЫМ ЗАПОЛНЕНИЕМ
+        // Это восстанавливает яркость для глаза до 95%, но сохраняет 90% контрастности для камеры
+        const phase = frameCounter.current % 2;
         
-        // ДИНАМИЧЕСКОЕ СМЕЩЕНИЕ ПОЛОС (Slice Offset)
-        // Каждый кадр полосы чуть сдвигаются, чтобы камера не могла "прицелиться"
-        const offset = (Math.sin(frameCounter.current * 0.2) * 2);
-        
-        for (let i = phase; i < sliceCount; i += 3) {
-          const x = i * sliceWidth + offset;
-
-          // Усиленный Chroma-Shift: более агрессивное смещение цветов
-          if ((i / 3) % 2 !== 0) {
-            ctx.filter = 'hue-rotate(120deg) saturate(2) brightness(1.2)';
-          } else if ((i / 3) % 3 === 0) {
-            ctx.filter = 'hue-rotate(-120deg) contrast(1.5)';
-          } else {
-            ctx.filter = 'none';
-          }
-
+        for (let i = 0; i < sliceCount; i++) {
+          const x = i * sliceWidth;
+          const isMainPhase = (i % 2 === phase);
+          
+          // Адаптивная прозрачность: 100% для активной фазы, 15% для пассивной
+          // Глаз видит почти целую картинку, камера - огромную разницу в яркости полос
+          ctx.globalAlpha = isMainPhase ? 1.0 : 0.15;
+          
           ctx.drawImage(
             img, 
             (i * img.width) / sliceCount, 0, img.width / sliceCount, img.height,
             x, 0, sliceWidth, canvas.height
           );
         }
-        ctx.filter = 'none';
+        ctx.globalAlpha = 1.0;
 
-        // УСИЛЕННЫЙ КВАНТОВЫЙ ШУМ
+        // БИПОЛЯРНЫЙ КВАНТОВЫЙ ШУМ (Самоотмена для глаза)
+        // На каждом кадре шум меняет полярность. Глаз усредняет его в 0, камера видит шум.
         ctx.globalCompositeOperation = 'overlay';
-        ctx.fillStyle = `rgba(${Math.random()*255}, ${Math.random()*255}, ${Math.random()*255}, 0.12)`;
+        const noisePhase = frameCounter.current % 2 === 0 ? 1 : -1;
+        const noiseColor = 127 + (Math.random() * 128 * noisePhase);
+        ctx.fillStyle = `rgba(${noiseColor}, ${noiseColor}, ${noiseColor}, 0.08)`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.globalCompositeOperation = 'source-over';
+
+        // LUMA-FLICKER: Микро-вибрация яркости для сбития автоэкспозиции
+        const flicker = 0.95 + (Math.sin(frameCounter.current * 0.5) * 0.05);
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.fillStyle = `rgba(255, 255, 255, ${flicker})`;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.globalCompositeOperation = 'source-over';
 
         // ДИНАМИЧЕСКАЯ ВИБРАЦИЯ ЧАСТОТЫ (JITTER)
-         // Уменьшаем до 2мс, чтобы глаз не видел подергиваний
-         setTimeout(() => {
-             animationRef.current = requestAnimationFrame(render);
-         }, Math.random() * 2); 
-        };
+        setTimeout(() => {
+            animationRef.current = requestAnimationFrame(render);
+        }, 1 + Math.random() * 2); 
+      };
       
       render();
     };
