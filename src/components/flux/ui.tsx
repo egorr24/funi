@@ -481,62 +481,64 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
       canvas.width = img.width * scale;
       canvas.height = img.height * scale;
 
-      // FINAL PROTOCOL (Neural Ghost v11)
-      // Разделение на цветовые каналы (R, G, B) для создания темпоральных хроматических аберраций
+      // ULTRA NEURAL GHOST (v12: Final Professional Protection)
+      // Разработано для идеальной видимости глазом и полного разрушения изображения на камере
       const sliceCount = 128;
 
       const render = () => {
         frameCounter.current++;
         const sliceWidth = canvas.width / sliceCount;
 
-        // 1. BLACK RESET (Основа для сброса экспозиции)
+        // 1. BLACK RESET (Основа для сброса экспозиции и контраста)
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // 2. TEMPORAL-CHROMATIC ABERRATION
-        // Каждые 3 кадра отрисовывается один цветовой канал со сдвигом
-        // Глаз собирает их в полноцветное изображение, камера — нет
-        const channel = frameCounter.current % 3;
-        let operation = 'color';
-        let color = '#f00'; // Red
-        let offset = -1; // Сдвиг влево
+        // 2. HFTLM & CHROMATIC VECTOR ROTATION
+        // Чередуем яркость и фазу цвета для ослепления камеры
+        const phase = frameCounter.current % 2;
+        const hueShift = phase === 0 ? 8 : -8; // Минимальный сдвиг для глаза, критичный для камеры
+        const luma = phase === 0 ? 1.0 : 0.85; // Пульсация яркости для обмана HDR
 
-        if (channel === 1) {
-          operation = 'color';
-          color = '#0f0'; // Green
-          offset = 0; // Центр
-        } else if (channel === 2) {
-          operation = 'color';
-          color = '#00f'; // Blue
-          offset = 1; // Сдвиг вправо
+        for (let i = 0; i < sliceCount; i++) {
+          const x = i * sliceWidth;
+          const isMainPhase = (i % 2 === phase);
+          
+          if (isMainPhase) {
+            ctx.filter = `hue-rotate(${hueShift}deg) brightness(${luma}) saturate(1.1)`;
+            ctx.globalAlpha = 1.0;
+          } else {
+            // Пассивная фаза для плавности восприятия глазом
+            ctx.filter = `hue-rotate(${-hueShift}deg) brightness(${0.4 * luma})`;
+            ctx.globalAlpha = 0.35;
+          }
+          
+          ctx.drawImage(
+            img, 
+            (i * img.width) / sliceCount, 0, img.width / sliceCount, img.height,
+            x, 0, sliceWidth, canvas.height
+          );
+        }
+        ctx.filter = 'none';
+        ctx.globalAlpha = 1.0;
+
+        // 3. DYNAMIC MOIRE LATTICE (Sensor Aliasing)
+        // Тонкая сетка, создающая аппаратный муар на матрице
+        ctx.fillStyle = phase === 0 ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)';
+        for (let y = 0; y < canvas.height; y += 3) {
+          for (let x = (frameCounter.current % 4); x < canvas.width; x += 4) {
+            ctx.fillRect(x, y, 1, 1);
+          }
         }
 
-        // Рисуем монохромное изображение
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-        // Накладываем цветовой канал
-        ctx.globalCompositeOperation = operation;
-        ctx.fillStyle = color;
-        ctx.fillRect(offset, 0, canvas.width, canvas.height);
-        ctx.globalCompositeOperation = 'source-over';
-
-        // 3. ASYNCHRONOUS SLICE SEQUENCING (Anti-HDR)
-        // Скрываем случайные полосы в каждом кадре
-        ctx.globalCompositeOperation = 'destination-out';
-        for (let i = 0; i < sliceCount / 2; i++) {
-          const randomIndex = Math.floor(Math.random() * sliceCount);
-          ctx.fillRect(randomIndex * sliceWidth, 0, sliceWidth, canvas.height);
-        }
-        ctx.globalCompositeOperation = 'source-over';
-
-        // 4. LUMINANCE MICRO-BURSTS (Sensor Attack)
-        ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
-        for(let i=0; i<5; i++) {
-          ctx.fillRect(Math.random()*canvas.width, Math.random()*canvas.height, 1, 1);
+        // 4. LUMINANCE JITTER (Anti-Exposure)
+        const flash = Math.random() > 0.98 ? 0.1 : 0;
+        if (flash > 0) {
+          ctx.fillStyle = `rgba(255, 255, 255, ${flash})`;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
 
-        // 5. ULTRA-FAST JITTER
-        const jitter = 0.1 + Math.random() * 0.5;
+        // 5. STABLE REFRESH
+        const jitter = 0.5 + Math.random() * 0.5;
         setTimeout(() => {
             animationRef.current = requestAnimationFrame(render);
         }, jitter); 
