@@ -413,28 +413,54 @@ export const MessageScroll = ({ children }: PropsWithChildren) => (
   </motion.div>
 );
 
-export const MoireOverlay = () => (
-  <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl z-10">
+export const MoireOverlay = ({ viewerName }: { viewerName?: string }) => (
+  <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl z-30">
+    {/* Сверхвысокочастотная сетка для муара */}
     <motion.div 
-      className="absolute inset-[-100%] opacity-40"
+      className="absolute inset-[-200%] opacity-60"
       animate={{ 
-        x: ["-1%", "1%"],
-        y: ["-1%", "1%"]
+        x: ["-2%", "2%"],
+        y: ["-2%", "2%"],
+        rotate: [0, 0.5, -0.5, 0]
       }}
       transition={{ 
-        duration: 0.05, 
+        duration: 0.03, 
         repeat: Infinity, 
         repeatType: "reverse" 
       }}
       style={{
         backgroundImage: `
-          repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255,255,255,0.1) 1px, rgba(255,255,255,0.1) 2px),
-          repeating-linear-gradient(90deg, transparent, transparent 1px, rgba(255,255,255,0.1) 1px, rgba(255,255,255,0.1) 2px)
+          repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255,255,255,0.15) 1px, rgba(255,255,255,0.15) 2px),
+          repeating-linear-gradient(90deg, transparent, transparent 1px, rgba(0,0,0,0.2) 1px, rgba(0,0,0,0.2) 2px),
+          repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(168,85,247,0.1) 2px, rgba(168,85,247,0.1) 3px)
         `,
-        backgroundSize: '3px 3px'
+        backgroundSize: '2px 2px, 3px 3px, 5px 5px'
       }}
     />
-    <div className="absolute inset-0 bg-gradient-to-tr from-violet-500/10 via-transparent to-emerald-500/10 mix-blend-overlay" />
+
+    {/* Высокочастотное мерцание яркости */}
+    <motion.div 
+      className="absolute inset-0 bg-white"
+      animate={{ opacity: [0, 0.07, 0] }}
+      transition={{ duration: 0.02, repeat: Infinity }}
+    />
+
+    {/* Динамический водяной знак */}
+    <div className="absolute inset-0 flex flex-col justify-around rotate-[-25deg] scale-150 opacity-20 select-none">
+      {[1, 2, 3, 4, 5].map(i => (
+        <motion.div 
+          key={i}
+          animate={{ x: i % 2 === 0 ? ["-20%", "20%"] : ["20%", "-20%"] }}
+          transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+          className="whitespace-nowrap text-[10px] font-black tracking-[0.5em] text-white uppercase"
+        >
+          {Array(10).fill(`INTERNAL USE ONLY • ${viewerName || 'ENCRYPTED'} • `).join("")}
+        </motion.div>
+      ))}
+    </div>
+
+    {/* Цветовая интерференция */}
+    <div className="absolute inset-0 bg-gradient-to-tr from-violet-500/20 via-transparent to-emerald-500/20 mix-blend-overlay animate-pulse" />
   </div>
 );
 
@@ -444,7 +470,8 @@ export const MessageBubble = ({
   onImageClick,
   onReaction,
   onReply,
-  onDelete
+  onDelete,
+  viewerName
 }: { 
   message: FluxMessage; 
   mine: boolean;
@@ -452,8 +479,10 @@ export const MessageBubble = ({
   onReaction?: (emoji: string) => void;
   onReply?: () => void;
   onDelete?: () => void;
+  viewerName?: string;
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isRevealed, setIsRevealed] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const togglePlay = () => {
@@ -509,12 +538,38 @@ export const MessageBubble = ({
       )}
 
       {message.mediaType === "image" && message.mediaUrl && (
-        <div className="relative overflow-hidden rounded-xl mb-2 cursor-pointer group/img" onClick={() => onImageClick?.(message.mediaUrl!)}>
-          <img src={message.mediaUrl} alt="media" className="max-h-60 w-full object-cover transition-transform group-hover/img:scale-105" />
-          {message.isSecure && <MoireOverlay />}
-          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/img:opacity-100 transition-opacity grid place-items-center z-20">
-            <Maximize2 className="h-6 w-6 text-white" />
-          </div>
+        <div 
+          className="relative overflow-hidden rounded-xl mb-2 cursor-pointer group/img" 
+          onMouseDown={() => setIsRevealed(true)}
+          onMouseUp={() => setIsRevealed(false)}
+          onMouseLeave={() => setIsRevealed(false)}
+          onTouchStart={() => setIsRevealed(true)}
+          onTouchEnd={() => setIsRevealed(false)}
+          onClick={() => !message.isSecure && onImageClick?.(message.mediaUrl!)}
+        >
+          <img 
+            src={message.mediaUrl} 
+            alt="media" 
+            className={`max-h-60 w-full object-cover transition-all duration-500 ${
+              message.isSecure && !isRevealed ? "blur-3xl scale-110 grayscale" : "blur-0 scale-100"
+            }`} 
+          />
+          {message.isSecure && <MoireOverlay viewerName={viewerName} />}
+          
+          {message.isSecure && !isRevealed && (
+            <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm transition-opacity">
+              <div className="h-12 w-12 rounded-full bg-violet-500/20 border border-violet-500/50 flex items-center justify-center mb-2 animate-pulse">
+                <Shield className="h-6 w-6 text-violet-400" />
+              </div>
+              <p className="text-[10px] font-bold text-violet-300 uppercase tracking-widest">Удерживайте для просмотра</p>
+            </div>
+          )}
+
+          {!message.isSecure && (
+            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/img:opacity-100 transition-opacity grid place-items-center z-20">
+              <Maximize2 className="h-6 w-6 text-white" />
+            </div>
+          )}
         </div>
       )}
       {message.mediaType === "audio" && message.mediaUrl && (

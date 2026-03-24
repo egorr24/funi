@@ -705,6 +705,7 @@ export const FluxApp = () => {
                       key={message.id}
                       message={{ ...message, waveform, decryptedBody: message.decryptedBody || message.encryptedBody }}
                       mine={message.senderId === session?.user?.id}
+                      viewerName={session?.user?.name || "ENCRYPTED"}
                       onImageClick={(url) => setViewingPhoto(url)}
                       onReaction={(emoji) => addReaction(message.id, emoji)}
                       onReply={() => setReplyTo(message)}
