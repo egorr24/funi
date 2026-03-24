@@ -9,6 +9,83 @@ type BaseProps = {
   className?: string;
 };
 
+export const BetaWelcomeModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[200] grid place-items-center bg-black/80 backdrop-blur-md p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="w-full max-w-md rounded-[32px] border border-white/10 bg-zinc-900 p-8 shadow-2xl text-center relative overflow-hidden"
+      >
+        <div className="absolute inset-0 bg-gradient-to-b from-violet-500/10 to-transparent pointer-events-none" />
+        <div className="relative z-10">
+          <div className="h-20 w-20 rounded-3xl bg-violet-500/20 flex items-center justify-center mx-auto mb-6 border border-violet-500/30">
+            <Shield className="h-10 w-10 text-violet-400" />
+          </div>
+          <h2 className="text-2xl font-black mb-3 tracking-tight text-white uppercase">Beta Version 1.0</h2>
+          <p className="text-zinc-400 text-sm mb-8 leading-relaxed">
+            Мы очень старались сделать защиту максимально надежной. 
+            Это бета-тест системы <span className="text-violet-400 font-bold tracking-widest">NEURAL GHOST</span>. 
+            Спасибо, что вы с нами!
+          </p>
+          <button 
+            onClick={onClose}
+            className="w-full py-4 rounded-2xl bg-violet-600 text-white font-bold hover:bg-violet-500 transition-all shadow-lg shadow-violet-600/20 active:scale-95"
+          >
+            ПОНЯТНО
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+export const TimerConfigModal = ({ 
+  isOpen, 
+  onClose, 
+  onSelect 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onSelect: (seconds: number) => void;
+}) => {
+  if (!isOpen) return null;
+  const options = [
+    { label: '10 секунд', value: 10 },
+    { label: '30 секунд', value: 30 },
+    { label: '1 минута', value: 60 },
+    { label: '5 минут', value: 300 },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-[150] grid place-items-center bg-black/60 backdrop-blur-sm p-4">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-xs rounded-3xl border border-white/10 bg-zinc-900 p-6 shadow-2xl"
+      >
+        <h3 className="text-sm font-black uppercase tracking-widest text-zinc-400 mb-4 text-center">Время просмотра</h3>
+        <div className="space-y-2">
+          {options.map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => {
+                onSelect(opt.value);
+                onClose();
+              }}
+              className="w-full py-3 rounded-xl bg-white/5 border border-white/5 text-sm font-medium hover:bg-violet-500/20 hover:border-violet-500/30 transition-all active:scale-95"
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        <button onClick={onClose} className="w-full mt-4 text-[10px] text-zinc-500 uppercase font-bold tracking-widest hover:text-white transition-colors">Отмена</button>
+      </motion.div>
+    </div>
+  );
+};
+
 export const GlassCard = ({ children, className = "" }: PropsWithChildren<BaseProps>) => (
   <div className={`rounded-none border-x border-white/5 bg-zinc-950/40 backdrop-blur-3xl transition-all duration-300 ${className}`}>{children}</div>
 );
