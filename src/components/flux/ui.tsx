@@ -481,17 +481,21 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // 2-ФАЗНАЯ ТЕМПОРАЛЬНАЯ СБОРКА ПРИ 128 ПОЛОСАХ
-        // 50% видимости достаточно для глаза, но 128 полос всё еще "разрывают" кадр для камеры
-        const phase = frameCounter.current % 2;
+        // 3-ФАЗНАЯ ТЕМПОРАЛЬНАЯ СБОРКА (33% видимости)
+        const phase = frameCounter.current % 3;
         
-        for (let i = phase; i < sliceCount; i += 2) {
-          const x = i * sliceWidth;
+        // ДИНАМИЧЕСКОЕ СМЕЩЕНИЕ ПОЛОС (Slice Offset)
+        // Каждый кадр полосы чуть сдвигаются, чтобы камера не могла "прицелиться"
+        const offset = (Math.sin(frameCounter.current * 0.2) * 2);
+        
+        for (let i = phase; i < sliceCount; i += 3) {
+          const x = i * sliceWidth + offset;
 
-          // Chroma-Shift: используем hue-rotate. 
-          // Инверсия (invert) убивала яркость, hue-rotate сохраняет детали для глаза
-          if ((i / 2) % 2 !== 0) {
-            ctx.filter = 'hue-rotate(180deg) saturate(1.2)';
+          // Усиленный Chroma-Shift: более агрессивное смещение цветов
+          if ((i / 3) % 2 !== 0) {
+            ctx.filter = 'hue-rotate(120deg) saturate(2) brightness(1.2)';
+          } else if ((i / 3) % 3 === 0) {
+            ctx.filter = 'hue-rotate(-120deg) contrast(1.5)';
           } else {
             ctx.filter = 'none';
           }
@@ -502,12 +506,11 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
             x, 0, sliceWidth, canvas.height
           );
         }
-        // Сбрасываем фильтр после цикла
         ctx.filter = 'none';
 
-        // КВАНТОВЫЙ ШУМ (Сбивает автофокус)
+        // УСИЛЕННЫЙ КВАНТОВЫЙ ШУМ
         ctx.globalCompositeOperation = 'overlay';
-        ctx.fillStyle = `rgba(${Math.random()*255}, ${Math.random()*255}, ${Math.random()*255}, 0.05)`;
+        ctx.fillStyle = `rgba(${Math.random()*255}, ${Math.random()*255}, ${Math.random()*255}, 0.12)`;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.globalCompositeOperation = 'source-over';
 
