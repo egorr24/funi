@@ -415,66 +415,50 @@ export const MessageScroll = ({ children }: PropsWithChildren) => (
 
 export const MoireOverlay = ({ viewerName }: { viewerName?: string }) => (
   <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl z-30 select-none">
-    {/* СУПЕР-АГРЕССИВНАЯ СЕТКА (МЯСОРУБКА) */}
+    {/* POV-ГЛУШИЛКА (Persistence of Vision Jammer) */}
+    {/* Сверхбыстрое переключение инверсии - для глаза это серый фон, для камеры - негатив или позитив */}
     <motion.div 
-      className="absolute inset-[-500%] opacity-100 mix-blend-difference"
-      animate={{ 
-        x: ["-10%", "10%"],
-        y: ["-4%", "4%"],
-        rotate: [0, 1, -1, 0]
-      }}
+      className="absolute inset-0 bg-white mix-blend-difference"
+      animate={{ opacity: [0, 1, 0] }}
       transition={{ 
-        duration: 0.008, // Еще быстрее!
-        repeat: Infinity, 
-        repeatType: "reverse" 
-      }}
-      style={{
-        backgroundImage: `
-          repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255,255,255,0.6) 1px, rgba(255,255,255,0.6) 2px),
-          repeating-linear-gradient(90deg, transparent, transparent 1px, rgba(0,0,0,0.8) 1px, rgba(0,0,0,0.8) 2px),
-          repeating-linear-gradient(45deg, transparent, transparent 1.5px, rgba(255,255,255,0.5) 1.5px, rgba(255,255,255,0.5) 3px),
-          repeating-linear-gradient(-45deg, transparent, transparent 1.5px, rgba(0,0,0,0.6) 1.5px, rgba(0,0,0,0.6) 3px)
-        `,
-        backgroundSize: '2px 2px, 2.5px 2.5px, 4px 4px, 5px 5px'
+        duration: 0.016, // ~60fps - критическая частота для камер
+        repeat: Infinity,
+        ease: "linear"
       }}
     />
 
-    {/* ДИНАМИЧЕСКИЕ ЦВЕТОВЫЕ БЛОКИ ДЛЯ ОСЛЕПЛЕНИЯ СЕНСОРА */}
+    {/* EXPOSURE JAMMER (Взлом экспозиции) */}
+    {/* Медленные, но мощные изменения яркости в разных углах, заставляющие камеру "дышать" */}
     <motion.div 
-      className="absolute inset-0 opacity-40 mix-blend-overlay"
+      className="absolute inset-[-50%] bg-gradient-to-tr from-white/20 via-transparent to-white/20"
       animate={{ 
-        backgroundPosition: ["0% 0%", "100% 100%"]
+        rotate: [0, 360],
+        opacity: [0.3, 0.6, 0.3]
       }}
-      transition={{ duration: 0.05, repeat: Infinity, ease: "linear" }}
-      style={{
-        backgroundImage: `
-          linear-gradient(45deg, #ff0000 25%, transparent 25%),
-          linear-gradient(-45deg, #00ff00 25%, transparent 25%),
-          linear-gradient(45deg, transparent 75%, #0000ff 75%),
-          linear-gradient(-45deg, transparent 75%, #ffff00 75%)
-        `,
-        backgroundSize: '4px 4px'
-      }}
+      transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
     />
 
-    {/* СВЕРХВЫСОКОЧАСТОТНОЕ МЕРЦАНИЕ (temporal noise) */}
+    {/* ТОНКАЯ СЕТКА ПРОТИВ РОЛЛИНГ-ШАТТЕРА */}
     <motion.div 
-      className="absolute inset-0 bg-white"
-      animate={{ opacity: [0, 0.25, 0] }}
-      transition={{ duration: 0.01, repeat: Infinity }}
-      style={{ mixBlendMode: 'overlay' }}
+      className="absolute inset-0 opacity-30"
+      animate={{ y: ["-2%", "2%"] }}
+      transition={{ duration: 0.05, repeat: Infinity, repeatType: "reverse" }}
+      style={{
+        backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255,255,255,0.5) 1px, rgba(255,255,255,0.5) 2px)`,
+        backgroundSize: '100% 3px'
+      }}
     />
 
-    {/* ЗАЩИТНЫЙ ВОДЯНОЙ ЗНАК - КРУПНЕЕ И ЯРЧЕ */}
-    <div className="absolute inset-0 flex flex-col justify-around rotate-[-15deg] scale-150 opacity-50">
-      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => (
+    {/* ЗАЩИТНЫЙ ВОДЯНОЙ ЗНАК */}
+    <div className="absolute inset-0 flex flex-col justify-around rotate-[-15deg] scale-125 opacity-20">
+      {[1, 2, 3, 4, 5, 6].map(i => (
         <motion.div 
           key={i}
-          animate={{ x: i % 2 === 0 ? ["-40%", "40%"] : ["40%", "-40%"] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-          className="whitespace-nowrap text-[16px] font-black tracking-[1.5em] text-white uppercase drop-shadow-[0_0_8px_rgba(0,0,0,1)]"
+          animate={{ x: i % 2 === 0 ? ["-10%", "10%"] : ["10%", "-10%"] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+          className="whitespace-nowrap text-[10px] font-black tracking-[0.8em] text-white uppercase"
         >
-          {Array(10).fill(`• FORBIDDEN • ${viewerName || 'UNKNOWN'} • SENSOR BREAK • `).join("")}
+          {Array(10).fill(`• FLUX SECURITY • ${viewerName || 'ENCRYPTED'} • `).join("")}
         </motion.div>
       ))}
     </div>
