@@ -111,7 +111,7 @@ export const FluxShell = ({
   showRightPanel = true,
 }: PropsWithChildren<{ showRightPanel?: boolean }>) => (
   <div
-    className={`mx-auto flex h-screen max-w-[1600px] text-zinc-100 overflow-hidden relative w-full`}
+    className={`mx-auto flex h-screen h-screen-safe max-w-[1600px] text-zinc-100 overflow-hidden relative w-full bg-[#050308]`}
   >
     {children}
   </div>
@@ -126,30 +126,30 @@ export const NavSidebar = ({
   onTabChange: (tab: string) => void;
   className?: string;
 }) => (
-  <div className={`flex lg:flex-col items-center lg:py-8 bg-[#0a0a0c] border-r border-white/5 gap-6 fixed bottom-0 left-0 right-0 h-20 lg:static lg:h-auto lg:w-[100px] z-50 ${className}`}>
+  <div className={`flex lg:flex-col items-center lg:py-8 bg-[#0a0a0c] border-r border-white/5 gap-6 fixed bottom-0 left-0 right-0 h-20 lg:static lg:h-auto lg:w-[100px] z-50 safe-area-inset pb-safe ${className}`}>
     <div className="flex lg:flex-col items-center justify-around lg:justify-start gap-8 w-full lg:w-auto px-4 lg:px-0">
       <NavIcon
         active={activeTab === "chats"}
         onClick={() => onTabChange("chats")}
-        icon={<MessageSquare className="h-7 w-7" />}
+        icon={<MessageSquare className="h-6 w-6 lg:h-7 lg:w-7" />}
         label="Чаты"
       />
       <NavIcon
         active={activeTab === "profile"}
         onClick={() => onTabChange("profile")}
-        icon={<User className="h-7 w-7" />}
+        icon={<User className="h-6 w-6 lg:h-7 lg:w-7" />}
         label="Профиль"
       />
       <NavIcon
         active={activeTab === "notifications"}
         onClick={() => onTabChange("notifications")}
-        icon={<Bell className="h-7 w-7" />}
+        icon={<Bell className="h-6 w-6 lg:h-7 lg:w-7" />}
         label="Уведомления"
       />
       <NavIcon
         active={activeTab === "settings"}
         onClick={() => onTabChange("settings")}
-        icon={<Settings className="h-7 w-7" />}
+        icon={<Settings className="h-6 w-6 lg:h-7 lg:w-7" />}
         label="Настройки"
       />
     </div>
@@ -971,36 +971,38 @@ export const IncomingCallModal = ({
   onAccept: () => void; 
   onReject: () => void;
 }) => (
-  <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-2xl flex items-center justify-center p-4">
+  <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-2xl flex items-center justify-center p-4 safe-area-inset">
     <motion.div 
       initial={{ scale: 0.9, opacity: 0, y: 20 }}
       animate={{ scale: 1, opacity: 1, y: 0 }}
-      className="w-full max-w-sm bg-zinc-900 border border-white/10 rounded-[32px] p-8 shadow-2xl text-center relative overflow-hidden"
+      className="w-full max-w-sm bg-zinc-900 border border-white/10 rounded-[32px] p-6 md:p-8 shadow-2xl text-center relative overflow-hidden"
     >
       <div className="absolute inset-0 bg-gradient-to-b from-violet-500/10 to-transparent pointer-events-none" />
       
       <div className="relative z-10">
-        <div className="h-24 w-24 rounded-full bg-violet-500/20 grid place-items-center mx-auto mb-6 border-2 border-violet-500/50 shadow-lg shadow-violet-500/20">
-          <User className="h-12 w-12 text-violet-400" />
+        <div className="h-20 w-20 md:h-24 md:w-24 rounded-full bg-violet-500/20 grid place-items-center mx-auto mb-6 border-2 border-violet-500/50 shadow-lg shadow-violet-500/20">
+          <User className="h-10 w-10 md:h-12 md:w-12 text-violet-400" />
         </div>
         
-        <h3 className="text-2xl font-bold mb-2 tracking-tight text-white">Входящий звонок</h3>
-        <p className="text-zinc-400 text-sm mb-8 font-medium">От: {from}</p>
+        <h3 className="text-xl md:text-2xl font-bold mb-2 tracking-tight text-white">Входящий звонок</h3>
+        <p className="text-zinc-400 text-xs md:text-sm mb-8 font-medium">От: {from}</p>
         
         <div className="flex gap-4">
           <button 
             onClick={onReject}
-            className="flex-1 py-4 rounded-2xl bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all font-bold flex items-center justify-center gap-2"
+            className="flex-1 py-3.5 md:py-4 rounded-2xl bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all font-bold flex items-center justify-center gap-2 text-sm"
           >
             <PhoneOff className="h-5 w-5" />
-            Отклонить
+            <span className="hidden xs:inline">Отклонить</span>
+            <span className="xs:hidden">Нет</span>
           </button>
           <button 
             onClick={onAccept}
-            className="flex-1 py-4 rounded-2xl bg-emerald-500 text-white hover:bg-emerald-600 transition-all font-bold shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 animate-bounce"
+            className="flex-1 py-3.5 md:py-4 rounded-2xl bg-emerald-500 text-white hover:bg-emerald-600 transition-all font-bold shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 animate-bounce text-sm"
           >
             <Phone className="h-5 w-5" />
-            Принять
+            <span className="hidden xs:inline">Принять</span>
+            <span className="xs:hidden">Да</span>
           </button>
         </div>
       </div>
@@ -1092,11 +1094,11 @@ export const Composer = ({
   const [showAttachMenu, setShowAttachMenu] = useState(false);
 
   return (
-    <div className="p-4 bg-zinc-950/40 backdrop-blur-xl border-t border-white/5 flex items-end gap-3 z-10 relative">
+    <div className="p-3 md:p-4 bg-zinc-950/40 backdrop-blur-xl border-t border-white/5 flex items-end gap-2 md:gap-3 z-10 relative pb-safe">
       <div className="relative">
         <button 
           onClick={() => setShowAttachMenu(!showAttachMenu)}
-          className={`p-3 rounded-2xl transition-all group ${showAttachMenu ? "bg-violet-500/20 text-violet-400" : "hover:bg-white/5 text-zinc-400 hover:text-white"}`}
+          className={`p-2.5 md:p-3 rounded-2xl transition-all group ${showAttachMenu ? "bg-violet-500/20 text-violet-400" : "hover:bg-white/5 text-zinc-400 hover:text-white"}`}
         >
           <Paperclip className={`w-5 h-5 transition-transform ${showAttachMenu ? "rotate-45" : "group-hover:rotate-12"}`} />
         </button>
@@ -1190,9 +1192,9 @@ export const Composer = ({
       <textarea
         value={value}
         onChange={onChange}
-        placeholder="Написать сообщение..."
+        placeholder="Сообщение..."
         rows={1}
-        className="w-full bg-white/5 border border-white/10 rounded-[24px] px-5 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-all resize-none placeholder:text-zinc-600"
+        className="w-full bg-white/5 border border-white/10 rounded-[22px] md:rounded-[24px] px-4 md:px-5 py-2.5 md:py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-all resize-none placeholder:text-zinc-600"
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -1205,14 +1207,14 @@ export const Composer = ({
     {value.trim() ? (
       <button
         onClick={onSend}
-        className="p-3.5 bg-violet-600 hover:bg-violet-500 text-white rounded-2xl shadow-lg shadow-violet-600/20 transition-all active:scale-95"
+        className="p-3 md:p-3.5 bg-violet-600 hover:bg-violet-500 text-white rounded-2xl shadow-lg shadow-violet-600/20 transition-all active:scale-95"
       >
         <SendHorizontal className="w-5 h-5" />
       </button>
     ) : (
       <button 
         onClick={onVoiceStart}
-        className={`p-3.5 rounded-2xl transition-all active:scale-95 ${
+        className={`p-3 md:p-3.5 rounded-2xl transition-all active:scale-95 ${
           isRecording ? "bg-red-500 text-white animate-pulse" : "bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10"
         }`}
       >
@@ -1314,6 +1316,7 @@ export const CallOverlay = ({
 }) => {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const [audioBlocked, setAudioBlocked] = useState(false);
 
   useEffect(() => {
     if (localVideoRef.current && localStream) {
@@ -1324,38 +1327,55 @@ export const CallOverlay = ({
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
       remoteVideoRef.current.srcObject = remoteStream;
+      // ВАЖНО для iOS: Попытка автоматического воспроизведения
+      remoteVideoRef.current.play().catch(e => {
+        console.warn("[CALL] Remote audio/video blocked by browser", e);
+        setAudioBlocked(true);
+      });
     }
   }, [remoteStream, active]);
+
+  const resumeAudio = () => {
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.play();
+      setAudioBlocked(false);
+    }
+  };
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[110] bg-zinc-950/90 backdrop-blur-2xl flex flex-col"
+      className="fixed inset-0 z-[110] bg-zinc-950/95 backdrop-blur-2xl flex flex-col safe-area-inset"
     >
-        <div className="flex-1 relative p-6 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+        <div className="flex-1 relative p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 items-center overflow-y-auto">
           {/* Remote Video / Status */}
-          <div className="relative aspect-video rounded-3xl bg-zinc-900 border border-white/5 overflow-hidden shadow-2xl">
+          <div className="relative aspect-[4/3] md:aspect-video rounded-[24px] md:rounded-3xl bg-zinc-900 border border-white/5 overflow-hidden shadow-2xl">
             {callStatus === "active" && remoteStream ? (
-              <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
+              <video 
+                ref={remoteVideoRef} 
+                autoPlay 
+                playsInline 
+                className="w-full h-full object-cover" 
+              />
             ) : (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-                <div className="h-24 w-24 rounded-full bg-violet-500/20 grid place-items-center relative">
-                  <User className="h-12 w-12 text-violet-400" />
+                <div className="h-20 w-20 md:h-24 md:w-24 rounded-full bg-violet-500/20 grid place-items-center relative">
+                  <User className="h-10 w-10 md:h-12 md:w-12 text-violet-400" />
                   <motion.div 
                     className="absolute inset-0 rounded-full border-2 border-violet-500/50"
                     animate={{ scale: [1, 1.5], opacity: [1, 0] }}
                     transition={{ duration: 2, repeat: Infinity }}
                   />
                 </div>
-                <div className="text-center">
-                  <p className="text-lg font-bold text-white mb-1">
+                <div className="text-center px-4">
+                  <p className="text-base md:text-lg font-bold text-white mb-1">
                     {callStatus === "ringing" ? "Вызов..." : 
                      callStatus === "connecting" ? "Подключение..." : 
                      callStatus === "failed" ? "Сбой вызова" : "Ожидание..."}
                   </p>
-                  <p className="text-xs text-zinc-500 uppercase tracking-widest animate-pulse">
+                  <p className="text-[10px] md:text-xs text-zinc-500 uppercase tracking-widest animate-pulse">
                     {callStatus === "failed" 
                       ? (failReason === "busy" ? "Собеседник занят" : "Собеседник офлайн") 
                       : "Ждем ответа собеседника"}
@@ -1363,34 +1383,48 @@ export const CallOverlay = ({
                 </div>
               </div>
             )}
-            <div className="absolute bottom-4 left-4 px-3 py-1 bg-black/40 backdrop-blur-md rounded-lg text-xs font-medium">
+            <div className="absolute bottom-4 left-4 px-3 py-1 bg-black/40 backdrop-blur-md rounded-lg text-[10px] font-medium">
               Собеседник
             </div>
+
+            {audioBlocked && (
+              <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 text-center">
+                <div className="bg-zinc-900/80 p-6 rounded-3xl border border-white/10 shadow-2xl">
+                  <p className="text-sm font-bold text-white mb-4">Браузер заблокировал звук</p>
+                  <button 
+                    onClick={resumeAudio}
+                    className="px-6 py-3 bg-violet-600 rounded-xl text-xs font-bold hover:bg-violet-500 transition-all active:scale-95"
+                  >
+                    ВКЛЮЧИТЬ ЗВУК
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Local Video */}
-          <div className="relative aspect-video rounded-3xl bg-zinc-900 border border-white/5 overflow-hidden shadow-2xl">
+          <div className="relative aspect-[4/3] md:aspect-video rounded-[24px] md:rounded-3xl bg-zinc-900 border border-white/5 overflow-hidden shadow-2xl">
             <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
-            <div className="absolute bottom-4 left-4 px-3 py-1 bg-black/40 backdrop-blur-md rounded-lg text-xs font-medium">
+            <div className="absolute bottom-4 left-4 px-3 py-1 bg-black/40 backdrop-blur-md rounded-lg text-[10px] font-medium">
               Вы
             </div>
             {cameraOff && (
               <div className="absolute inset-0 bg-zinc-900 flex items-center justify-center">
-                <VideoOff className="h-12 w-12 text-zinc-700" />
+                <VideoOff className="h-10 w-10 md:h-12 md:w-12 text-zinc-700" />
               </div>
             )}
           </div>
         </div>
 
-        <div className="h-32 flex items-center justify-center gap-6 px-6">
-          <CallControlBtn onClick={toggleMute} active={!muted} icon={muted ? <MicOff /> : <Mic />} label={muted ? "Включить" : "Выключить"} />
-          <CallControlBtn onClick={toggleCamera} active={!cameraOff} icon={cameraOff ? <VideoOff /> : <Video />} label={cameraOff ? "Включить" : "Выключить"} />
-          <CallControlBtn onClick={onShare} active={mode === "screen"} icon={<Share />} label="Экран" />
+        <div className="pb-8 md:pb-0 h-32 md:h-32 flex items-center justify-center gap-4 md:gap-6 px-6">
+          <CallControlBtn onClick={toggleMute} active={!muted} icon={muted ? <MicOff className="w-5 h-5 md:w-6 md:h-6" /> : <Mic className="w-5 h-5 md:w-6 md:h-6" />} label={muted ? "Вкл" : "Выкл"} />
+          <CallControlBtn onClick={toggleCamera} active={!cameraOff} icon={cameraOff ? <VideoOff className="w-5 h-5 md:w-6 md:h-6" /> : <Video className="w-5 h-5 md:w-6 md:h-6" />} label={cameraOff ? "Вкл" : "Выкл"} />
+          <CallControlBtn onClick={onShare} active={mode === "screen"} icon={<Share className="w-5 h-5 md:w-6 md:h-6" />} label="Экран" />
           <button
             onClick={onEnd}
-            className="h-16 w-16 rounded-full bg-red-500 hover:bg-red-600 transition-colors grid place-items-center shadow-xl shadow-red-500/20"
+            className="h-14 w-14 md:h-16 md:w-16 rounded-full bg-red-500 hover:bg-red-600 transition-colors grid place-items-center shadow-xl shadow-red-500/20 active:scale-95"
           >
-            <PhoneOff className="h-7 w-7 text-white" />
+            <PhoneOff className="h-6 w-6 md:h-7 md:w-7 text-white" />
           </button>
         </div>
       </motion.div>

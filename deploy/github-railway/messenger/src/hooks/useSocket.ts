@@ -7,51 +7,56 @@ import { FluxMessage, SocketPayloadMap } from "@/src/types/flux";
 type OutboundEvent = keyof SocketPayloadMap;
 
 export const useSocket = (userId: string) => {
+  const [socket, setSocket] = useState<Socket | null>(null);
   const [connected, setConnected] = useState(false);
-  const [queue, setQueue] = useState<FluxMessage[]>([]);
-  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    const socket = io({
+    if (!userId || userId === "u_me") return;
+
+    // На Railway/Production используем относительный путь
+    const s = io({
       path: "/api/socket",
       autoConnect: true,
       reconnection: true,
-      reconnectionAttempts: Infinity,
-      transports: ["websocket", "polling"],
+      reconnectionAttempts: 15,
+      reconnectionDelay: 2000,
+      transports: ["polling", "websocket"], // Разрешаем polling как fallback
       auth: { userId },
     });
-    socketRef.current = socket;
 
-    socket.on("connect", () => {
+    s.on("connect", () => {
       setConnected(true);
-      setQueue((pending) => {
-        pending.forEach((message) => {
-          socket.emit("message:queue", message);
-        });
-        return [];
+      setSocket(s);
+      console.log(`> Socket connected! (ID: ${s.id}, UserID: ${userId})`);
+      
+      // Сразу сообщаем серверу, что мы онлайн
+      s.emit("user:online", { userId });
+      
+      // Запускаем сердцебиение
+      const heartbeat = setInterval(() => {
+        if (s.connected) {
+          s.emit("heartbeat");
+        }
+      }, 10000); // каждые 10 секунд
+      
+      s.on("heartbeat:ack", () => {
+        // Сервер подтвердил статус
       });
+
+      return () => {
+        clearInterval(heartbeat);
+      };
     });
 
-    socket.on("disconnect", () => setConnected(false));
+    s.on("disconnect", () => {
+      setConnected(false);
+      console.log("> Disconnected from Socket.io server");
+    });
 
     return () => {
-      socket.disconnect();
-      socketRef.current = null;
+      s.disconnect();
     };
   }, [userId]);
 
-  const emit = <T extends OutboundEvent>(event: T, payload: SocketPayloadMap[T]) => {
-    if (event === "message:queue" && !connected) {
-      setQueue((pending) => [...pending, payload as FluxMessage]);
-      return;
-    }
-    socketRef.current?.emit(event, payload);
-  };
-
-  return {
-    connected,
-    emit,
-    socket: socketRef.current,
-    queuedCount: queue.length,
-  };
+  return { socket, connected, queuedCount: 0 };
 };

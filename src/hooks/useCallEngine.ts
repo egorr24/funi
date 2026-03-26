@@ -120,26 +120,31 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
       console.log(`[CALL] Received remote track: ${event.track.kind}`);
       
       setRemoteStream(prev => {
-        // Если потока еще нет, создаем новый из полученных стримов или трека
-        if (!prev) {
+        let stream = prev;
+        if (!stream) {
           if (event.streams && event.streams[0]) {
             console.log("[CALL] Creating remote stream from event streams");
-            return new MediaStream(event.streams[0].getTracks());
+            stream = new MediaStream(event.streams[0].getTracks());
+          } else {
+            console.log("[CALL] Creating remote stream from individual track");
+            stream = new MediaStream([event.track]);
           }
-          console.log("[CALL] Creating remote stream from individual track");
-          return new MediaStream([event.track]);
+        } else {
+          const tracks = stream.getTracks();
+          if (!tracks.find(t => t.id === event.track.id)) {
+            console.log("[CALL] Adding track to existing remote stream");
+            stream = new MediaStream([...tracks, event.track]);
+          }
         }
 
-        // Если поток уже есть, добавляем в него новый трек, если его там нет
-        const tracks = prev.getTracks();
-        if (tracks.find(t => t.id === event.track.id)) {
-          console.log("[CALL] Track already exists in stream, ignoring");
-          return prev;
+        // ВАЖНО для iOS: пытаемся воспроизвести звук, если это аудио трек
+        if (event.track.kind === "audio") {
+          const audio = new Audio();
+          audio.srcObject = stream;
+          audio.play().catch(e => console.warn("[CALL] Audio autoplay blocked, will need user gesture", e));
         }
 
-        console.log("[CALL] Adding track to existing remote stream");
-        // ВАЖНО: Создаем НОВЫЙ объект MediaStream, чтобы триггерить useEffect в UI
-        return new MediaStream([...tracks, event.track]);
+        return stream;
       });
 
       setCallStatus("active");
