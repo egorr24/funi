@@ -1,6 +1,6 @@
 const express = require('express');
 const http = require('http');
-const socketIo = require('socket.io');
+const { createSocketServer } = require('./src/server/socket');
 const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
@@ -68,142 +68,8 @@ app.use((req, res, next) => {
 });
 
 // 2. SOCKET.IO SETUP
-const io = socketIo(server, {
-  path: '/api/socket',
-  cors: { origin: "*", methods: ["GET", "POST"] },
-  transports: ['polling', 'websocket'],
-  allowEIO3: true
-});
+const io = createSocketServer(server);
 app.set('io', io);
-
-const onlineUsers = new Map();
-
-// Периодическая проверка (каждые 30 сек выводим кто в сети)
-setInterval(() => {
-  if (onlineUsers.size > 0) {
-    console.log(`[STATUS] Online users: ${Array.from(onlineUsers.keys()).join(', ')}`);
-  }
-}, 30000);
-
-io.on('connection', (socket) => {
-  const userId = socket.handshake.auth.userId;
-  
-  const registerUser = (uid) => {
-    if (!uid) return;
-    socket.join(uid);
-    if (!onlineUsers.has(uid)) {
-      onlineUsers.set(uid, new Set());
-    }
-    onlineUsers.get(uid).add(socket.id);
-    console.log(`[CONN] User ${uid} registered (Socket: ${socket.id}). Total: ${onlineUsers.size}`);
-  };
-
-  if (userId && userId !== 'u_me') {
-    registerUser(userId);
-  }
-
-  // Принудительная регистрация/обновление статуса
-  socket.on('user:online', ({ userId: uid }) => {
-    if (uid && uid !== 'u_me') {
-      registerUser(uid);
-    }
-  });
-
-  socket.on('heartbeat', () => {
-    if (userId && userId !== 'u_me') {
-      registerUser(userId);
-    }
-    socket.emit('heartbeat:ack');
-  });
-
-  // Обработка сообщений в реальном времени
-  socket.on('message:queue', async (message) => {
-    console.log(`[MSG] New message in chat: ${message.chatId}`);
-    socket.to(message.chatId).emit('new_message', message);
-  });
-
-  // Добавление реакций
-  socket.on('message:reaction', (payload) => {
-    console.log(`[REACTION] ${payload.emoji} in chat ${payload.chatId}`);
-    socket.to(payload.chatId).emit('message:reaction', payload);
-  });
-
-  // Удаление сообщений
-  socket.on('message:delete', (payload) => {
-    console.log(`[DELETE] Msg ${payload.messageId} in chat ${payload.chatId}`);
-    socket.to(payload.chatId).emit('message:delete', payload);
-  });
-
-  // Индикатор печатания
-  socket.on('presence:typing', (payload) => {
-    socket.to(payload.chatId).emit('presence:typing', payload);
-  });
-
-  // Вход в комнату чата
-  socket.on('chat:join', ({ chatId }) => {
-    socket.join(chatId);
-    console.log(`[CHAT] Socket ${socket.id} joined room ${chatId}`);
-  });
-
-  // ГЛОБАЛЬНЫЙ СИГНАЛИНГ ДЛЯ ЗВОНКОВ
-  socket.on('call:offer', ({ chatId, targetId, fromName, offer, mode }) => {
-    console.log(`[CALL] Offer from ${userId} to ${targetId} (Chat: ${chatId})`);
-    
-    // 1. Пытаемся отправить персонально пользователю (по его userId-комнате)
-    if (targetId && targetId !== userId) {
-      io.to(targetId).emit('call:offer', { from: userId, fromName, offer, mode, chatId });
-    } else {
-      // Если targetId нет (групповой?), шлем в комнату чата
-      socket.to(chatId).emit('call:offer', { from: userId, fromName, offer, mode, chatId });
-    }
-  });
-
-  socket.on('call:answer', ({ targetId, answer, chatId }) => {
-    console.log(`[CALL] Answer from ${userId} to ${targetId}`);
-    io.to(targetId).emit('call:answer', { from: userId, answer, chatId });
-  });
-
-  socket.on('call:ice', ({ targetId, candidate, chatId }) => {
-    io.to(targetId).emit('call:ice', { from: userId, candidate, chatId });
-  });
-
-  socket.on('call:end', ({ targetId, chatId }) => {
-    console.log(`[CALL] End from ${userId} to ${targetId}`);
-    if (targetId) {
-      io.to(targetId).emit('call:end', { from: userId, chatId });
-    }
-    if (chatId) {
-      socket.to(chatId).emit('call:end', { from: userId, chatId });
-    }
-  });
-
-  socket.on('call:busy', ({ targetId }) => {
-    console.log(`[CALL] Busy from ${userId} to ${targetId}`);
-    io.to(targetId).emit('call:busy', { from: userId });
-  });
-
-  socket.on('message:delivered', (payload) => {
-    socket.to(payload.chatId).emit('message:delivered', payload);
-  });
-
-  socket.on('message:read', (payload) => {
-    socket.to(payload.chatId).emit('message:read', payload);
-  });
-
-  socket.on('chat:new', ({ targetId, chat }) => {
-    if (targetId) io.to(targetId).emit('chat:new', chat);
-  });
-
-  socket.on('disconnect', () => {
-    if (userId && onlineUsers.has(userId)) {
-      onlineUsers.get(userId).delete(socket.id);
-      if (onlineUsers.get(userId).size === 0) {
-        onlineUsers.delete(userId);
-      }
-      console.log(`[CONN] User ${userId} disconnected. Online: ${onlineUsers.size} users`);
-    }
-  });
-});
 
 // 3. MIDDLEWARE
 app.use(helmet({ contentSecurityPolicy: false }));
