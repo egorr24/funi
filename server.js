@@ -1,14 +1,14 @@
-const express = require('express');
-const http = require('http');
-const { createSocketServer } = require('./src/server/socket');
-const cors = require('cors');
-const helmet = require('helmet');
-const path = require('path');
-const next = require('next');
-const multer = require('multer');
-const fs = require('fs');
-const cloudinary = require('cloudinary').v2;
-require('dotenv').config();
+import express from 'express';
+import http from 'http';
+import cors from 'cors';
+import helmet from 'helmet';
+import path from 'path';
+import next from 'next';
+import multer from 'multer';
+import fs from 'fs';
+import { v2 as cloudinary } from 'cloudinary';
+import 'dotenv/config';
+import { createSocketServer } from './dist/server/src/server/socket.js';
 
 // Настройка Cloudinary для постоянного хранения
 console.log('> Checking Cloudinary configuration...');
@@ -54,7 +54,7 @@ const dev = process.env.NODE_ENV !== 'production';
 const nextApp = next({ dev });
 const handle = nextApp.getRequestHandler();
 
-const { initDatabase } = require('./models/database');
+import { initDatabase } from './models/database.js';
 
 const app = express();
 const server = http.createServer(app);
