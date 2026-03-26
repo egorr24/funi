@@ -8,7 +8,7 @@ import multer from 'multer';
 import fs from 'fs';
 import { v2 as cloudinary } from 'cloudinary';
 import 'dotenv/config';
-import { createSocketServer } from './dist/server/src/server/socket.js';
+import { createSocketServer } from './dist/server/server/socket.js';
 
 // Настройка Cloudinary для постоянного хранения
 console.log('> Checking Cloudinary configuration...');

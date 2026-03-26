@@ -52,8 +52,8 @@ export const mockMessages: FluxMessage[] = [
     createdAt: new Date(Date.now() - 1000 * 60 * 9).toISOString(),
     status: "READ",
     reactions: [
-      { emoji: "🔥", count: 3, reacted: true },
-      { emoji: "✅", count: 2, reacted: false },
+      { emoji: "🔥", count: 3, reacted: true, userId: "mockUserId" },
+      { emoji: "✅", count: 2, reacted: false, userId: "mockUserId" },
     ],
   },
   {

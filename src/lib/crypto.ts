@@ -6,7 +6,8 @@ const toBase64 = (arrayBuffer: ArrayBuffer): string => {
 };
 
 const fromBase64 = (value: string): ArrayBuffer => {
-  return Buffer.from(value, "base64");
+  const buffer = Buffer.from(value, "base64");
+  return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
 };
 
 export type E2EEPayload = {

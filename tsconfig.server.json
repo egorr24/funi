@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "esnext",
+    "outDir": "./dist/server",
+    "noEmit": false,
+    "rootDir": "./src",
+    "tsBuildInfoFile": "./node_modules/.tsbuildinfo-server"
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "deploy", "src/**/*.test.ts"]
+}

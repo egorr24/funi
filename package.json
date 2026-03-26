@@ -1,11 +1,13 @@
 {
   "name": "flux",
+  "type": "module",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
-    "start": "NODE_ENV=production node server.js",
+    "build:server": "tsc -p tsconfig.server.json",
+    "start": "cross-env NODE_ENV=production npm run build:server && node server.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "prisma:generate": "prisma generate",
@@ -34,7 +36,8 @@
     "react-hook-form": "^7.56.4",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
-    "zod": "^3.24.3"
+    "zod": "^3.24.3",
+    "cross-env": "^7.0.3"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

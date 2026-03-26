@@ -7,6 +7,8 @@ export type MediaKind = "image" | "video" | "audio" | "file";
 export type FluxReaction = {
   emoji: string;
   userId: string;
+  count: number;
+  reacted: boolean;
 };
 
 export type FluxMessage = {
@@ -59,14 +61,14 @@ export type SocketPayloadMap = {
   "message:sent": FluxMessage;
   "message:delivered": { messageId: string; chatId: string; deliveredAt: string };
   "message:read": { messageId: string; chatId: string; readAt: string; readerId: string };
-  "message:reaction": { messageId: string; emoji: string; userId: string };
+  "message:reaction": { messageId: string; emoji: string; userId: string; chatId: string };
   "message:edit": { messageId: string; chatId: string; newBody: string };
   "message:delete": { messageId: string; chatId: string };
   "presence:typing": { chatId: string; userId: string; isTyping: boolean };
-  "call:offer": { chatId: string; from: string; sdp: RTCSessionDescriptionInit };
-  "call:answer": { chatId: string; from: string; sdp: RTCSessionDescriptionInit };
-  "call:ice": { chatId: string; from: string; candidate: RTCIceCandidateInit };
-  "call:end": { chatId: string; from: string };
+  "call:offer": { chatId: string; from: string; sdp: RTCSessionDescriptionInit; targetId: string; fromName: string };
+  "call:answer": { chatId: string; from: string; sdp: RTCSessionDescriptionInit; targetId: string };
+  "call:ice": { chatId: string; from: string; candidate: RTCIceCandidateInit; targetId: string };
+  "call:end": { chatId: string; from: string; targetId: string };
 };
 
 export type AIAssistantSummary = {
