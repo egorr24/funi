@@ -10,6 +10,7 @@ COPY . .
 ARG DATABASE_URL
 ENV DATABASE_URL=$DATABASE_URL
 RUN npx prisma generate --config prisma/config.ts
+RUN npm run db:push
 RUN npm run build
 
 FROM node:22-alpine AS runner
