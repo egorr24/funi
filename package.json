@@ -10,7 +10,7 @@
     "start": "cross-env NODE_ENV=production npm run build:server && npm run build && node server.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "prisma:generate": "prisma generate",
+    "prisma:generate": "prisma generate --config prisma/config.ts",
     "prisma:migrate": "prisma migrate dev",
     "db:push": "prisma db push --config prisma/config.ts"
   },

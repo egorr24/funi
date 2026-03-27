@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { defineConfig } from '@prisma/cli';
+import { defineConfig } from 'prisma/defineConfig';
 
 export default defineConfig({
   datasource: {
