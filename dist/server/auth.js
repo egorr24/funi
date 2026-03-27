@@ -24,7 +24,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 password: {},
             },
             authorize: async (credentials) => {
-                var _a;
                 const parsed = credentialsSchema.safeParse(credentials);
                 if (!parsed.success) {
                     return null;
@@ -43,14 +42,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     id: user.id,
                     email: user.email,
                     name: user.name,
-                    image: (_a = user.avatar) !== null && _a !== void 0 ? _a : undefined,
+                    image: user.avatar ?? undefined,
                 };
             },
         }),
     ],
     callbacks: {
         authorized({ auth, request: { nextUrl } }) {
-            const isLoggedIn = !!(auth === null || auth === void 0 ? void 0 : auth.user);
+            const isLoggedIn = !!auth?.user;
             const isAuthPage = nextUrl.pathname.startsWith("/login") || nextUrl.pathname.startsWith("/register");
             if (isAuthPage) {
                 if (isLoggedIn)

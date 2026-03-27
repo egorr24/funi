@@ -17,10 +17,9 @@ export const useCallEngine = (socket, userId) => {
     const iceCandidatesBuffer = useRef([]);
     // Очистка ресурсов
     const cleanup = useCallback(() => {
-        var _a;
         console.log("[CALL] Cleanup started");
-        localStream === null || localStream === void 0 ? void 0 : localStream.getTracks().forEach(track => track.stop());
-        (_a = peerRef.current) === null || _a === void 0 ? void 0 : _a.close();
+        localStream?.getTracks().forEach(track => track.stop());
+        peerRef.current?.close();
         peerRef.current = null;
         targetIdRef.current = null;
         chatIdRef.current = null;
@@ -160,7 +159,7 @@ export const useCallEngine = (socket, userId) => {
             stream.getTracks().forEach(track => peer.addTrack(track, stream));
             const offer = await peer.createOffer();
             await peer.setLocalDescription(offer);
-            socket === null || socket === void 0 ? void 0 : socket.emit("call:offer", { chatId, targetId, fromName, offer, mode: callMode });
+            socket?.emit("call:offer", { chatId, targetId, fromName, offer, mode: callMode });
         }
         catch (err) {
             console.error("[CALL] Start call error:", err);
@@ -239,8 +238,7 @@ export const useCallEngine = (socket, userId) => {
             setIncomingCall({ from, fromName, offer, mode: offerMode, chatId });
         };
         const handleAnswer = async ({ from, answer }) => {
-            var _a;
-            console.log("[CALL] Answer received. Current state:", (_a = peerRef.current) === null || _a === void 0 ? void 0 : _a.signalingState);
+            console.log("[CALL] Answer received. Current state:", peerRef.current?.signalingState);
             const peer = peerRef.current;
             if (!peer || !isOutgoingRef.current)
                 return;
