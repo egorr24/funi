@@ -9,9 +9,12 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ARG DATABASE_URL
 ENV DATABASE_URL=$DATABASE_URL
-RUN echo "DEBUG: DATABASE_URL is $DATABASE_URL"
-RUN npx prisma generate --config prisma/config.ts
-RUN DATABASE_URL=$DATABASE_URL npx prisma db push --config prisma/config.ts
+RUN --mount=type=secret,id=DATABASE_URL \
+    PRISMA_DATABASE_URL=$(cat /run/secrets/DATABASE_URL) \
+    npx prisma generate --config prisma/config.ts
+RUN --mount=type=secret,id=DATABASE_URL \
+    PRISMA_DATABASE_URL=$(cat /run/secrets/DATABASE_URL) \
+    npx prisma db push --config prisma/config.ts
 RUN npm run build
 
 FROM node:22-alpine AS runner
