@@ -7,7 +7,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "build:server": "tsc -p tsconfig.server.json",
-    "start": "cross-env NODE_ENV=production npm run build:server && npm run prisma:generate && npm run build && node server.js",
+    "start": "cross-env NODE_ENV=production npm run build:server && npm run build && node server.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "prisma:generate": "prisma generate",
