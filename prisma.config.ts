@@ -1,24 +1,27 @@
-import { defineConfig, env } from "prisma/config";
+import { defineConfig } from "prisma/config";
 
-// Check if the command is 'prisma generate'
-const isGenerate = process.argv.includes("generate");
+const getDatabaseUrl = () => {
+  // Во время сборки (`prisma generate`) реальная база данных не нужна.
+  // Используем фиктивный URL, чтобы сборка не падала.
+  if (process.argv.includes("generate")) {
+    return "postgresql://dummy:dummy@dummy:5432/dummy";
+  }
 
-let databaseUrl;
+  // Для всех остальных команд (`db push`, запуск) нам нужен настоящий DATABASE_URL.
+  // Мы берем его напрямую из переменных окружения.
+  const url = process.env.DATABASE_URL;
 
-if (isGenerate) {
-  // For 'prisma generate' during build, we don't need a real database.
-  // A dummy URL is provided to prevent the build from failing.
-  databaseUrl = "postgresql://dummy:dummy@dummy:5432/dummy";
-} else {
-  // For all other commands (like 'db push') and at runtime,
-  // we require the real DATABASE_URL.
-  // The env() helper will throw a clear error if it's not set.
-  databaseUrl = env("DATABASE_URL");
-}
+  // Если переменная не установлена, выбрасываем громкую и понятную ошибку.
+  if (!url) {
+    throw new Error("Переменная окружения DATABASE_URL не установлена!");
+  }
+
+  return url;
+};
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
   datasource: {
-    url: databaseUrl,
+    url: getDatabaseUrl(),
   },
 });
