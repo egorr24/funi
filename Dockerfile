@@ -1,15 +1,14 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
-# Copy prisma schema before installing dependencies
-# This is needed for the `postinstall` script (prisma generate)
-COPY prisma ./prisma
 RUN npm ci
 
 FROM node:22-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Generate Prisma Client after all files are copied
+RUN npx prisma generate
 RUN npm run build
 
 FROM node:22-alpine AS runner
