@@ -9,10 +9,7 @@
     "build:server": "tsc -p tsconfig.server.json",
     "start": "cross-env NODE_ENV=production node server.js",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
-
-    "prisma:migrate": "prisma migrate dev",
-    "db:push": "prisma db push"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",
