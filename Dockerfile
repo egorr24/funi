@@ -1,16 +1,15 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
+# Copy prisma schema before installing dependencies
+# This is needed for the `postinstall` script (prisma generate)
+COPY prisma ./prisma
 RUN npm ci
 
 FROM node:22-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-ARG DATABASE_URL
-ENV DATABASE_URL=$DATABASE_URL
-RUN DATABASE_URL=$DATABASE_URL npx prisma generate --config prisma/config.ts
-RUN DATABASE_URL=$DATABASE_URL npx prisma db push --config prisma/config.ts
 RUN npm run build
 
 FROM node:22-alpine AS runner
