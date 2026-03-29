@@ -28,34 +28,92 @@ export async function GET() {
     }
 
     const chatsResult = await pool.query(`
-      SELECT c.*, cm.role, cm.muted,
-             (SELECT m.encrypted_body FROM messages m WHERE m.chat_id = c.id ORDER BY m.created_at DESC LIMIT 1) as last_message,
-             (SELECT u.name FROM users u JOIN chat_members cm2 ON u.id = cm2.user_id WHERE cm2.chat_id = c.id AND cm2.user_id != $1 LIMIT 1) as other_member_name,
-             (SELECT u.id FROM users u JOIN chat_members cm2 ON u.id = cm2.user_id WHERE cm2.chat_id = c.id AND cm2.user_id != $1 LIMIT 1) as other_member_id
+      SELECT
+        c.id,
+        c.title,
+        c.kind,
+        c.is_pinned,
+        c.updated_at,
+        cm.muted,
+        COALESCE(last_message.encrypted_body, 'No messages yet') AS last_message,
+        COALESCE(last_message.created_at, c.updated_at) AS last_activity_at,
+        COALESCE(unread.unread_count, 0) AS unread_count,
+        COALESCE(
+          json_agg(
+            json_build_object('id', u2.id, 'name', u2.name, 'avatar', u2.avatar)
+            ORDER BY u2.name
+          ) FILTER (WHERE u2.id IS NOT NULL),
+          '[]'::json
+        ) AS other_members
       FROM chats c
       JOIN chat_members cm ON c.id = cm.chat_id
+      LEFT JOIN chat_members cm2 ON cm2.chat_id = c.id AND cm2.user_id != $1
+      LEFT JOIN users u2 ON u2.id = cm2.user_id
+      LEFT JOIN LATERAL (
+        SELECT m.encrypted_body, m.created_at
+        FROM messages m
+        WHERE m.chat_id = c.id
+        ORDER BY m.created_at DESC
+        LIMIT 1
+      ) AS last_message ON true
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*)::int AS unread_count
+        FROM messages m
+        WHERE m.chat_id = c.id
+          AND m.sender_id != $1
+          AND m.status != 'READ'
+      ) AS unread ON true
       WHERE cm.user_id = $1
-      ORDER BY c.updated_at DESC
+      GROUP BY
+        c.id,
+        c.title,
+        c.kind,
+        c.is_pinned,
+        c.updated_at,
+        cm.muted,
+        last_message.encrypted_body,
+        last_message.created_at,
+        unread.unread_count
+      ORDER BY COALESCE(last_message.created_at, c.updated_at) DESC
     `, [session.user.id]);
 
     const allowedFolders = new Set(["PERSONAL", "WORK", "AI", "CHANNEL", "SAVED"]);
     const chats = chatsResult.rows.map((chat) => {
+      const otherMembers = Array.isArray(chat.other_members) ? chat.other_members : [];
+      const memberNames = otherMembers
+        .map((member: { id: string; name: string | null; avatar: string | null }) => member.name)
+        .filter(Boolean);
       const folder = allowedFolders.has(chat.kind) ? chat.kind : "PERSONAL";
-      const participants = chat.other_member_name
-        ? [chat.other_member_name, "You"]
-        : ["You"];
+      const hasCustomTitle = Boolean(chat.title && chat.title !== "Private Chat");
+      const title = folder === "SAVED"
+        ? "⭐️ Избранное"
+        : hasCustomTitle
+          ? chat.title
+          : memberNames.length > 0
+            ? memberNames.join(", ")
+            : "Диалог";
+      const initials = title
+        .split(" ")
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((word: string) => word[0])
+        .join("")
+        .toUpperCase();
+      const participants = [...memberNames.slice(0, 4), "You"];
+      const otherUserId = otherMembers.length === 1 ? otherMembers[0].id : undefined;
       return {
         id: chat.id,
-        title: chat.title || chat.other_member_name || "Unknown Chat",
-        avatar: (chat.title || chat.other_member_name || "??").slice(0, 2).toUpperCase(),
+        title,
+        avatar: initials || "??",
         folder,
-        unreadCount: 0,
+        unreadCount: chat.unread_count ?? 0,
         pinned: chat.is_pinned,
+        isMuted: chat.muted,
         typing: false,
         participants,
-        otherUserId: chat.other_member_id,
+        otherUserId,
         lastMessagePreview: chat.last_message || "No messages yet",
-        updatedAt: chat.updated_at.toISOString(),
+        updatedAt: chat.last_activity_at.toISOString(),
       };
     });
 

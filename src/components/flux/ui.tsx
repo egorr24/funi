@@ -187,7 +187,7 @@ const NavIcon = ({
 );
 
 export const Sidebar = ({ children, className = "" }: PropsWithChildren<BaseProps>) => (
-  <aside className={`flex flex-col border-r border-white/5 bg-black/20 lg:w-[360px] shrink-0 ${className}`}>{children}</aside>
+  <aside className={`flex flex-col border-r border-violet-300/10 bg-gradient-to-b from-[#130a24]/90 via-[#0b0816]/85 to-[#07050d]/90 lg:w-[360px] shrink-0 backdrop-blur-2xl ${className}`}>{children}</aside>
 );
 
 export const CreateChatModal = ({
@@ -384,48 +384,62 @@ export const ChatListItem = ({
   onClick: () => void;
   isOnline?: boolean;
   onMute?: () => void;
-}) => (
-  <button
-    onClick={onClick}
-    onContextMenu={(e) => {
-      e.preventDefault();
-      onMute?.();
-    }}
-    className={`w-full rounded-2xl p-3 text-left transition-all duration-200 relative group border ${active ? "bg-gradient-to-r from-violet-500/30 to-fuchsia-500/10 border-violet-300/30 shadow-[0_10px_30px_rgba(139,92,246,0.25)]" : "bg-white/5 hover:bg-white/10 border-white/5 hover:border-white/10"}`}
-  >
-    <div className="flex items-start justify-between">
-      <div className="flex items-center gap-3">
-        <div className="relative">
-          <AvatarPill label={chat.avatar} />
-          {isOnline && (
-            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-zinc-950 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse" />
-          )}
-        </div>
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="text-sm font-semibold">{chat.title}</div>
-            {chat.isMuted && <Bell className="h-3 w-3 text-zinc-500" />}
+}) => {
+  const folderGlow = {
+    PERSONAL: "from-violet-500/30 via-fuchsia-500/20 to-transparent",
+    WORK: "from-indigo-500/30 via-violet-500/15 to-transparent",
+    AI: "from-purple-500/35 via-violet-500/20 to-transparent",
+    CHANNEL: "from-pink-500/30 via-purple-500/20 to-transparent",
+    SAVED: "from-violet-400/35 via-fuchsia-400/20 to-transparent",
+  }[chat.folder] || "from-violet-500/25 via-fuchsia-500/10 to-transparent";
+
+  return (
+    <button
+      onClick={onClick}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        onMute?.();
+      }}
+      className={`w-full rounded-2xl p-3 text-left transition-all duration-200 relative group border overflow-hidden ${active ? "bg-white/10 border-violet-300/40 shadow-[0_12px_36px_rgba(139,92,246,0.35)]" : "bg-white/5 hover:bg-white/10 border-violet-300/10 hover:border-violet-300/20"}`}
+    >
+      <div className={`absolute inset-0 bg-gradient-to-r ${folderGlow} opacity-80 pointer-events-none`} />
+      <div className="relative flex items-start justify-between">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <AvatarPill label={chat.avatar} />
+            {isOnline && (
+              <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-zinc-950 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse" />
+            )}
           </div>
-          <div className="max-w-[210px] truncate text-xs text-zinc-300/80">{chat.lastMessagePreview}</div>
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="text-sm font-semibold text-zinc-100">{chat.title}</div>
+              {chat.isMuted && <Bell className="h-3 w-3 text-zinc-400" />}
+            </div>
+            <div className="max-w-[210px] truncate text-xs text-zinc-200/80">{chat.lastMessagePreview}</div>
+            <div className="max-w-[210px] truncate text-[10px] text-violet-200/70 mt-0.5">
+              {chat.participants.slice(0, 3).join(" • ")}
+            </div>
+          </div>
+        </div>
+        <div className="text-right pl-2">
+          {chat.unreadCount > 0 ? (
+            <span className="rounded-full bg-violet-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-[0_0_15px_rgba(168,85,247,0.45)]">{chat.unreadCount}</span>
+          ) : null}
+          <div className="flex flex-col items-end gap-1 mt-1">
+            {chat.pinned && <Pin className="h-3.5 w-3.5 text-violet-200/80" />}
+            <div className="text-[9px] text-zinc-400">
+              {new Date(chat.updatedAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+            </div>
+            <div className="text-[9px] text-zinc-500 opacity-0 group-hover:opacity-100 transition-opacity">
+              {isOnline ? "онлайн" : "был недавно"}
+            </div>
+          </div>
         </div>
       </div>
-      <div className="text-right pl-2">
-        {chat.unreadCount > 0 ? (
-          <span className="rounded-full bg-violet-500/90 px-2 py-0.5 text-[10px] font-bold">{chat.unreadCount}</span>
-        ) : null}
-        <div className="flex flex-col items-end gap-1 mt-1">
-          {chat.pinned && <Pin className="h-3.5 w-3.5 text-zinc-400" />}
-          <div className="text-[9px] text-zinc-500">
-            {new Date(chat.updatedAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
-          </div>
-          <div className="text-[9px] text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity">
-            {isOnline ? "онлайн" : "был недавно"}
-          </div>
-        </div>
-      </div>
-    </div>
-  </button>
-);
+    </button>
+  );
+};
 
 export const ConnectionBadge = ({ online, queued }: { online: boolean; queued: number }) => (
   <div className="flex items-center gap-2 text-xs text-zinc-300">

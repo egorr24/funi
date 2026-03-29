@@ -10,7 +10,6 @@ import { useSocket } from "@/src/hooks/useSocket";
 import { useThemeEngine } from "@/src/hooks/useThemeEngine";
 import { useWaveform } from "@/src/hooks/useWaveform";
 import { FluxMessage, FluxChat } from "@/src/types/flux";
-import { mockChats } from "@/src/lib/mock-data";
 import { User, Settings, Shield, CheckCheck, Plus, Bell, X } from "lucide-react";
 import {
   AIInsightCard,
@@ -139,7 +138,7 @@ export const FluxApp = () => {
       setChatsData(normalizedChats);
     } catch (error) {
       console.error("Failed to fetch chats:", error);
-      setChatsData(mockChats);
+      setChatsData([]);
     } finally {
       setLoading(false);
     }
