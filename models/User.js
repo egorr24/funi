@@ -80,8 +80,44 @@ class User {
       LIMIT 20
     `;
     const result = await pool.query(query, [normalizedQuery, currentUserId, wildcardQuery, compactNameQuery, compactEmailQuery]);
-    if (result.rows.length > 0 || normalizedQuery === '') {
-      return result.rows;
+    const mergedUsers = [...result.rows];
+    const seenEmails = new Set(
+      mergedUsers
+        .map((user) => (user.email || "").toLowerCase())
+        .filter(Boolean)
+    );
+    try {
+      const legacyQuery = `
+        SELECT id, name, email, avatar
+        FROM "User"
+        WHERE id::text != $2
+        AND (
+          $1 = ''
+          OR LOWER(COALESCE(name, '')) LIKE $3
+          OR LOWER(email) LIKE $3
+          OR REPLACE(LOWER(COALESCE(name, '')), ' ', '') LIKE $4
+          OR REPLACE(LOWER(email), '.', '') LIKE $5
+        )
+        ORDER BY name ASC
+        LIMIT 20
+      `;
+      const legacyResult = await pool.query(legacyQuery, [normalizedQuery, String(currentUserId), wildcardQuery, compactNameQuery, compactEmailQuery]);
+      for (const legacyUser of legacyResult.rows) {
+        const email = (legacyUser.email || "").toLowerCase();
+        if (!email || seenEmails.has(email)) continue;
+        seenEmails.add(email);
+        mergedUsers.push({
+          id: legacyUser.id,
+          name: legacyUser.name,
+          email: legacyUser.email,
+          avatar: legacyUser.avatar,
+          status: "offline",
+        });
+        if (mergedUsers.length >= 20) break;
+      }
+    } catch (_error) {}
+    if (mergedUsers.length > 0 || normalizedQuery === '') {
+      return mergedUsers.slice(0, 20);
     }
     const fallbackQuery = `
       SELECT id, name, email, avatar, status
@@ -95,6 +131,45 @@ class User {
     `;
     const fallbackResult = await pool.query(fallbackQuery, [currentUserId]);
     return fallbackResult.rows;
+  }
+
+  static async resolveAppUserId(externalUserId) {
+    const ownUser = await pool.query('SELECT id FROM users WHERE id = $1 LIMIT 1', [externalUserId]);
+    if (ownUser.rows[0]?.id) {
+      return ownUser.rows[0].id;
+    }
+    try {
+      const legacyUserResult = await pool.query(`
+        SELECT id, name, email, avatar, "passwordHash" as password_hash
+        FROM "User"
+        WHERE id = $1
+        LIMIT 1
+      `, [externalUserId]);
+      const legacyUser = legacyUserResult.rows[0];
+      if (!legacyUser?.email) {
+        return null;
+      }
+      const existingByEmail = await pool.query(
+        'SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1',
+        [legacyUser.email]
+      );
+      if (existingByEmail.rows[0]?.id) {
+        return existingByEmail.rows[0].id;
+      }
+      const inserted = await pool.query(`
+        INSERT INTO users (name, email, password_hash, avatar)
+        VALUES ($1, $2, $3, $4)
+        RETURNING id
+      `, [
+        legacyUser.name || legacyUser.email.split("@")[0],
+        legacyUser.email,
+        legacyUser.password_hash || "$2b$10$7EqJtq98hPqEX7fNZaFWoO5x0xYv7FpC18JNpDutLCRa14Q6gttxy",
+        legacyUser.avatar || null,
+      ]);
+      return inserted.rows[0]?.id || null;
+    } catch (_error) {
+      return null;
+    }
   }
 
   static async verifyPassword(plainPassword, hashedPassword) {

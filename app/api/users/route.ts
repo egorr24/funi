@@ -13,13 +13,18 @@ export async function GET(request: NextRequest) {
 
   try {
     const users = await User.searchUsers(query, session.user.id);
+    const currentEmail = (session.user.email || "").toLowerCase();
 
-    return NextResponse.json(users.map(u => ({
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      avatar: u.avatar,
-    })));
+    return NextResponse.json(
+      users
+        .filter((u) => (u.email || "").toLowerCase() !== currentEmail)
+        .map(u => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          avatar: u.avatar,
+        }))
+    );
   } catch (error) {
     console.error("User search error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

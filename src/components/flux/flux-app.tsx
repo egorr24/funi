@@ -167,18 +167,18 @@ export const FluxApp = () => {
       const res = await fetch("/api/chats", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, title: name }),
+        body: JSON.stringify({ userId, title: name, kind: "CHAT" }),
       });
-      if (res.ok) {
-        const newChat = await res.json();
-        setIsCreateChatOpen(false);
-        // Уведомляем другого пользователя через сокет
-        if (socket.socket) {
-          socket.socket.emit("chat:new", { targetId: userId, chat: newChat });
-        }
-        await fetchChats(); // Refresh the list
-        setChatId(newChat.id); // Select the new chat
+      if (!res.ok) {
+        return;
       }
+      const newChat = await res.json();
+      setIsCreateChatOpen(false);
+      if (socket.socket) {
+        socket.socket.emit("chat:new", { targetId: userId, chat: newChat });
+      }
+      await fetchChats();
+      setChatId(newChat.id);
     } catch (error) {
       console.error("Failed to create chat:", error);
     }

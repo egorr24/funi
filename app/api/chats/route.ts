@@ -2,6 +2,7 @@ import { auth } from "@/src/auth";
 import { NextResponse, type NextRequest } from "next/server";
 import { pool } from "@/models/database.js";
 import Chat from "@/models/Chat.js";
+import User from "@/models/User.js";
 
 export async function GET() {
   const session = await auth();
@@ -14,15 +15,27 @@ export async function GET() {
     let savedChatResult = await pool.query(`
       SELECT c.id FROM chats c
       JOIN chat_members cm ON c.id = cm.chat_id
-      WHERE c.kind = 'SAVED' AND cm.user_id = $1
+      WHERE cm.user_id = $1
+        AND (
+          c.kind::text = 'SAVED'
+          OR (c.kind::text = 'PERSONAL' AND c.title = '⭐️ Избранное')
+        )
       LIMIT 1
     `, [session.user.id]);
 
     if (savedChatResult.rowCount === 0) {
-      const newSavedChat = await Chat.create({
-        title: "⭐️ Избранное",
-        kind: "SAVED"
-      });
+      let newSavedChat;
+      try {
+        newSavedChat = await Chat.create({
+          title: "⭐️ Избранное",
+          kind: "SAVED"
+        });
+      } catch (_error) {
+        newSavedChat = await Chat.create({
+          title: "⭐️ Избранное",
+          kind: "PERSONAL"
+        });
+      }
       await pool.query('UPDATE chats SET is_pinned = true WHERE id = $1', [newSavedChat.id]);
       await Chat.addMember(newSavedChat.id, session.user.id);
     }
@@ -83,7 +96,8 @@ export async function GET() {
       const memberNames = otherMembers
         .map((member: { id: string; name: string | null; avatar: string | null }) => member.name)
         .filter(Boolean);
-      const folder = allowedFolders.has(chat.kind) ? chat.kind : "PERSONAL";
+      const normalizedKind = chat.kind === "CHAT" ? "PERSONAL" : chat.kind;
+      const folder = allowedFolders.has(normalizedKind) ? normalizedKind : "PERSONAL";
       const hasCustomTitle = Boolean(chat.title && chat.title !== "Private Chat");
       const title = folder === "SAVED"
         ? "⭐️ Избранное"
@@ -132,14 +146,22 @@ export async function POST(request: NextRequest) {
 
   try {
     const { userId, title, kind = "PERSONAL" } = await request.json();
+    const normalizedKind = kind === "CHAT" ? "PERSONAL" : kind;
 
     if (!userId) {
       return NextResponse.json({ error: "userId is required" }, { status: 400 });
     }
+    const resolvedUserId = await User.resolveAppUserId(userId);
+    if (!resolvedUserId) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+    if (resolvedUserId === session.user.id) {
+      return NextResponse.json({ error: "Cannot create chat with yourself" }, { status: 400 });
+    }
 
     // Check if private chat already exists between these two users
-    if (kind === "PERSONAL") {
-      const existingChat = await Chat.findPersonalChat(session.user.id, userId);
+    if (normalizedKind === "PERSONAL") {
+      const existingChat = await Chat.findPersonalChat(session.user.id, resolvedUserId);
       if (existingChat) {
         return NextResponse.json({ id: existingChat.id });
       }
@@ -148,12 +170,12 @@ export async function POST(request: NextRequest) {
     // Create new chat
     const chat = await Chat.create({
       title: title || "Private Chat",
-      kind: kind,
+      kind: normalizedKind,
     });
 
     // Add members
     await Chat.addMember(chat.id, session.user.id);
-    await Chat.addMember(chat.id, userId);
+    await Chat.addMember(chat.id, resolvedUserId);
 
     return NextResponse.json({ id: chat.id });
   } catch (error) {

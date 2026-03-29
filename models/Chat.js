@@ -58,7 +58,8 @@ class Chat {
       FROM chats c
       JOIN chat_members cm1 ON c.id = cm1.chat_id
       JOIN chat_members cm2 ON c.id = cm2.chat_id
-      WHERE c.kind = 'PERSONAL'
+      WHERE c.kind::text IN ('PERSONAL', 'CHAT')
+      AND c.title != '⭐️ Избранное'
       AND cm1.user_id = $1
       AND cm2.user_id = $2
       LIMIT 1
