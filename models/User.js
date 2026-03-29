@@ -58,15 +58,23 @@ class User {
   }
 
   static async searchUsers(searchQuery, currentUserId) {
+    const normalizedQuery = (searchQuery || "").trim();
     const query = `
-      SELECT id, name, avatar, status
+      SELECT id, name, email, avatar, status
       FROM users 
-      WHERE (name ILIKE $1 OR email ILIKE $1)
-      AND id != $2
-      ORDER BY name
+      WHERE id != $2
+      AND (
+        $1 = ''
+        OR name ILIKE $3
+        OR email ILIKE $3
+      )
+      ORDER BY
+        CASE WHEN status = 'online' THEN 0 ELSE 1 END,
+        COALESCE(updated_at, created_at) DESC,
+        name ASC
       LIMIT 20
     `;
-    const result = await pool.query(query, [`%${searchQuery}%`, currentUserId]);
+    const result = await pool.query(query, [normalizedQuery, currentUserId, `%${normalizedQuery}%`]);
     return result.rows;
   }
 
