@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/models/database.js";
 import Message from "@/models/Message.js";
 
+const isUuid = (value: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+
 export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -17,14 +20,22 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const preferPrisma = !isUuid(session.user.id) || !isUuid(chatId);
     // Fallback для старых клиентских версий с виртуальным ID "saved-"
     if (chatId.startsWith("saved-")) {
-      const savedChatResult = await pool.query(`
-        SELECT c.id FROM chats c
-        JOIN chat_members cm ON c.id = cm.chat_id
-        WHERE c.kind = 'SAVED' AND cm.user_id = $1
-        LIMIT 1
-      `, [session.user.id]);
+      const savedChatResult = preferPrisma
+        ? await pool.query(`
+            SELECT c.id FROM "Chat" c
+            JOIN "ChatMember" cm ON c.id = cm."chatId"
+            WHERE c.title = '⭐️ Избранное' AND cm."userId" = $1
+            LIMIT 1
+          `, [session.user.id])
+        : await pool.query(`
+            SELECT c.id FROM chats c
+            JOIN chat_members cm ON c.id = cm.chat_id
+            WHERE c.kind = 'SAVED' AND cm.user_id = $1
+            LIMIT 1
+          `, [session.user.id]);
       
       if (savedChatResult.rows[0]) {
         chatId = savedChatResult.rows[0].id;
@@ -34,25 +45,43 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user is a member of the chat
-    const membershipResult = await pool.query(`
-      SELECT 1 FROM chat_members 
-      WHERE user_id = $1 AND chat_id = $2
-    `, [session.user.id, chatId]);
+    const membershipResult = preferPrisma
+      ? await pool.query(`
+          SELECT 1 FROM "ChatMember" 
+          WHERE "userId" = $1 AND "chatId" = $2
+        `, [session.user.id, chatId])
+      : await pool.query(`
+          SELECT 1 FROM chat_members 
+          WHERE user_id = $1 AND chat_id = $2
+        `, [session.user.id, chatId]);
 
     if (membershipResult.rowCount === 0) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const messagesResult = await pool.query(`
-      SELECT m.*, u.name as sender_name,
-             r.id as reply_id, r.encrypted_body as reply_body, ru.name as reply_sender_name
-      FROM messages m
-      JOIN users u ON m.sender_id = u.id
-      LEFT JOIN messages r ON m.reply_to_id = r.id
-      LEFT JOIN users ru ON r.sender_id = ru.id
-      WHERE m.chat_id = $1
-      ORDER BY m.created_at ASC
-    `, [chatId]);
+    const messagesResult = preferPrisma
+      ? await pool.query(`
+          SELECT m.id, m."chatId" as chat_id, m."senderId" as sender_id, m."encryptedBody" as encrypted_body,
+                 m."encryptedAes" as encrypted_aes, m.iv, m."mediaUrl" as media_url, m."mediaType" as media_type,
+                 m.waveform, m.status, m."createdAt" as created_at, u.name as sender_name,
+                 r.id as reply_id, r."encryptedBody" as reply_body, ru.name as reply_sender_name
+          FROM "Message" m
+          JOIN "User" u ON m."senderId" = u.id
+          LEFT JOIN "Message" r ON m."replyToId" = r.id
+          LEFT JOIN "User" ru ON r."senderId" = ru.id
+          WHERE m."chatId" = $1
+          ORDER BY m."createdAt" ASC
+        `, [chatId])
+      : await pool.query(`
+          SELECT m.*, u.name as sender_name,
+                 r.id as reply_id, r.encrypted_body as reply_body, ru.name as reply_sender_name
+          FROM messages m
+          JOIN users u ON m.sender_id = u.id
+          LEFT JOIN messages r ON m.reply_to_id = r.id
+          LEFT JOIN users ru ON r.sender_id = ru.id
+          WHERE m.chat_id = $1
+          ORDER BY m.created_at ASC
+        `, [chatId]);
 
     const messages = messagesResult.rows;
 
@@ -61,12 +90,19 @@ export async function GET(request: NextRequest) {
     let reactionsMap: Record<string, any[]> = {};
     
     if (messageIds.length > 0) {
-      const reactionsResult = await pool.query(`
-        SELECT re.*, u.name as user_name
-        FROM reactions re
-        JOIN users u ON re.user_id = u.id
-        WHERE re.message_id = ANY($1)
-      `, [messageIds]);
+      const reactionsResult = preferPrisma
+        ? await pool.query(`
+            SELECT re.emoji, re."messageId" as message_id, re."userId" as user_id, u.name as user_name
+            FROM "Reaction" re
+            JOIN "User" u ON re."userId" = u.id
+            WHERE re."messageId" = ANY($1)
+          `, [messageIds])
+        : await pool.query(`
+            SELECT re.*, u.name as user_name
+            FROM reactions re
+            JOIN users u ON re.user_id = u.id
+            WHERE re.message_id = ANY($1)
+          `, [messageIds]);
       
       reactionsResult.rows.forEach(r => {
         if (!reactionsMap[r.message_id]) reactionsMap[r.message_id] = [];
@@ -118,14 +154,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    const preferPrisma = !isUuid(session.user.id) || !isUuid(chatId);
     // Fallback для старых клиентских версий с виртуальным ID "saved-"
     if (chatId.startsWith("saved-")) {
-      const savedChatResult = await pool.query(`
-        SELECT c.id FROM chats c
-        JOIN chat_members cm ON c.id = cm.chat_id
-        WHERE c.kind = 'SAVED' AND cm.user_id = $1
-        LIMIT 1
-      `, [session.user.id]);
+      const savedChatResult = preferPrisma
+        ? await pool.query(`
+            SELECT c.id FROM "Chat" c
+            JOIN "ChatMember" cm ON c.id = cm."chatId"
+            WHERE c.title = '⭐️ Избранное' AND cm."userId" = $1
+            LIMIT 1
+          `, [session.user.id])
+        : await pool.query(`
+            SELECT c.id FROM chats c
+            JOIN chat_members cm ON c.id = cm.chat_id
+            WHERE c.kind = 'SAVED' AND cm.user_id = $1
+            LIMIT 1
+          `, [session.user.id]);
       
       if (savedChatResult.rows[0]) {
         chatId = savedChatResult.rows[0].id;
@@ -135,10 +179,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Check membership
-    const membershipResult = await pool.query(`
-      SELECT 1 FROM chat_members 
-      WHERE user_id = $1 AND chat_id = $2
-    `, [session.user.id, chatId]);
+    const membershipResult = preferPrisma
+      ? await pool.query(`
+          SELECT 1 FROM "ChatMember" 
+          WHERE "userId" = $1 AND "chatId" = $2
+        `, [session.user.id, chatId])
+      : await pool.query(`
+          SELECT 1 FROM chat_members 
+          WHERE user_id = $1 AND chat_id = $2
+        `, [session.user.id, chatId]);
 
     if (membershipResult.rowCount === 0) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -156,17 +205,26 @@ export async function POST(request: NextRequest) {
       replyToId,
     });
 
-    const senderResult = await pool.query('SELECT name FROM users WHERE id = $1', [session.user.id]);
+    const senderResult = preferPrisma
+      ? await pool.query('SELECT name FROM "User" WHERE id = $1', [session.user.id])
+      : await pool.query('SELECT name FROM users WHERE id = $1', [session.user.id]);
     const senderName = senderResult.rows[0].name;
 
     let replyTo = undefined;
     if (replyToId) {
-      const replyResult = await pool.query(`
-        SELECT m.id, m.encrypted_body, u.name as sender_name
-        FROM messages m
-        JOIN users u ON m.sender_id = u.id
-        WHERE m.id = $1
-      `, [replyToId]);
+      const replyResult = preferPrisma
+        ? await pool.query(`
+            SELECT m.id, m."encryptedBody" as encrypted_body, u.name as sender_name
+            FROM "Message" m
+            JOIN "User" u ON m."senderId" = u.id
+            WHERE m.id = $1
+          `, [replyToId])
+        : await pool.query(`
+            SELECT m.id, m.encrypted_body, u.name as sender_name
+            FROM messages m
+            JOIN users u ON m.sender_id = u.id
+            WHERE m.id = $1
+          `, [replyToId]);
       if (replyResult.rows[0]) {
         replyTo = {
           id: replyResult.rows[0].id,
@@ -178,13 +236,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       id: message.id,
-      chatId: message.chat_id,
-      senderId: message.sender_id,
+      chatId: message.chat_id || message.chatId,
+      senderId: message.sender_id || message.senderId,
       senderName: senderName,
-      encryptedBody: message.encrypted_body,
-      encryptedAes: message.encrypted_aes,
+      encryptedBody: message.encrypted_body || message.encryptedBody,
+      encryptedAes: message.encrypted_aes || message.encryptedAes,
       iv: message.iv,
-      createdAt: message.created_at.toISOString(),
+      createdAt: new Date(message.created_at || message.createdAt || Date.now()).toISOString(),
       status: message.status,
       reactions: [],
       replyTo

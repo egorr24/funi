@@ -4,6 +4,9 @@ import { pool } from "@/models/database.js";
 import Chat from "@/models/Chat.js";
 import User from "@/models/User.js";
 
+const isUuid = (value: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+
 export async function GET() {
   const session = await auth();
   if (!session?.user?.id) {
@@ -11,8 +14,9 @@ export async function GET() {
   }
 
   try {
+    const preferPrisma = !isUuid(session.user.id);
     let savedChatResult;
-    try {
+    if (!preferPrisma) {
       savedChatResult = await pool.query(`
         SELECT c.id FROM chats c
         JOIN chat_members cm ON c.id = cm.chat_id
@@ -23,7 +27,7 @@ export async function GET() {
           )
         LIMIT 1
       `, [session.user.id]);
-    } catch (_error) {
+    } else {
       savedChatResult = await pool.query(`
         SELECT c.id FROM "Chat" c
         JOIN "ChatMember" cm ON c.id = cm."chatId"
@@ -37,18 +41,19 @@ export async function GET() {
     if (savedChatResult.rowCount === 0) {
       const newSavedChat = await Chat.create({
         title: "⭐️ Избранное",
-        kind: "SAVED"
+        kind: "SAVED",
+        preferPrisma,
       });
-      try {
+      if (!preferPrisma) {
         await pool.query('UPDATE chats SET is_pinned = true WHERE id = $1', [newSavedChat.id]);
-      } catch (_error) {
+      } else {
         await pool.query('UPDATE "Chat" SET "isPinned" = true WHERE id = $1', [newSavedChat.id]);
       }
-      await Chat.addMember(newSavedChat.id, session.user.id);
+      await Chat.addMember(newSavedChat.id, session.user.id, "member", preferPrisma);
     }
 
     let chatsResult;
-    try {
+    if (!preferPrisma) {
       chatsResult = await pool.query(`
         SELECT
           c.id,
@@ -98,7 +103,7 @@ export async function GET() {
           unread.unread_count
         ORDER BY COALESCE(last_message.created_at, c.updated_at) DESC
       `, [session.user.id]);
-    } catch (_error) {
+    } else {
       chatsResult = await pool.query(`
         SELECT
           c.id,
@@ -207,6 +212,7 @@ export async function POST(request: NextRequest) {
   try {
     const { userId, title, kind = "PERSONAL" } = await request.json();
     const normalizedKind = kind === "CHAT" ? "PERSONAL" : kind;
+    const preferPrisma = !isUuid(session.user.id);
 
     if (!userId) {
       return NextResponse.json({ error: "userId is required" }, { status: 400 });
@@ -221,7 +227,7 @@ export async function POST(request: NextRequest) {
 
     // Check if private chat already exists between these two users
     if (normalizedKind === "PERSONAL") {
-      const existingChat = await Chat.findPersonalChat(session.user.id, resolvedUserId);
+      const existingChat = await Chat.findPersonalChat(session.user.id, resolvedUserId, preferPrisma);
       if (existingChat) {
         return NextResponse.json({ id: existingChat.id });
       }
@@ -231,11 +237,12 @@ export async function POST(request: NextRequest) {
     const chat = await Chat.create({
       title: title || "Private Chat",
       kind: normalizedKind,
+      preferPrisma,
     });
 
     // Add members
-    await Chat.addMember(chat.id, session.user.id);
-    await Chat.addMember(chat.id, resolvedUserId);
+    await Chat.addMember(chat.id, session.user.id, "member", preferPrisma);
+    await Chat.addMember(chat.id, resolvedUserId, "member", preferPrisma);
 
     return NextResponse.json({ id: chat.id });
   } catch (error) {

@@ -11,7 +11,17 @@ class Chat {
     return 'PERSONAL';
   }
 
-  static async create({ title, kind = 'PERSONAL' }) {
+  static async create({ title, kind = 'PERSONAL', preferPrisma = false }) {
+    if (preferPrisma) {
+      const query = `
+        INSERT INTO "Chat" ("id", "title", "kind", "createdAt", "updatedAt")
+        VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        RETURNING *
+      `;
+      const id = Chat.generateId('cht_');
+      const result = await pool.query(query, [id, title, Chat.normalizeKind(kind)]);
+      return result.rows[0];
+    }
     try {
       const query = `
         INSERT INTO chats (title, kind)
@@ -38,7 +48,18 @@ class Chat {
     return result.rows[0];
   }
 
-  static async addMember(chatId, userId, role = 'member') {
+  static async addMember(chatId, userId, role = 'member', preferPrisma = false) {
+    if (preferPrisma) {
+      const query = `
+        INSERT INTO "ChatMember" ("id", "chatId", "userId", "role", "muted", "joinedAt")
+        VALUES ($1, $2, $3, $4, false, CURRENT_TIMESTAMP)
+        ON CONFLICT ("userId", "chatId") DO NOTHING
+        RETURNING *
+      `;
+      const id = Chat.generateId('cm_');
+      const result = await pool.query(query, [id, chatId, userId, role]);
+      return result.rows[0];
+    }
     try {
       const query = `
         INSERT INTO chat_members (chat_id, user_id, role)
@@ -85,7 +106,22 @@ class Chat {
     return result.rows;
   }
 
-  static async findPersonalChat(userId1, userId2) {
+  static async findPersonalChat(userId1, userId2, preferPrisma = false) {
+    if (preferPrisma) {
+      const query = `
+        SELECT c.*
+        FROM "Chat" c
+        JOIN "ChatMember" cm1 ON c.id = cm1."chatId"
+        JOIN "ChatMember" cm2 ON c.id = cm2."chatId"
+        WHERE c.kind = 'PERSONAL'
+        AND c.title != '⭐️ Избранное'
+        AND cm1."userId" = $1
+        AND cm2."userId" = $2
+        LIMIT 1
+      `;
+      const result = await pool.query(query, [userId1, userId2]);
+      return result.rows[0];
+    }
     try {
       const query = `
         SELECT c.*
