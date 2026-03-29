@@ -59,14 +59,19 @@ class User {
 
   static async searchUsers(searchQuery, currentUserId) {
     const normalizedQuery = (searchQuery || "").trim();
+    const wildcardQuery = `%${normalizedQuery.toLowerCase().replace(/\s+/g, "%")}%`;
+    const compactNameQuery = `%${normalizedQuery.toLowerCase().replace(/\s+/g, "")}%`;
+    const compactEmailQuery = `%${normalizedQuery.toLowerCase().replace(/[.\s]+/g, "")}%`;
     const query = `
       SELECT id, name, email, avatar, status
       FROM users 
       WHERE id != $2
       AND (
         $1 = ''
-        OR name ILIKE $3
-        OR email ILIKE $3
+        OR LOWER(COALESCE(name, '')) LIKE $3
+        OR LOWER(email) LIKE $3
+        OR REPLACE(LOWER(COALESCE(name, '')), ' ', '') LIKE $4
+        OR REPLACE(LOWER(email), '.', '') LIKE $5
       )
       ORDER BY
         CASE WHEN status = 'online' THEN 0 ELSE 1 END,
@@ -74,8 +79,22 @@ class User {
         name ASC
       LIMIT 20
     `;
-    const result = await pool.query(query, [normalizedQuery, currentUserId, `%${normalizedQuery}%`]);
-    return result.rows;
+    const result = await pool.query(query, [normalizedQuery, currentUserId, wildcardQuery, compactNameQuery, compactEmailQuery]);
+    if (result.rows.length > 0 || normalizedQuery === '') {
+      return result.rows;
+    }
+    const fallbackQuery = `
+      SELECT id, name, email, avatar, status
+      FROM users
+      WHERE id != $1
+      ORDER BY
+        CASE WHEN status = 'online' THEN 0 ELSE 1 END,
+        COALESCE(updated_at, created_at) DESC,
+        name ASC
+      LIMIT 20
+    `;
+    const fallbackResult = await pool.query(fallbackQuery, [currentUserId]);
+    return fallbackResult.rows;
   }
 
   static async verifyPassword(plainPassword, hashedPassword) {
