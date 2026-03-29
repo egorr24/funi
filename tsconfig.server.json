@@ -7,7 +7,6 @@
     "rootDir": "./src",
     "tsBuildInfoFile": "./node_modules/.tsbuildinfo-server",
     "paths": {
-      "@prisma/client": ["../prisma/generated/prisma/client"],
       "@/*": ["./*"]
     }
   },

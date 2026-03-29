@@ -1,9 +1,8 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@auth/prisma-adapter";
 import { compare } from "bcryptjs";
 import { z } from "zod";
-import { prisma } from "@/src/lib/prisma";
+import User from "../models/User.js";
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -11,7 +10,6 @@ const credentialsSchema = z.object({
 });
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma),
   trustHost: true,
   session: {
     strategy: "jwt",
@@ -31,13 +29,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: parsed.data.email },
-        });
+        const user = await User.findByEmail(parsed.data.email);
         if (!user) {
           return null;
         }
-        const valid = await compare(parsed.data.password, user.passwordHash);
+        
+        const valid = await compare(parsed.data.password, user.password_hash);
         if (!valid) {
           return null;
         }

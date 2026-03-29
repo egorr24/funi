@@ -1,6 +1,6 @@
 import { auth } from "@/src/auth";
-import { prisma } from "@/src/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import User from "@/models/User.js";
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -12,24 +12,14 @@ export async function GET(request: NextRequest) {
   const query = searchParams.get("q") || "";
 
   try {
-    const users = await prisma.user.findMany({
-      where: {
-        OR: [
-          { name: { contains: query, mode: "insensitive" } },
-          { email: { contains: query, mode: "insensitive" } },
-        ],
-        NOT: { id: session.user.id }, // Don't find self
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        avatar: true,
-      },
-      take: 10,
-    });
+    const users = await User.searchUsers(query, session.user.id);
 
-    return NextResponse.json(users);
+    return NextResponse.json(users.map(u => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      avatar: u.avatar,
+    })));
   } catch (error) {
     console.error("User search error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

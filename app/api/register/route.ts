@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { hash } from "bcryptjs";
 import { z } from "zod";
-import { prisma } from "@/src/lib/prisma";
+import User from "@/models/User.js";
+import Chat from "@/models/Chat.js";
+import { pool } from "@/models/database.js";
 
 const registerSchema = z.object({
   name: z.string().min(2),
@@ -20,48 +21,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Некорректные данные" }, { status: 400 });
     }
 
-    const exists = await prisma.user.findUnique({
-      where: { email: parsed.data.email },
-    });
+    const exists = await User.findByEmail(parsed.data.email);
     
     if (exists) {
       console.log("User already exists:", parsed.data.email);
       return NextResponse.json({ error: "Email уже занят" }, { status: 409 });
     }
 
-    const passwordHash = await hash(parsed.data.password, 12);
-
-    const newUser = await prisma.user.create({
-      data: {
-        name: parsed.data.name,
-        email: parsed.data.email,
-        passwordHash,
-      },
+    const newUser = await User.create({
+      name: parsed.data.name,
+      email: parsed.data.email,
+      password: parsed.data.password,
     });
 
     console.log("User created, ID:", newUser.id);
 
     // Create or find a global chat
-    let globalChat = await prisma.chat.findFirst({
-      where: { title: "Global FLUX Chat" },
-    });
+    let globalChatResult = await pool.query("SELECT * FROM chats WHERE title = $1 LIMIT 1", ["Global FLUX Chat"]);
+    let globalChat = globalChatResult.rows[0];
 
     if (!globalChat) {
-      globalChat = await prisma.chat.create({
-        data: {
-          title: "Global FLUX Chat",
-          kind: "PERSONAL",
-        },
+      globalChat = await Chat.create({
+        title: "Global FLUX Chat",
+        kind: "PERSONAL",
       });
       console.log("Global chat created");
     }
 
-    await prisma.chatMember.create({
-      data: {
-        userId: newUser.id,
-        chatId: globalChat.id,
-      },
-    });
+    await Chat.addMember(globalChat.id, newUser.id);
 
     console.log("User added to global chat");
 

@@ -1,17 +1,17 @@
-const { pool } = require('./database');
-const bcrypt = require('bcryptjs');
+import { pool } from './database.js';
+import bcrypt from 'bcryptjs';
 
 class User {
-  static async create({ username, email, password, displayName }) {
+  static async create({ name, email, password, avatar, publicKey, encryptedPrivKey }) {
     const hashedPassword = await bcrypt.hash(password, 12);
     
     const query = `
-      INSERT INTO users (username, email, password_hash, display_name)
-      VALUES ($1, $2, $3, $4)
-      RETURNING id, username, email, display_name, created_at
+      INSERT INTO users (name, email, password_hash, avatar, public_key, encrypted_priv_key)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id, name, email, avatar, public_key, created_at
     `;
     
-    const values = [username, email, hashedPassword, displayName];
+    const values = [name, email, hashedPassword, avatar, publicKey, encryptedPrivKey];
     const result = await pool.query(query, values);
     return result.rows[0];
   }
@@ -22,15 +22,9 @@ class User {
     return result.rows[0];
   }
 
-  static async findByUsername(username) {
-    const query = 'SELECT * FROM users WHERE username = $1';
-    const result = await pool.query(query, [username]);
-    return result.rows[0];
-  }
-
   static async findById(id) {
     const query = `
-      SELECT id, username, email, display_name, avatar_url, status, last_seen, created_at
+      SELECT id, name, email, avatar, public_key, encrypted_priv_key, status, last_seen, created_at
       FROM users WHERE id = $1
     `;
     const result = await pool.query(query, [id]);
@@ -48,27 +42,31 @@ class User {
     return result.rows[0];
   }
 
-  static async updateProfile(userId, { displayName, avatarUrl }) {
+  static async updateProfile(userId, { name, avatar, publicKey, encryptedPrivKey }) {
     const query = `
       UPDATE users 
-      SET display_name = $1, avatar_url = $2, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $3
-      RETURNING id, display_name, avatar_url, updated_at
+      SET name = COALESCE($1, name), 
+          avatar = COALESCE($2, avatar), 
+          public_key = COALESCE($3, public_key),
+          encrypted_priv_key = COALESCE($4, encrypted_priv_key),
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $5
+      RETURNING id, name, avatar, public_key, updated_at
     `;
-    const result = await pool.query(query, [displayName, avatarUrl, userId]);
+    const result = await pool.query(query, [name, avatar, publicKey, encryptedPrivKey, userId]);
     return result.rows[0];
   }
 
-  static async searchUsers(query, currentUserId) {
-    const searchQuery = `
-      SELECT id, username, display_name, avatar_url, status
+  static async searchUsers(searchQuery, currentUserId) {
+    const query = `
+      SELECT id, name, avatar, status
       FROM users 
-      WHERE (username ILIKE $1 OR display_name ILIKE $1)
+      WHERE (name ILIKE $1 OR email ILIKE $1)
       AND id != $2
-      ORDER BY username
+      ORDER BY name
       LIMIT 20
     `;
-    const result = await pool.query(searchQuery, [`%${query}%`, currentUserId]);
+    const result = await pool.query(query, [`%${searchQuery}%`, currentUserId]);
     return result.rows;
   }
 
@@ -77,4 +75,4 @@ class User {
   }
 }
 
-module.exports = User;
+export default User;

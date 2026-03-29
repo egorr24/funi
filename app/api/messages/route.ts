@@ -1,6 +1,7 @@
 import { auth } from "@/src/auth";
-import { prisma } from "@/src/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { pool } from "@/models/database.js";
+import Message from "@/models/Message.js";
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -18,70 +19,83 @@ export async function GET(request: NextRequest) {
   try {
     // Fallback для старых клиентских версий с виртуальным ID "saved-"
     if (chatId.startsWith("saved-")) {
-      const savedChat = await prisma.chat.findFirst({
-        where: {
-          kind: "SAVED",
-          members: { some: { userId: session.user.id } }
-        }
-      });
-      if (savedChat) {
-        chatId = savedChat.id;
+      const savedChatResult = await pool.query(`
+        SELECT c.id FROM chats c
+        JOIN chat_members cm ON c.id = cm.chat_id
+        WHERE c.kind = 'SAVED' AND cm.user_id = $1
+        LIMIT 1
+      `, [session.user.id]);
+      
+      if (savedChatResult.rows[0]) {
+        chatId = savedChatResult.rows[0].id;
       } else {
         return NextResponse.json({ error: "Saved messages chat not found" }, { status: 404 });
       }
     }
 
     // Check if user is a member of the chat
-    const membership = await prisma.chatMember.findUnique({
-      where: {
-        userId_chatId: {
-          userId: session.user.id,
-          chatId: chatId,
-        },
-      },
-    });
+    const membershipResult = await pool.query(`
+      SELECT 1 FROM chat_members 
+      WHERE user_id = $1 AND chat_id = $2
+    `, [session.user.id, chatId]);
 
-    if (!membership) {
+    if (membershipResult.rowCount === 0) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const messages = await prisma.message.findMany({
-      where: { chatId },
-      orderBy: { createdAt: "asc" },
-      include: {
-        sender: true,
-        reactions: {
-          include: { user: true },
-        },
-        replyTo: {
-          include: { sender: true }
-        }
-      },
-    });
+    const messagesResult = await pool.query(`
+      SELECT m.*, u.name as sender_name,
+             r.id as reply_id, r.encrypted_body as reply_body, ru.name as reply_sender_name
+      FROM messages m
+      JOIN users u ON m.sender_id = u.id
+      LEFT JOIN messages r ON m.reply_to_id = r.id
+      LEFT JOIN users ru ON r.sender_id = ru.id
+      WHERE m.chat_id = $1
+      ORDER BY m.created_at ASC
+    `, [chatId]);
+
+    const messages = messagesResult.rows;
+
+    // Fetch reactions for these messages
+    const messageIds = messages.map(m => m.id);
+    let reactionsMap: Record<string, any[]> = {};
+    
+    if (messageIds.length > 0) {
+      const reactionsResult = await pool.query(`
+        SELECT re.*, u.name as user_name
+        FROM reactions re
+        JOIN users u ON re.user_id = u.id
+        WHERE re.message_id = ANY($1)
+      `, [messageIds]);
+      
+      reactionsResult.rows.forEach(r => {
+        if (!reactionsMap[r.message_id]) reactionsMap[r.message_id] = [];
+        reactionsMap[r.message_id].push({
+          emoji: r.emoji,
+          userId: r.user_id,
+          userName: r.user_name,
+        });
+      });
+    }
 
     return NextResponse.json(messages.map(m => ({
       id: m.id,
-      chatId: m.chatId,
-      senderId: m.senderId,
-      senderName: m.sender.name,
-      encryptedBody: m.encryptedBody,
-      encryptedAes: m.encryptedAes,
+      chatId: m.chat_id,
+      senderId: m.sender_id,
+      senderName: m.sender_name,
+      encryptedBody: m.encrypted_body,
+      encryptedAes: m.encrypted_aes,
       iv: m.iv,
-      mediaUrl: m.mediaUrl,
-      mediaType: m.mediaType,
+      mediaUrl: m.media_url,
+      mediaType: m.media_type,
       waveform: m.waveform,
-      isSecure: m.isSecure,
-      createdAt: m.createdAt.toISOString(),
+      createdAt: m.created_at.toISOString(),
       status: m.status,
-      reactions: m.reactions.map(r => ({
-        emoji: r.emoji,
-        userId: r.userId,
-        userName: r.user.name,
-      })),
-      replyTo: m.replyTo ? {
-        id: m.replyTo.id,
-        body: m.replyTo.encryptedBody, // Use encryptedBody since it's the main content field
-        senderName: m.replyTo.sender.name
+      reactions: reactionsMap[m.id] || [],
+      replyTo: m.reply_id ? {
+        id: m.reply_id,
+        body: m.reply_body,
+        senderName: m.reply_sender_name
       } : undefined
     })));
   } catch (error) {
@@ -98,7 +112,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    let { chatId, encryptedBody, encryptedAes, iv, mediaUrl, mediaType, waveform, replyToId, isSecure } = body;
+    let { chatId, encryptedBody, encryptedAes, iv, mediaUrl, mediaType, waveform, replyToId } = body;
 
     if (!chatId || !encryptedBody || !encryptedAes || !iv) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -106,72 +120,74 @@ export async function POST(request: NextRequest) {
 
     // Fallback для старых клиентских версий с виртуальным ID "saved-"
     if (chatId.startsWith("saved-")) {
-      const savedChat = await prisma.chat.findFirst({
-        where: {
-          kind: "SAVED",
-          members: { some: { userId: session.user.id } }
-        }
-      });
-      if (savedChat) {
-        chatId = savedChat.id;
+      const savedChatResult = await pool.query(`
+        SELECT c.id FROM chats c
+        JOIN chat_members cm ON c.id = cm.chat_id
+        WHERE c.kind = 'SAVED' AND cm.user_id = $1
+        LIMIT 1
+      `, [session.user.id]);
+      
+      if (savedChatResult.rows[0]) {
+        chatId = savedChatResult.rows[0].id;
       } else {
         return NextResponse.json({ error: "Saved messages chat not found" }, { status: 404 });
       }
     }
 
     // Check membership
-    const membership = await prisma.chatMember.findUnique({
-      where: {
-        userId_chatId: {
-          userId: session.user.id,
-          chatId: chatId,
-        },
-      },
-    });
+    const membershipResult = await pool.query(`
+      SELECT 1 FROM chat_members 
+      WHERE user_id = $1 AND chat_id = $2
+    `, [session.user.id, chatId]);
 
-    if (!membership) {
+    if (membershipResult.rowCount === 0) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const message = await prisma.message.create({
-      data: {
-        chatId,
-        senderId: session.user.id,
-        encryptedBody,
-        encryptedAes,
-        iv,
-        mediaUrl,
-        mediaType,
-        waveform,
-        replyToId,
-        isSecure: !!isSecure,
-        status: "SENT",
-      },
-      include: {
-        sender: true,
-        replyTo: {
-          include: { sender: true }
-        }
-      },
+    const message = await Message.create({
+      chatId,
+      senderId: session.user.id,
+      encryptedBody,
+      encryptedAes,
+      iv,
+      mediaUrl,
+      mediaType,
+      waveform,
+      replyToId,
     });
+
+    const senderResult = await pool.query('SELECT name FROM users WHERE id = $1', [session.user.id]);
+    const senderName = senderResult.rows[0].name;
+
+    let replyTo = undefined;
+    if (replyToId) {
+      const replyResult = await pool.query(`
+        SELECT m.id, m.encrypted_body, u.name as sender_name
+        FROM messages m
+        JOIN users u ON m.sender_id = u.id
+        WHERE m.id = $1
+      `, [replyToId]);
+      if (replyResult.rows[0]) {
+        replyTo = {
+          id: replyResult.rows[0].id,
+          body: replyResult.rows[0].encrypted_body,
+          senderName: replyResult.rows[0].sender_name
+        };
+      }
+    }
 
     return NextResponse.json({
       id: message.id,
-      chatId: message.chatId,
-      senderId: message.senderId,
-      senderName: message.sender.name,
-      encryptedBody: message.encryptedBody,
-      encryptedAes: message.encryptedAes,
+      chatId: message.chat_id,
+      senderId: message.sender_id,
+      senderName: senderName,
+      encryptedBody: message.encrypted_body,
+      encryptedAes: message.encrypted_aes,
       iv: message.iv,
-      isSecure: message.isSecure,
-      createdAt: message.createdAt.toISOString(),
+      createdAt: message.created_at.toISOString(),
       status: message.status,
       reactions: [],
-      replyTo: message.replyTo ? {
-        id: message.replyTo.id,
-        body: message.replyTo.encryptedBody,
-        senderName: message.replyTo.sender.name
-      } : undefined
+      replyTo
     });
   } catch (error) {
     console.error("Error creating message:", error);

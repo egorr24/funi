@@ -1,6 +1,7 @@
 import { auth } from "@/src/auth";
-import { prisma } from "@/src/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { pool } from "@/models/database.js";
+import Message from "@/models/Message.js";
 
 export async function POST(
   request: NextRequest,
@@ -20,48 +21,39 @@ export async function POST(
 
   try {
     // Находим сообщение и проверяем членство в чате
-    const message = await prisma.message.findUnique({
-      where: { id: messageId },
-      include: { chat: { include: { members: true } } },
-    });
+    const messageResult = await pool.query(`
+      SELECT m.*, c.id as chat_id FROM messages m
+      JOIN chats c ON m.chat_id = c.id
+      WHERE m.id = $1
+    `, [messageId]);
+    const message = messageResult.rows[0];
 
     if (!message) {
       return NextResponse.json({ error: "Message not found" }, { status: 404 });
     }
 
-    const isMember = message.chat.members.some(m => m.userId === session.user.id);
-    if (!isMember) {
+    const membershipResult = await pool.query(`
+      SELECT 1 FROM chat_members 
+      WHERE user_id = $1 AND chat_id = $2
+    `, [session.user.id, message.chat_id]);
+
+    if (membershipResult.rowCount === 0) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Добавляем или обновляем реакцию (один пользователь — один эмодзи на сообщение)
-    // В схеме @@unique([messageId, userId, emoji]), но мы хотим один эмодзи от юзера на сообщение
-    // Если нужно разрешить несколько разных эмодзи от одного юзера, используем upsert с уникальным ключом
-    // Если хотим "один юзер - один лайк", то удаляем старые перед добавлением нового.
-    
     // Удаляем предыдущую реакцию этого пользователя на это сообщение (если хотим один лайк на юзера)
-    await prisma.reaction.deleteMany({
-      where: {
-        messageId,
-        userId: session.user.id,
-      }
-    });
+    await pool.query(`
+      DELETE FROM reactions 
+      WHERE message_id = $1 AND user_id = $2
+    `, [messageId, session.user.id]);
 
-    const reaction = await prisma.reaction.create({
-      data: {
-        messageId,
-        userId: session.user.id,
-        emoji,
-      },
-      include: {
-        user: true
-      }
-    });
+    const reaction = await Message.addReaction(messageId, session.user.id, emoji);
+    const userResult = await pool.query('SELECT name FROM users WHERE id = $1', [session.user.id]);
 
     return NextResponse.json({
       emoji: reaction.emoji,
-      userId: reaction.userId,
-      userName: reaction.user.name,
+      userId: reaction.user_id,
+      userName: userResult.rows[0].name,
     });
   } catch (error) {
     console.error("Error toggling reaction:", error);
