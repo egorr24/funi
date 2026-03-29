@@ -62,25 +62,28 @@ class User {
     const wildcardQuery = `%${normalizedQuery.toLowerCase().replace(/\s+/g, "%")}%`;
     const compactNameQuery = `%${normalizedQuery.toLowerCase().replace(/\s+/g, "")}%`;
     const compactEmailQuery = `%${normalizedQuery.toLowerCase().replace(/[.\s]+/g, "")}%`;
-    const query = `
-      SELECT id, name, email, avatar, status
-      FROM users 
-      WHERE id != $2
-      AND (
-        $1 = ''
-        OR LOWER(COALESCE(name, '')) LIKE $3
-        OR LOWER(email) LIKE $3
-        OR REPLACE(LOWER(COALESCE(name, '')), ' ', '') LIKE $4
-        OR REPLACE(LOWER(email), '.', '') LIKE $5
-      )
-      ORDER BY
-        CASE WHEN status = 'online' THEN 0 ELSE 1 END,
-        COALESCE(updated_at, created_at) DESC,
-        name ASC
-      LIMIT 20
-    `;
-    const result = await pool.query(query, [normalizedQuery, currentUserId, wildcardQuery, compactNameQuery, compactEmailQuery]);
-    const mergedUsers = [...result.rows];
+    const mergedUsers = [];
+    try {
+      const query = `
+        SELECT id, name, email, avatar, status
+        FROM users 
+        WHERE id != $2
+        AND (
+          $1 = ''
+          OR LOWER(COALESCE(name, '')) LIKE $3
+          OR LOWER(email) LIKE $3
+          OR REPLACE(LOWER(COALESCE(name, '')), ' ', '') LIKE $4
+          OR REPLACE(LOWER(email), '.', '') LIKE $5
+        )
+        ORDER BY
+          CASE WHEN status = 'online' THEN 0 ELSE 1 END,
+          COALESCE(updated_at, created_at) DESC,
+          name ASC
+        LIMIT 20
+      `;
+      const result = await pool.query(query, [normalizedQuery, currentUserId, wildcardQuery, compactNameQuery, compactEmailQuery]);
+      mergedUsers.push(...result.rows);
+    } catch (_error) {}
     const seenEmails = new Set(
       mergedUsers
         .map((user) => (user.email || "").toLowerCase())
@@ -116,28 +119,56 @@ class User {
         if (mergedUsers.length >= 20) break;
       }
     } catch (_error) {}
-    if (mergedUsers.length > 0 || normalizedQuery === '') {
+    if (mergedUsers.length > 0 || normalizedQuery === "") {
       return mergedUsers.slice(0, 20);
     }
-    const fallbackQuery = `
-      SELECT id, name, email, avatar, status
-      FROM users
-      WHERE id != $1
-      ORDER BY
-        CASE WHEN status = 'online' THEN 0 ELSE 1 END,
-        COALESCE(updated_at, created_at) DESC,
-        name ASC
-      LIMIT 20
-    `;
-    const fallbackResult = await pool.query(fallbackQuery, [currentUserId]);
-    return fallbackResult.rows;
+    try {
+      const fallbackQuery = `
+        SELECT id, name, email, avatar, status
+        FROM users
+        WHERE id != $1
+        ORDER BY
+          CASE WHEN status = 'online' THEN 0 ELSE 1 END,
+          COALESCE(updated_at, created_at) DESC,
+          name ASC
+        LIMIT 20
+      `;
+      const fallbackResult = await pool.query(fallbackQuery, [currentUserId]);
+      return fallbackResult.rows;
+    } catch (_error) {}
+    try {
+      const fallbackLegacy = await pool.query(`
+        SELECT id, name, email, avatar
+        FROM "User"
+        WHERE id::text != $1
+        ORDER BY name ASC
+        LIMIT 20
+      `, [String(currentUserId)]);
+      return fallbackLegacy.rows.map((user) => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        status: "offline",
+      }));
+    } catch (_error) {
+      return [];
+    }
   }
 
   static async resolveAppUserId(externalUserId) {
-    const ownUser = await pool.query('SELECT id FROM users WHERE id = $1 LIMIT 1', [externalUserId]);
-    if (ownUser.rows[0]?.id) {
-      return ownUser.rows[0].id;
-    }
+    try {
+      const ownUser = await pool.query('SELECT id FROM users WHERE id = $1 LIMIT 1', [externalUserId]);
+      if (ownUser.rows[0]?.id) {
+        return ownUser.rows[0].id;
+      }
+    } catch (_error) {}
+    try {
+      const ownLegacy = await pool.query('SELECT id FROM "User" WHERE id = $1 LIMIT 1', [externalUserId]);
+      if (ownLegacy.rows[0]?.id) {
+        return ownLegacy.rows[0].id;
+      }
+    } catch (_error) {}
     try {
       const legacyUserResult = await pool.query(`
         SELECT id, name, email, avatar, "passwordHash" as password_hash
@@ -149,12 +180,16 @@ class User {
       if (!legacyUser?.email) {
         return null;
       }
-      const existingByEmail = await pool.query(
-        'SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1',
-        [legacyUser.email]
-      );
-      if (existingByEmail.rows[0]?.id) {
-        return existingByEmail.rows[0].id;
+      try {
+        const existingByEmail = await pool.query(
+          'SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1',
+          [legacyUser.email]
+        );
+        if (existingByEmail.rows[0]?.id) {
+          return existingByEmail.rows[0].id;
+        }
+      } catch (_error) {
+        return legacyUser.id;
       }
       const inserted = await pool.query(`
         INSERT INTO users (name, email, password_hash, avatar)
