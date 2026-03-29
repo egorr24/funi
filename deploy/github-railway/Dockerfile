@@ -9,7 +9,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 # DATABASE_URL будет подтянут из настроек Railway во время сборки
-RUN npx prisma generate && npm run build
+RUN npm run build
 
 FROM node:22-alpine AS runner
 WORKDIR /app
@@ -20,7 +20,6 @@ ENV AUTH_TRUST_HOST=true
 
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/next.config.ts ./next.config.ts
@@ -29,5 +28,5 @@ COPY --from=builder /app/models ./models
 COPY --from=builder /app/routes ./routes
 
 EXPOSE 3000
-# Принудительно создаем таблицы в базе перед запуском сервера
-CMD ["sh", "-c", "npx prisma db push && node server.js"]
+# Таблицы создаются автоматически в server.js через initDatabase()
+CMD ["node", "server.js"]
