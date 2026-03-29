@@ -38,15 +38,21 @@ export async function GET() {
       ORDER BY c.updated_at DESC
     `, [session.user.id]);
 
+    const allowedFolders = new Set(["PERSONAL", "WORK", "AI", "CHANNEL", "SAVED"]);
     const chats = chatsResult.rows.map((chat) => {
+      const folder = allowedFolders.has(chat.kind) ? chat.kind : "PERSONAL";
+      const participants = chat.other_member_name
+        ? [chat.other_member_name, "You"]
+        : ["You"];
       return {
         id: chat.id,
         title: chat.title || chat.other_member_name || "Unknown Chat",
         avatar: (chat.title || chat.other_member_name || "??").slice(0, 2).toUpperCase(),
-        folder: chat.kind,
+        folder,
         unreadCount: 0,
         pinned: chat.is_pinned,
         typing: false,
+        participants,
         otherUserId: chat.other_member_id,
         lastMessagePreview: chat.last_message || "No messages yet",
         updatedAt: chat.updated_at.toISOString(),

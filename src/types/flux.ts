@@ -1,4 +1,4 @@
-export type ChatFolder = "PERSONAL" | "WORK" | "AI" | "CHANNEL";
+export type ChatFolder = "PERSONAL" | "WORK" | "AI" | "CHANNEL" | "SAVED";
 
 export type DeliveryState = "QUEUED" | "SENT" | "DELIVERED" | "READ";
 

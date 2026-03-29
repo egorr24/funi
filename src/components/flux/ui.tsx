@@ -324,13 +324,13 @@ export const SidebarHeader = ({
 );
 
 export const SearchBar = ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
-  <label className="mx-4 mb-4 flex items-center gap-2 rounded-2xl border border-white/15 bg-black/20 px-3 py-2">
+  <label className="mx-4 mb-4 flex items-center gap-2 rounded-2xl border border-white/15 bg-gradient-to-r from-black/30 to-violet-500/10 px-3 py-2.5 shadow-[0_10px_30px_rgba(0,0,0,0.2)]">
     <Search className="h-4 w-4 text-zinc-400" />
     <input
       value={value}
       onChange={(event) => onChange(event.target.value)}
       className="w-full bg-transparent text-sm outline-none placeholder:text-zinc-500"
-      placeholder="Search chats, messages, media..."
+      placeholder="Поиск чатов, сообщений, медиа..."
     />
   </label>
 );
@@ -369,7 +369,7 @@ export const FolderTabs = ({
 );
 
 export const ChatList = ({ children }: PropsWithChildren) => (
-  <div className="space-y-2 px-3 pb-3">{children}</div>
+  <div className="space-y-2.5 px-3 pb-3">{children}</div>
 );
 
 export const ChatListItem = ({
@@ -391,7 +391,7 @@ export const ChatListItem = ({
       e.preventDefault();
       onMute?.();
     }}
-    className={`w-full rounded-2xl p-3 text-left transition relative group ${active ? "bg-violet-500/25" : "bg-white/5 hover:bg-white/10"}`}
+    className={`w-full rounded-2xl p-3 text-left transition-all duration-200 relative group border ${active ? "bg-gradient-to-r from-violet-500/30 to-fuchsia-500/10 border-violet-300/30 shadow-[0_10px_30px_rgba(139,92,246,0.25)]" : "bg-white/5 hover:bg-white/10 border-white/5 hover:border-white/10"}`}
   >
     <div className="flex items-start justify-between">
       <div className="flex items-center gap-3">
@@ -406,15 +406,18 @@ export const ChatListItem = ({
             <div className="text-sm font-semibold">{chat.title}</div>
             {chat.isMuted && <Bell className="h-3 w-3 text-zinc-500" />}
           </div>
-          <div className="max-w-[210px] truncate text-xs text-zinc-400">{chat.lastMessagePreview}</div>
+          <div className="max-w-[210px] truncate text-xs text-zinc-300/80">{chat.lastMessagePreview}</div>
         </div>
       </div>
-      <div className="text-right">
+      <div className="text-right pl-2">
         {chat.unreadCount > 0 ? (
-          <span className="rounded-full bg-violet-500/80 px-2 py-0.5 text-[10px]">{chat.unreadCount}</span>
+          <span className="rounded-full bg-violet-500/90 px-2 py-0.5 text-[10px] font-bold">{chat.unreadCount}</span>
         ) : null}
         <div className="flex flex-col items-end gap-1 mt-1">
           {chat.pinned && <Pin className="h-3.5 w-3.5 text-zinc-400" />}
+          <div className="text-[9px] text-zinc-500">
+            {new Date(chat.updatedAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+          </div>
           <div className="text-[9px] text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity">
             {isOnline ? "онлайн" : "был недавно"}
           </div>

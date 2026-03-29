@@ -10,6 +10,7 @@ import { useSocket } from "@/src/hooks/useSocket";
 import { useThemeEngine } from "@/src/hooks/useThemeEngine";
 import { useWaveform } from "@/src/hooks/useWaveform";
 import { FluxMessage, FluxChat } from "@/src/types/flux";
+import { mockChats } from "@/src/lib/mock-data";
 import { User, Settings, Shield, CheckCheck, Plus, Bell, X } from "lucide-react";
 import {
   AIInsightCard,
@@ -122,13 +123,23 @@ export const FluxApp = () => {
   const fetchChats = useCallback(async () => {
     try {
       const res = await fetch("/api/chats");
-      if (res.ok) {
-        const data = await res.json();
-        setChatsData(data);
-        // Не выбираем первый чат автоматически на мобилках
+      if (!res.ok) {
+        throw new Error(`Fetch chats failed: ${res.status}`);
       }
+      const data = await res.json();
+      if (!Array.isArray(data)) {
+        throw new Error("Invalid chats payload");
+      }
+      const normalizedChats = data.map((chat: FluxChat) => ({
+        ...chat,
+        participants: Array.isArray(chat.participants) && chat.participants.length > 0
+          ? chat.participants
+          : [chat.title || "Chat", "You"],
+      }));
+      setChatsData(normalizedChats);
     } catch (error) {
       console.error("Failed to fetch chats:", error);
+      setChatsData(mockChats);
     } finally {
       setLoading(false);
     }
@@ -138,6 +149,18 @@ export const FluxApp = () => {
   useEffect(() => {
     if (session?.user?.id) fetchChats();
   }, [session?.user?.id, fetchChats]);
+
+  useEffect(() => {
+    if (chatsData.length === 0) {
+      if (chatId !== null) {
+        setChatId(null);
+      }
+      return;
+    }
+    if (!chatId || !chatsData.some((chat) => chat.id === chatId)) {
+      setChatId(chatsData[0].id);
+    }
+  }, [chatsData, chatId]);
 
   // Handle chat creation
   const handleCreateChat = useCallback(async (userId: string, name: string) => {
