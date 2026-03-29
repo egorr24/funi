@@ -26,6 +26,7 @@ COPY --from=builder /app/next.config.ts ./next.config.ts
 COPY --from=builder /app/server.js ./server.js
 COPY --from=builder /app/models ./models
 COPY --from=builder /app/routes ./routes
+COPY --from=builder /app/dist ./dist
 
 EXPOSE 3000
 # Таблицы создаются автоматически в server.js через initDatabase()
