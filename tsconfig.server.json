@@ -4,7 +4,7 @@
     "module": "esnext",
     "outDir": "./dist/server",
     "noEmit": false,
-    "rootDir": "./src",
+    "rootDir": ".",
     "tsBuildInfoFile": "./node_modules/.tsbuildinfo-server",
     "paths": {
       "@/*": ["./*"]
