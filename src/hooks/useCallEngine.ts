@@ -379,6 +379,10 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
     }
   }, [localStream, cameraOff]);
 
+  const shareScreen = useCallback(() => {
+    alert("Демонстрация экрана: в разработке");
+  }, []);
+
   return {
     inCall,
     isOutgoing,
@@ -395,6 +399,7 @@ export const useCallEngine = (socket: Socket | null, userId: string) => {
     acceptCall,
     rejectCall,
     toggleMute,
-    toggleCamera
+    toggleCamera,
+    shareScreen
   };
 };

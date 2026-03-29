@@ -7,8 +7,7 @@ export type MediaKind = "image" | "video" | "audio" | "file";
 export type FluxReaction = {
   emoji: string;
   userId: string;
-  count: number;
-  reacted: boolean;
+  userName?: string;
 };
 
 export type FluxMessage = {
@@ -25,7 +24,7 @@ export type FluxMessage = {
   replyToId?: string;
   replyTo?: {
     id: string;
-    body: string;
+    body?: string;
     senderName: string;
   };
   mediaUrl?: string;

@@ -565,7 +565,7 @@ export const MoireOverlay = ({ viewerName }: { viewerName?: string }) => (
 
 export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, revealed: boolean, viewerName?: string }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number>(0);
   const frameCounter = useRef(0);
 
   useEffect(() => {
@@ -1018,7 +1018,7 @@ export const ReactionRail = ({ reactions }: { reactions: FluxMessage["reactions"
   <div className="flex flex-wrap gap-1">
     {reactions.map((reaction) => (
       <button key={reaction.emoji} className="rounded-full border border-white/10 px-2 py-0.5 text-[11px]">
-        {reaction.emoji} {reaction.count}
+        {reaction.emoji}
       </button>
     ))}
   </div>

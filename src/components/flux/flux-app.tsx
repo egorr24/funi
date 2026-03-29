@@ -243,13 +243,13 @@ export const FluxApp = () => {
       });
     };
 
-    const handleReaction = ({ messageId, emoji, userId }: any) => {
+    const handleReaction = ({ messageId, emoji, userId, userName }: any) => {
       console.log("[SOCKET] Received reaction:", emoji, "from", userId);
       setMessages(current => current.map(m => {
         if (m.id === messageId) {
           const reactions = m.reactions || [];
           const otherReactions = reactions.filter(r => r.userId !== userId);
-          return { ...m, reactions: [...otherReactions, { emoji, userId }] };
+          return { ...m, reactions: [...otherReactions, { emoji, userId, userName }] };
         }
         return m;
       }));
@@ -556,7 +556,7 @@ export const FluxApp = () => {
       reactions: [],
       replyTo: currentReply ? {
         id: currentReply.id,
-        body: currentReply.decryptedBody,
+        body: currentReply.decryptedBody || currentReply.encryptedBody,
         senderName: currentReply.senderName
       } : undefined
     };
@@ -998,7 +998,7 @@ export const FluxApp = () => {
             <SmartFolderPanel />
             <GlobalSearchPanel query={search} />
             <SecurityPanel />
-            <p className="text-center text-xs text-zinc-400 mt-auto pt-4">Theme mode: {mode}</p>
+            <p className="text-center text-xs text-zinc-400 mt-auto pt-4">Theme mode: {call.mode}</p>
           </div>
         ) : null}
       </FluxShell>

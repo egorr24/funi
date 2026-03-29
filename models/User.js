@@ -2,7 +2,7 @@ import { pool } from './database.js';
 import bcrypt from 'bcryptjs';
 
 class User {
-  static async create({ name, email, password, avatar, publicKey, encryptedPrivKey }) {
+  static async create({ name, email, password, avatar = null, publicKey = null, encryptedPrivKey = null }) {
     const hashedPassword = await bcrypt.hash(password, 12);
     
     const query = `
