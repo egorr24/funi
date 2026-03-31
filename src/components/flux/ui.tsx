@@ -5,6 +5,38 @@ import { Mic, Paperclip, Phone, Pin, Search, SendHorizontal, Shield, Video, Plus
 import { PropsWithChildren, ReactNode, useState, useEffect, useRef, useCallback } from "react";
 import { FluxChat, FluxMessage } from "@/src/types/flux";
 
+type LinkPreviewData = {
+  url: string;
+  title?: string;
+  description?: string;
+  image?: string;
+  favicon?: string;
+};
+
+const LinkPreview = ({ data }: { data: LinkPreviewData }) => {
+  if (!data.title && !data.description && !data.image) return null; // Don't render if no useful data
+
+  return (
+    <a
+      href={data.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-2 p-2 mt-2 border border-white/10 rounded-lg bg-black/20 hover:bg-black/30 transition-colors"
+    >
+      {data.image && (
+        <img src={data.image} alt="Preview" className="w-16 h-16 object-cover rounded-md flex-shrink-0" />
+      )}
+      <div className="flex-1 overflow-hidden">
+        {data.title && <div className="text-sm font-semibold truncate">{data.title}</div>}
+        {data.description && (
+          <div className="text-xs text-zinc-400 line-clamp-2">{data.description}</div>
+        )}
+        <div className="text-[10px] text-violet-400 truncate mt-1">{new URL(data.url).hostname}</div>
+      </div>
+    </a>
+  );
+};
+
 type BaseProps = {
   className?: string;
 };
@@ -481,9 +513,10 @@ export const ChatListItem = ({
 };
 
 export const ConnectionBadge = ({ online, queued }: { online: boolean; queued: number }) => (
-  <div className="flex items-center gap-1">
+  <div className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/30 px-2 py-1 text-[10px] font-medium text-zinc-300 backdrop-blur-md">
     <StatusDot online={online} />
-    {queued > 0 && <span className="rounded-full border border-violet-300/25 px-2 py-0.5 text-[10px] text-zinc-300">{queued}</span>}
+    <span>{online ? "Online" : "Offline"}</span>
+    {queued > 0 && <span className="rounded-full border border-violet-300/25 px-1.5 py-0.5 text-[9px] text-violet-200">{queued}</span>}
   </div>
 );
 
@@ -566,8 +599,17 @@ export const PinnedBanner = ({ message }: { message: string }) => (
   </div>
 );
 
-export const MessageScroll = ({ children }: PropsWithChildren) => (
-  <motion.div layout className="flex-1 space-y-3 overflow-y-auto px-3 lg:px-4 py-3 lg:py-4">
+export const MessageScroll = ({
+  children,
+  onScroll,
+  scrollRef,
+}: PropsWithChildren<{ onScroll?: (event: React.UIEvent<HTMLDivElement>) => void; scrollRef?: React.Ref<HTMLDivElement> }>) => (
+  <motion.div
+    ref={scrollRef}
+    onScroll={onScroll}
+    layout
+    className="flex-1 space-y-3 overflow-y-auto px-3 lg:px-4 py-3 lg:py-4"
+  >
     {children}
   </motion.div>
 );
@@ -874,7 +916,38 @@ export const MessageBubble = ({
   const [editValue, setEditValue] = useState(message.decryptedBody || "");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [swipeX, setSwipeX] = useState(0);
-  const swipeThreshold = 50; // px
+  const swipeThreshold = 56;
+  const [touchSwipeActive, setTouchSwipeActive] = useState(false);
+  const [linkPreviews, setLinkPreviews] = useState<LinkPreviewData[]>([]);
+
+  useEffect(() => {
+    const fetchLinkPreviews = async () => {
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      const urls = (message.decryptedBody || message.encryptedBody || "").match(urlRegex);
+      if (urls && urls.length > 0) {
+        const dedupedUrls = Array.from(new Set(urls.map((url) => url.replace(/[),.!?;:]+$/, ""))));
+        const previews: LinkPreviewData[] = [];
+        for (const url of dedupedUrls) {
+          try {
+            const response = await fetch(`/api/link-preview?url=${encodeURIComponent(url)}`);
+            if (response.ok) {
+              const data = await response.json() as LinkPreviewData;
+              if (data.title || data.description || data.image) {
+                previews.push({ ...data, url });
+              }
+            }
+          } catch {
+            continue;
+          }
+        }
+        setLinkPreviews(previews);
+      } else {
+        setLinkPreviews([]);
+      }
+    };
+
+    void fetchLinkPreviews();
+  }, [message.decryptedBody]);
 
   // Обработка таймера и удаления
   useEffect(() => {
@@ -911,31 +984,43 @@ export const MessageBubble = ({
     setIsEditing(false);
   };
 
+  const handlePanStart = (event: any) => {
+    const pointerType = event?.pointerType ?? event?.nativeEvent?.pointerType;
+    setTouchSwipeActive(pointerType === "touch");
+  };
+
   const handlePan = (event: any, info: { offset: { x: number; y: number } }) => {
-    setSwipeX(info.offset.x);
+    if (!touchSwipeActive) return;
+    const directionalOffset = mine ? Math.min(0, info.offset.x) : Math.max(0, info.offset.x);
+    setSwipeX(directionalOffset);
   };
 
   const handlePanEnd = (event: any, info: { offset: { x: number; y: number }; velocity: { x: number; y: number } }) => {
-    if (Math.abs(info.offset.x) > swipeThreshold || Math.abs(info.velocity.x) > 500) {
-      // Trigger reply action
-      onReply?.();
+    if (touchSwipeActive) {
+      const directionalOffset = mine ? Math.min(0, info.offset.x) : Math.max(0, info.offset.x);
+      const directionalVelocity = mine ? Math.min(0, info.velocity.x) : Math.max(0, info.velocity.x);
+      if (Math.abs(directionalOffset) > swipeThreshold || Math.abs(directionalVelocity) > 500) {
+        onReply?.();
+      }
     }
-    setSwipeX(0); // Reset swipe position
+    setSwipeX(0);
+    setTouchSwipeActive(false);
   };
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
+      onPanStart={onReply ? handlePanStart : undefined}
       onPan={onReply ? handlePan : undefined} // Only enable pan if onReply is provided
       onPanEnd={onReply ? handlePanEnd : undefined} // Only enable pan end if onReply is provided
       style={{ x: swipeX }}
-      className={`max-w-[90%] lg:max-w-[70%] rounded-[24px] px-4 lg:px-5 py-3 shadow-xl shadow-black/20 group relative border backdrop-blur-xl ${
+      className={`max-w-[90%] lg:max-w-[70%] rounded-[24px] px-4 lg:px-5 py-3 shadow-xl shadow-black/20 group relative border backdrop-blur-xl touch-pan-y ${
         mine ? "ml-auto bg-gradient-to-br from-violet-500/70 via-violet-600/55 to-fuchsia-600/45 text-white rounded-tr-none border-violet-200/30" : "bg-white/10 text-zinc-100 rounded-tl-none border-white/15"
       }`}
     >
       {/* Swipe-to-reply indicator */}
-      {onReply && swipeX > 0 && (
+      {onReply && !mine && swipeX > 8 && (
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -943,6 +1028,16 @@ export const MessageBubble = ({
           className="absolute -left-12 top-1/2 -translate-y-1/2 text-violet-400"
         >
           <Reply className="h-5 w-5" />
+        </motion.div>
+      )}
+      {onReply && mine && swipeX < -8 && (
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 20 }}
+          className="absolute -right-12 top-1/2 -translate-y-1/2 text-violet-300"
+        >
+          <Reply className="h-5 w-5 scale-x-[-1]" />
         </motion.div>
       )}
       <div className={`absolute ${mine ? "-left-28" : "-right-28"} top-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1`}>
@@ -1088,6 +1183,9 @@ export const MessageBubble = ({
       ) : (
         <div className="text-sm leading-relaxed font-medium">
           {renderRichText(message.decryptedBody || "")}
+          {linkPreviews.map((preview) => (
+            <LinkPreview key={`${message.id}-${preview.url}`} data={preview} />
+          ))}
           {message.isEdited && <span className="ml-2 text-[9px] opacity-40 italic">(изм.)</span>}
         </div>
       )}

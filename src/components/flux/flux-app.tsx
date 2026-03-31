@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { AnimatePresence } from "framer-motion";
@@ -10,7 +9,7 @@ import { useSocket } from "@/src/hooks/useSocket";
 import { useThemeEngine } from "@/src/hooks/useThemeEngine";
 import { useWaveform } from "@/src/hooks/useWaveform";
 import { FluxMessage, FluxChat } from "@/src/types/flux";
-import { User, Settings, Shield, CheckCheck, Plus, Bell, X } from "lucide-react";
+import { User, Settings, Shield, CheckCheck, Plus, Bell, X, ChevronDown } from "lucide-react";
 import {
   AIInsightCard,
   CallOverlay,
@@ -45,9 +44,6 @@ import {
   TypingIndicator,
   VoiceRecorder,
 } from "@/src/components/flux/ui";
-
-const demoPublicKey =
-  "MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAqghxAI+v2OZcRmM4QfM2HAi2YThzM8mimS/93Dx7Ug9lbBfPdD9LNZz6uhRUsjRx3wQ2toKRP5PQxqjqrybq8qQso3g3x6E9x8SWgq4rE8WP4riQ7nTM+xxRp4aK2vBzMCAH4O8lRJgxd9f5nRhh3fkS5z2gsfO9T3rq3pP3vVn3aL9wzNPNR9xWqdXfMbkCz9q2rmjkQYO4QVj7jE5H4Q4qO8ViVw3o0yWcduAF6xLk8yYxKj0o2Q4F2r0K7FG9xjS9WnZl2stx0qjR6HDzH0ncz3UrJkJCAd3M2LNg9D9oT6lGvo5JkQv2Q9N7iBtfI8M6xY4JrV0nI9RjNfW6D7RkGm0z7f3xMXiXfQ3j8j0d8B4e2y6UQpOJ3Jp7WQh4sMSQktj9Kp0hc1nlmW5mZy2mQfxWw3uFv2o7fWFLxH8mE2b+4L22jY8mW2FfNnM3v7x8Ka5noNoQ2b4kzFg9sGf3pLs9s3fI+WQ0k6U2L+IhJQ2Y46p7S4o7kU6wY0yG+1xYzF1L8nABr9Cz7M5C3x6Am5nYQ8P0+f4lsZBf7f3q9N+J5hN8vS9dD4lG5H0h3B6D7J3S6GqYkLx3sQ1E+lQAvJ4E4JQ8sKbVWuYxYp5PR7Lgj7o3gJeWmmkCAwEAAQ==";
 
 export const FluxApp = () => {
   const { data: session, status } = useSession();
@@ -259,6 +255,9 @@ export const FluxApp = () => {
           if (current.some(m => m.id === message.id)) return current;
           return [...current, message];
         });
+        if (message.senderId !== session?.user?.id && !isAtBottomRef.current) {
+          setNewMessagesCount((current) => current + 1);
+        }
         // Если чат активен, помечаем сообщение прочитанным
         markAsRead(message.chatId);
       }
@@ -341,7 +340,7 @@ export const FluxApp = () => {
       s.off("users:online");
       s.off("presence:typing", handleTyping);
     };
-  }, [socket.socket, chatId]);
+  }, [socket.socket, chatId, markAsRead, session?.user?.id]);
 
   const [onlineUserIds, setOnlineUserIds] = useState<string[]>([]);
   const [typingUsers, setTypingUsers] = useState<Record<string, string[]>>({}); // chatId -> [userName]
@@ -456,6 +455,34 @@ export const FluxApp = () => {
   };
 
   const [replyTo, setReplyTo] = useState<FluxMessage | null>(null);
+  const messageScrollRef = useRef<HTMLDivElement | null>(null);
+  const isAtBottomRef = useRef(true);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const [newMessagesCount, setNewMessagesCount] = useState(0);
+
+  const scrollToBottom = useCallback((smooth: boolean = true) => {
+    const element = messageScrollRef.current;
+    if (!element) return;
+    element.scrollTo({
+      top: element.scrollHeight,
+      behavior: smooth ? "smooth" : "auto",
+    });
+    isAtBottomRef.current = true;
+    setShowScrollToBottom(false);
+    setNewMessagesCount(0);
+  }, []);
+
+  const updateScrollState = useCallback(() => {
+    const element = messageScrollRef.current;
+    if (!element) return;
+    const threshold = 60;
+    const atBottom = element.scrollHeight - element.scrollTop - element.clientHeight <= threshold;
+    isAtBottomRef.current = atBottom;
+    setShowScrollToBottom(!atBottom);
+    if (atBottom) {
+      setNewMessagesCount(0);
+    }
+  }, []);
 
   const addReaction = async (messageId: string, emoji: string) => {
     if (socket.socket && activeChat && session?.user?.id) {
@@ -601,6 +628,7 @@ export const FluxApp = () => {
     };
 
     setMessages((current) => [...current, optimisticMessage]);
+    requestAnimationFrame(() => scrollToBottom(true));
 
     // Обновление превью чата
     setChatsData(current => current.map(chat => {
@@ -634,6 +662,7 @@ export const FluxApp = () => {
         }
         // Заменяем временное сообщение реальным
         setMessages((current) => current.map(m => m.id === tempId ? newMessage : m));
+        requestAnimationFrame(() => scrollToBottom(true));
       } else {
         // В случае ошибки возвращаем текст в инпут если это не авто-сообщение
         if (!customText) setInput(textToSend);
@@ -644,7 +673,7 @@ export const FluxApp = () => {
       if (!customText) setInput(textToSend);
       setMessages((current) => current.filter(m => m.id !== tempId));
     }
-  }, [input, activeChat, session?.user, socket.socket, replyTo]);
+  }, [input, activeChat, session?.user, socket.socket, replyTo, scrollToBottom]);
 
   const sendCallLink = useCallback(() => {
     if (!activeChat) return;
@@ -660,6 +689,19 @@ export const FluxApp = () => {
     const payload = (await response.json()) as { summary: string };
     setAiSummary(payload.summary);
   }, [chatId]);
+
+  useEffect(() => {
+    setNewMessagesCount(0);
+    setShowScrollToBottom(false);
+    requestAnimationFrame(() => scrollToBottom(false));
+  }, [activeChat?.id, scrollToBottom]);
+
+  useEffect(() => {
+    if (visibleMessages.length === 0) return;
+    if (isAtBottomRef.current) {
+      requestAnimationFrame(() => scrollToBottom(false));
+    }
+  }, [visibleMessages.length, scrollToBottom]);
 
   if (status === "loading") {
     return (
@@ -764,22 +806,37 @@ export const FluxApp = () => {
                 <div className="px-4 pt-3 flex items-center justify-between">
                   <ConnectionBadge online={socket.connected} queued={socket.queuedCount} />
                 </div>
-                <MessageScroll>
-                  {visibleMessages.map((message) => (
-                    <MessageBubble
-                      key={message.id}
-                      message={{ ...message, waveform, decryptedBody: message.decryptedBody || message.encryptedBody }}
-                      mine={message.senderId === session?.user?.id}
-                      viewerName={session?.user?.name || "ENCRYPTED"}
-                      onImageClick={(url) => setViewingPhoto(url)}
-                      onReaction={(emoji) => addReaction(message.id, emoji)}
-                      onReply={() => setReplyTo(message)}
-                      onDelete={() => deleteMessage(message.id)}
-                      onEdit={(newBody) => editMessage(message.id, newBody)}
-                      onForward={() => handleForward(message)}
-                    />
-                  ))}
-                </MessageScroll>
+                <div className="relative flex-1 min-h-0">
+                  <MessageScroll scrollRef={messageScrollRef} onScroll={updateScrollState}>
+                    {visibleMessages.map((message) => (
+                      <MessageBubble
+                        key={message.id}
+                        message={{ ...message, waveform, decryptedBody: message.decryptedBody || message.encryptedBody }}
+                        mine={message.senderId === session?.user?.id}
+                        viewerName={session?.user?.name || "ENCRYPTED"}
+                        onImageClick={(url) => setViewingPhoto(url)}
+                        onReaction={(emoji) => addReaction(message.id, emoji)}
+                        onReply={() => setReplyTo(message)}
+                        onDelete={() => deleteMessage(message.id)}
+                        onEdit={(newBody) => editMessage(message.id, newBody)}
+                        onForward={() => handleForward(message)}
+                      />
+                    ))}
+                  </MessageScroll>
+                  {showScrollToBottom && (
+                    <button
+                      onClick={() => scrollToBottom(true)}
+                      className="absolute bottom-4 right-4 lg:right-6 flex items-center gap-2 rounded-full border border-violet-300/35 bg-black/55 px-3 py-2 text-xs font-semibold text-violet-100 shadow-xl backdrop-blur-md hover:bg-black/70"
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                      {newMessagesCount > 0 ? (
+                        <span className="rounded-full bg-violet-500 px-1.5 py-0.5 text-[10px] text-white">
+                          {newMessagesCount}
+                        </span>
+                      ) : null}
+                    </button>
+                  )}
+                </div>
 
                 {replyTo && (
                   <div className="px-6 py-2 bg-white/5 border-t border-white/5 flex items-center justify-between animate-in slide-in-from-bottom-2">
