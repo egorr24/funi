@@ -602,9 +602,9 @@ export const FluxApp = () => {
     }
   }, [activeChat, session?.user, socket.socket]);
 
-  const sendMessage = useCallback(async (customText?: string) => {
-    const textToSend = customText || input;
-    if (!textToSend.trim() || !activeChat || !session?.user) {
+  const sendMessage = useCallback(async (customText?: any) => {
+    const textToSend = (typeof customText === "string" ? customText : null) || input;
+    if (!textToSend || !textToSend.trim() || !activeChat || !session?.user) {
       return;
     }
 
