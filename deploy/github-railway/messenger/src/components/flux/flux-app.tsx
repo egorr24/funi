@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { AnimatePresence } from "framer-motion";
@@ -10,7 +9,7 @@ import { useSocket } from "@/src/hooks/useSocket";
 import { useThemeEngine } from "@/src/hooks/useThemeEngine";
 import { useWaveform } from "@/src/hooks/useWaveform";
 import { FluxMessage, FluxChat } from "@/src/types/flux";
-import { User, Settings, Shield, CheckCheck, Plus, Bell, X } from "lucide-react";
+import { User, Settings, Shield, CheckCheck, Plus, Bell, X, ChevronDown } from "lucide-react";
 import {
   AIInsightCard,
   CallOverlay,
@@ -46,9 +45,6 @@ import {
   VoiceRecorder,
 } from "@/src/components/flux/ui";
 
-const demoPublicKey =
-  "MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAqghxAI+v2OZcRmM4QfM2HAi2YThzM8mimS/93Dx7Ug9lbBfPdD9LNZz6uhRUsjRx3wQ2toKRP5PQxqjqrybq8qQso3g3x6E9x8SWgq4rE8WP4riQ7nTM+xxRp4aK2vBzMCAH4O8lRJgxd9f5nRhh3fkS5z2gsfO9T3rq3pP3vVn3aL9wzNPNR9xWqdXfMbkCz9q2rmjkQYO4QVj7jE5H4Q4qO8ViVw3o0yWcduAF6xLk8yYxKj0o2Q4F2r0K7FG9xjS9WnZl2stx0qjR6HDzH0ncz3UrJkJCAd3M2LNg9D9oT6lGvo5JkQv2Q9N7iBtfI8M6xY4JrV0nI9RjNfW6D7RkGm0z7f3xMXiXfQ3j8j0d8B4e2y6UQpOJ3Jp7WQh4sMSQktj9Kp0hc1nlmW5mZy2mQfxWw3uFv2o7fWFLxH8mE2b+4L22jY8mW2FfNnM3v7x8Ka5noNoQ2b4kzFg9sGf3pLs9s3fI+WQ0k6U2L+IhJQ2Y46p7S4o7kU6wY0yG+1xYzF1L8nABr9Cz7M5C3x6Am5nYQ8P0+f4lsZBf7f3q9N+J5hN8vS9dD4lG5H0h3B6D7J3S6GqYkLx3sQ1E+lQAvJ4E4JQ8sKbVWuYxYp5PR7Lgj7o3gJeWmmkCAwEAAQ==";
-
 export const FluxApp = () => {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -66,6 +62,8 @@ export const FluxApp = () => {
   const [activeTab, setActiveTab] = useState("chats");
   const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(true);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
   
   const { 
     variables, 
@@ -118,17 +116,36 @@ export const FluxApp = () => {
     }
   }, [status, router]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(min-width: 1024px)");
+    const apply = () => setIsDesktop(media.matches);
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, []);
+
   // Fetch chats function (reusable)
   const fetchChats = useCallback(async () => {
     try {
       const res = await fetch("/api/chats");
-      if (res.ok) {
-        const data = await res.json();
-        setChatsData(data);
-        // Не выбираем первый чат автоматически на мобилках
+      if (!res.ok) {
+        throw new Error(`Fetch chats failed: ${res.status}`);
       }
+      const data = await res.json();
+      if (!Array.isArray(data)) {
+        throw new Error("Invalid chats payload");
+      }
+      const normalizedChats = data.map((chat: FluxChat) => ({
+        ...chat,
+        participants: Array.isArray(chat.participants) && chat.participants.length > 0
+          ? chat.participants
+          : [chat.title || "Chat", "You"],
+      }));
+      setChatsData(normalizedChats);
     } catch (error) {
       console.error("Failed to fetch chats:", error);
+      setChatsData([]);
     } finally {
       setLoading(false);
     }
@@ -139,24 +156,43 @@ export const FluxApp = () => {
     if (session?.user?.id) fetchChats();
   }, [session?.user?.id, fetchChats]);
 
+  useEffect(() => {
+    if (chatsData.length === 0) {
+      if (chatId !== null) {
+        setChatId(null);
+      }
+      return;
+    }
+    if (chatId && chatsData.some((chat) => chat.id === chatId)) {
+      return;
+    }
+    if (isDesktop) {
+      setChatId(chatsData[0].id);
+      return;
+    }
+    if (chatId !== null) {
+      setChatId(null);
+    }
+  }, [chatsData, chatId, isDesktop]);
+
   // Handle chat creation
   const handleCreateChat = useCallback(async (userId: string, name: string) => {
     try {
       const res = await fetch("/api/chats", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, title: name }),
+        body: JSON.stringify({ userId, title: name, kind: "CHAT" }),
       });
-      if (res.ok) {
-        const newChat = await res.json();
-        setIsCreateChatOpen(false);
-        // Уведомляем другого пользователя через сокет
-        if (socket.socket) {
-          socket.socket.emit("chat:new", { targetId: userId, chat: newChat });
-        }
-        await fetchChats(); // Refresh the list
-        setChatId(newChat.id); // Select the new chat
+      if (!res.ok) {
+        return;
       }
+      const newChat = await res.json();
+      setIsCreateChatOpen(false);
+      if (socket.socket) {
+        socket.socket.emit("chat:new", { targetId: userId, chat: newChat });
+      }
+      await fetchChats();
+      setChatId(newChat.id);
     } catch (error) {
       console.error("Failed to create chat:", error);
     }
@@ -220,6 +256,9 @@ export const FluxApp = () => {
           if (current.some(m => m.id === message.id)) return current;
           return [...current, message];
         });
+        if (message.senderId !== session?.user?.id && !isAtBottomRef.current) {
+          setNewMessagesCount((current) => current + 1);
+        }
         // Если чат активен, помечаем сообщение прочитанным
         markAsRead(message.chatId);
       }
@@ -243,13 +282,13 @@ export const FluxApp = () => {
       });
     };
 
-    const handleReaction = ({ messageId, emoji, userId }: any) => {
+    const handleReaction = ({ messageId, emoji, userId, userName }: any) => {
       console.log("[SOCKET] Received reaction:", emoji, "from", userId);
       setMessages(current => current.map(m => {
         if (m.id === messageId) {
           const reactions = m.reactions || [];
           const otherReactions = reactions.filter(r => r.userId !== userId);
-          return { ...m, reactions: [...otherReactions, { emoji, userId }] };
+          return { ...m, reactions: [...otherReactions, { emoji, userId, userName }] };
         }
         return m;
       }));
@@ -302,7 +341,7 @@ export const FluxApp = () => {
       s.off("users:online");
       s.off("presence:typing", handleTyping);
     };
-  }, [socket.socket, chatId]);
+  }, [socket.socket, chatId, markAsRead, session?.user?.id]);
 
   const [onlineUserIds, setOnlineUserIds] = useState<string[]>([]);
   const [typingUsers, setTypingUsers] = useState<Record<string, string[]>>({}); // chatId -> [userName]
@@ -347,6 +386,7 @@ export const FluxApp = () => {
     return chatsData.find((chat) => chat.id === chatId) ?? null;
   }, [chatsData, chatId]);
 
+
   const typingInActiveChat = useMemo(() => {
     if (!activeChat) return [];
     return typingUsers[activeChat.id] || [];
@@ -388,7 +428,11 @@ export const FluxApp = () => {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleTyping = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value);
+    const nextValue = e.target.value;
+    setInput(nextValue);
+    if (activeChat) {
+      setDrafts((current) => ({ ...current, [activeChat.id]: nextValue }));
+    }
     
     if (socket.socket && activeChat) {
       // Отправляем событие начала печатания только если раньше не печатали
@@ -417,6 +461,34 @@ export const FluxApp = () => {
   };
 
   const [replyTo, setReplyTo] = useState<FluxMessage | null>(null);
+  const messageScrollRef = useRef<HTMLDivElement | null>(null);
+  const isAtBottomRef = useRef(true);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const [newMessagesCount, setNewMessagesCount] = useState(0);
+
+  const scrollToBottom = useCallback((smooth: boolean = true) => {
+    const element = messageScrollRef.current;
+    if (!element) return;
+    element.scrollTo({
+      top: element.scrollHeight,
+      behavior: smooth ? "smooth" : "auto",
+    });
+    isAtBottomRef.current = true;
+    setShowScrollToBottom(false);
+    setNewMessagesCount(0);
+  }, []);
+
+  const updateScrollState = useCallback(() => {
+    const element = messageScrollRef.current;
+    if (!element) return;
+    const threshold = 60;
+    const atBottom = element.scrollHeight - element.scrollTop - element.clientHeight <= threshold;
+    isAtBottomRef.current = atBottom;
+    setShowScrollToBottom(!atBottom);
+    if (atBottom) {
+      setNewMessagesCount(0);
+    }
+  }, []);
 
   const addReaction = async (messageId: string, emoji: string) => {
     if (socket.socket && activeChat && session?.user?.id) {
@@ -530,13 +602,21 @@ export const FluxApp = () => {
     }
   }, [activeChat, session?.user, socket.socket]);
 
-  const sendMessage = useCallback(async (customText?: string) => {
-    const textToSend = customText || input;
-    if (!textToSend.trim() || !activeChat || !session?.user) {
+  const sendMessage = useCallback(async (customText?: any) => {
+    const textToSend = (typeof customText === "string" ? customText : null) || input;
+    if (!textToSend || !textToSend.trim() || !activeChat || !session?.user) {
       return;
     }
 
-    if (!customText) setInput("");
+    if (!customText) {
+      setInput("");
+      setDrafts((current) => {
+        if (!activeChat) return current;
+        const next = { ...current };
+        delete next[activeChat.id];
+        return next;
+      });
+    }
     const currentReply = replyTo;
     setReplyTo(null);
 
@@ -556,12 +636,13 @@ export const FluxApp = () => {
       reactions: [],
       replyTo: currentReply ? {
         id: currentReply.id,
-        body: currentReply.decryptedBody,
+        body: currentReply.decryptedBody || currentReply.encryptedBody,
         senderName: currentReply.senderName
       } : undefined
     };
 
     setMessages((current) => [...current, optimisticMessage]);
+    requestAnimationFrame(() => scrollToBottom(true));
 
     // Обновление превью чата
     setChatsData(current => current.map(chat => {
@@ -595,6 +676,7 @@ export const FluxApp = () => {
         }
         // Заменяем временное сообщение реальным
         setMessages((current) => current.map(m => m.id === tempId ? newMessage : m));
+        requestAnimationFrame(() => scrollToBottom(true));
       } else {
         // В случае ошибки возвращаем текст в инпут если это не авто-сообщение
         if (!customText) setInput(textToSend);
@@ -605,7 +687,8 @@ export const FluxApp = () => {
       if (!customText) setInput(textToSend);
       setMessages((current) => current.filter(m => m.id !== tempId));
     }
-  }, [input, activeChat, session?.user, socket.socket, replyTo]);
+  }, [input, activeChat, session?.user, socket.socket, replyTo, scrollToBottom]);
+
 
   const sendCallLink = useCallback(() => {
     if (!activeChat) return;
@@ -621,6 +704,61 @@ export const FluxApp = () => {
     const payload = (await response.json()) as { summary: string };
     setAiSummary(payload.summary);
   }, [chatId]);
+
+  useEffect(() => {
+    setNewMessagesCount(0);
+    setShowScrollToBottom(false);
+    requestAnimationFrame(() => scrollToBottom(false));
+  }, [activeChat?.id, scrollToBottom]);
+
+  useEffect(() => {
+    if (!activeChat) return;
+    setInput(drafts[activeChat.id] ?? "");
+  }, [activeChat?.id, drafts, activeChat]);
+
+  useEffect(() => {
+    if (visibleMessages.length === 0) return;
+    if (isAtBottomRef.current) {
+      requestAnimationFrame(() => scrollToBottom(false));
+    }
+  }, [visibleMessages.length, scrollToBottom]);
+
+  const timelineItems = useMemo(() => {
+    if (!session?.user?.id) return [];
+    const firstUnreadIndex = visibleMessages.findIndex(
+      (message) => message.senderId !== session.user.id && message.status !== "READ"
+    );
+    const items: Array<
+      | { type: "date"; key: string; label: string }
+      | { type: "unread"; key: string }
+      | { type: "message"; key: string; message: FluxMessage; index: number }
+    > = [];
+    const now = new Date();
+    const todayKey = now.toDateString();
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    const yesterdayKey = yesterday.toDateString();
+    visibleMessages.forEach((message, index) => {
+      const currentDate = new Date(message.createdAt);
+      const prevDate = index > 0 ? new Date(visibleMessages[index - 1].createdAt) : null;
+      const currentDayKey = currentDate.toDateString();
+      const prevDayKey = prevDate?.toDateString();
+      if (index === 0 || currentDayKey !== prevDayKey) {
+        const label =
+          currentDayKey === todayKey
+            ? "Сегодня"
+            : currentDayKey === yesterdayKey
+              ? "Вчера"
+              : currentDate.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
+        items.push({ type: "date", key: `date-${currentDayKey}-${index}`, label });
+      }
+      if (index === firstUnreadIndex) {
+        items.push({ type: "unread", key: `unread-${message.id}` });
+      }
+      items.push({ type: "message", key: message.id, message, index });
+    });
+    return items;
+  }, [visibleMessages, session?.user?.id]);
 
   if (status === "loading") {
     return (
@@ -724,26 +862,67 @@ export const FluxApp = () => {
                 <PinnedBanner message="Tomorrow 09:00 UTC — ship candidate freeze with encrypted calls." />
                 <div className="px-4 pt-3 flex items-center justify-between">
                   <ConnectionBadge online={socket.connected} queued={socket.queuedCount} />
-                  <div className={`text-[10px] uppercase font-bold tracking-widest ${socket.connected ? "text-emerald-500" : "text-red-500"}`}>
-                    {socket.connected ? "Realtime Active" : "Connecting..."}
-                  </div>
                 </div>
-                <MessageScroll>
-                  {visibleMessages.map((message) => (
-                    <MessageBubble
-                      key={message.id}
-                      message={{ ...message, waveform, decryptedBody: message.decryptedBody || message.encryptedBody }}
-                      mine={message.senderId === session?.user?.id}
-                      viewerName={session?.user?.name || "ENCRYPTED"}
-                      onImageClick={(url) => setViewingPhoto(url)}
-                      onReaction={(emoji) => addReaction(message.id, emoji)}
-                      onReply={() => setReplyTo(message)}
-                      onDelete={() => deleteMessage(message.id)}
-                      onEdit={(newBody) => editMessage(message.id, newBody)}
-                      onForward={() => handleForward(message)}
-                    />
-                  ))}
-                </MessageScroll>
+                <div className="relative flex-1 min-h-0 flex flex-col">
+                  <MessageScroll scrollRef={messageScrollRef} onScroll={updateScrollState}>
+                    {timelineItems.map((item) => {
+                      if (item.type === "date") {
+                        return (
+                          <div key={item.key} className="my-3 flex justify-center">
+                            <div className="rounded-full border border-white/15 bg-black/35 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-300 backdrop-blur-md">
+                              {item.label}
+                            </div>
+                          </div>
+                        );
+                      }
+                      if (item.type === "unread") {
+                        return (
+                          <div key={item.key} className="my-3 flex items-center gap-2">
+                            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-violet-400/50 to-transparent" />
+                            <div className="rounded-full border border-violet-300/35 bg-violet-500/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-violet-200 backdrop-blur-md">
+                              Непрочитанные
+                            </div>
+                            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-violet-400/50 to-transparent" />
+                          </div>
+                        );
+                      }
+                      const message = item.message;
+                      const prevMessage = item.index > 0 ? visibleMessages[item.index - 1] : null;
+                      const nextMessage = item.index < visibleMessages.length - 1 ? visibleMessages[item.index + 1] : null;
+                      const prevGap = prevMessage ? Math.abs(new Date(message.createdAt).getTime() - new Date(prevMessage.createdAt).getTime()) : Number.MAX_SAFE_INTEGER;
+                      const nextGap = nextMessage ? Math.abs(new Date(nextMessage.createdAt).getTime() - new Date(message.createdAt).getTime()) : Number.MAX_SAFE_INTEGER;
+                      const compactTop = Boolean(prevMessage && prevMessage.senderId === message.senderId && prevGap < 5 * 60 * 1000);
+                      return (
+                        <div key={message.id} className={`${compactTop ? "mt-1" : "mt-3"}`}>
+                          <MessageBubble
+                            message={{ ...message, waveform, decryptedBody: message.decryptedBody || message.encryptedBody }}
+                            mine={message.senderId === session?.user?.id}
+                            viewerName={session?.user?.name || "ENCRYPTED"}
+                            onImageClick={(url) => setViewingPhoto(url)}
+                            onReaction={(emoji) => addReaction(message.id, emoji)}
+                            onReply={() => setReplyTo(message)}
+                            onDelete={() => deleteMessage(message.id)}
+                            onEdit={(newBody) => editMessage(message.id, newBody)}
+                            onForward={() => handleForward(message)}
+                          />
+                        </div>
+                      );
+                    })}
+                  </MessageScroll>
+                  {showScrollToBottom && (
+                    <button
+                      onClick={() => scrollToBottom(true)}
+                      className="absolute bottom-4 right-4 lg:right-6 flex items-center gap-2 rounded-full border border-violet-300/35 bg-black/55 px-3 py-2 text-xs font-semibold text-violet-100 shadow-xl backdrop-blur-md hover:bg-black/70"
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                      {newMessagesCount > 0 ? (
+                        <span className="rounded-full bg-violet-500 px-1.5 py-0.5 text-[10px] text-white">
+                          {newMessagesCount}
+                        </span>
+                      ) : null}
+                    </button>
+                  )}
+                </div>
 
                 {replyTo && (
                   <div className="px-6 py-2 bg-white/5 border-t border-white/5 flex items-center justify-between animate-in slide-in-from-bottom-2">
@@ -760,7 +939,7 @@ export const FluxApp = () => {
                   </div>
                 )}
 
-                {typingInActiveChat.length > 0 && <TypingIndicator visible={true} userNames={typingInActiveChat} />}
+                <TypingIndicator visible={typingInActiveChat.length > 0} userNames={typingInActiveChat} />
                 
                   {isRecording ? (
                     <div className="px-4 py-2">
@@ -998,8 +1177,7 @@ export const FluxApp = () => {
             <SmartFolderPanel />
             <GlobalSearchPanel query={search} />
             <SecurityPanel />
-            <SettingsPanel />
-            <p className="text-center text-xs text-zinc-400 mt-auto pt-4">Hyper-Glass Channel v1.0</p>
+            <p className="text-center text-xs text-zinc-400 mt-auto pt-4">Theme mode: {call.mode}</p>
           </div>
         ) : null}
       </FluxShell>

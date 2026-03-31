@@ -1,12 +1,51 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Mic, Paperclip, Phone, Pin, Search, SendHorizontal, Shield, Video, Plus, X, MessageSquare, Settings, User, Bell, Check, CheckCheck, Maximize2, MicOff, VideoOff, PhoneOff, Share } from "lucide-react";
-import { PropsWithChildren, ReactNode, useState, useEffect, useRef } from "react";
+import { Mic, Paperclip, Phone, Pin, Search, SendHorizontal, Shield, Video, Plus, X, MessageSquare, Settings, User, Bell, Check, CheckCheck, Maximize2, MicOff, VideoOff, PhoneOff, Share, Reply } from "lucide-react";
+import { PropsWithChildren, ReactNode, useState, useEffect, useRef, useCallback } from "react";
 import { FluxChat, FluxMessage } from "@/src/types/flux";
+
+type LinkPreviewData = {
+  url: string;
+  title?: string;
+  description?: string;
+  image?: string;
+  favicon?: string;
+};
+
+const LinkPreview = ({ data }: { data: LinkPreviewData }) => {
+  if (!data.title && !data.description && !data.image) return null; // Don't render if no useful data
+
+  return (
+    <a
+      href={data.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-2 p-2 mt-2 border border-white/10 rounded-lg bg-black/20 hover:bg-black/30 transition-colors"
+    >
+      {data.image && (
+        <img src={data.image} alt="Preview" className="w-16 h-16 object-cover rounded-md flex-shrink-0" />
+      )}
+      <div className="flex-1 overflow-hidden">
+        {data.title && <div className="text-sm font-semibold truncate">{data.title}</div>}
+        {data.description && (
+          <div className="text-xs text-zinc-400 line-clamp-2">{data.description}</div>
+        )}
+        <div className="text-[10px] text-violet-400 truncate mt-1">{new URL(data.url).hostname}</div>
+      </div>
+    </a>
+  );
+};
 
 type BaseProps = {
   className?: string;
+};
+
+type ChatSearchUser = {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string | null;
 };
 
 export const BetaWelcomeModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
@@ -111,7 +150,7 @@ export const FluxShell = ({
   showRightPanel = true,
 }: PropsWithChildren<{ showRightPanel?: boolean }>) => (
   <div
-    className={`mx-auto flex h-screen h-screen-safe max-w-[1600px] text-zinc-100 overflow-hidden relative w-full bg-[#050308]`}
+    className={`mx-auto flex h-screen h-screen-safe max-w-[1600px] text-zinc-100 overflow-hidden relative w-full bg-[radial-gradient(circle_at_15%_20%,rgba(168,85,247,0.2),transparent_30%),radial-gradient(circle_at_80%_0%,rgba(99,102,241,0.18),transparent_35%),linear-gradient(160deg,#070510_0%,#0b0816_45%,#050308_100%)]`}
   >
     {children}
   </div>
@@ -126,7 +165,7 @@ export const NavSidebar = ({
   onTabChange: (tab: string) => void;
   className?: string;
 }) => (
-  <div className={`flex lg:flex-col items-center lg:py-8 bg-[#0a0a0c] border-r border-white/5 gap-6 fixed bottom-0 left-0 right-0 h-20 lg:static lg:h-auto lg:w-[100px] z-50 safe-area-inset pb-safe ${className}`}>
+  <div className={`flex lg:flex-col items-center lg:py-8 bg-black/35 border-r border-white/10 gap-6 fixed bottom-0 left-0 right-0 h-20 lg:static lg:h-auto lg:w-[100px] z-50 safe-area-inset pb-safe backdrop-blur-2xl supports-[backdrop-filter]:bg-black/25 shadow-[0_-8px_30px_rgba(0,0,0,0.45)] lg:shadow-none ${className}`}>
     <div className="flex lg:flex-col items-center justify-around lg:justify-start gap-8 w-full lg:w-auto px-4 lg:px-0">
       <NavIcon
         active={activeTab === "chats"}
@@ -187,7 +226,7 @@ const NavIcon = ({
 );
 
 export const Sidebar = ({ children, className = "" }: PropsWithChildren<BaseProps>) => (
-  <aside className={`flex flex-col border-r border-white/5 bg-black/20 lg:w-[360px] shrink-0 ${className}`}>{children}</aside>
+  <aside className={`flex flex-col border-r border-violet-300/20 bg-gradient-to-b from-[#1a1030]/55 via-[#100b1f]/50 to-[#090713]/65 lg:w-[360px] shrink-0 backdrop-blur-3xl shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ${className}`}>{children}</aside>
 );
 
 export const CreateChatModal = ({
@@ -200,25 +239,44 @@ export const CreateChatModal = ({
   onCreate: (userId: string, name: string) => void;
 }) => {
   const [query, setQuery] = useState("");
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<ChatSearchUser[]>([]);
   const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+
+  const searchUsers = useCallback(async (rawQuery: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/users?q=${encodeURIComponent(rawQuery)}`);
+      if (res.ok) {
+        const payload = await res.json();
+        setUsers(Array.isArray(payload) ? payload : []);
+      } else {
+        setUsers([]);
+      }
+    } catch (e) {
+      console.error(e);
+      setUsers([]);
+    } finally {
+      setHasSearched(true);
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
-    const searchUsers = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/users?q=${query}`);
-        if (res.ok) setUsers(await res.json());
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    const timer = setTimeout(searchUsers, 300);
+    setHasSearched(false);
+    const timer = setTimeout(() => {
+      void searchUsers(query);
+    }, 300);
     return () => clearTimeout(timer);
-  }, [query, isOpen]);
+  }, [query, isOpen, searchUsers]);
+
+  useEffect(() => {
+    if (isOpen) return;
+    setQuery("");
+    setUsers([]);
+    setHasSearched(false);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -235,15 +293,28 @@ export const CreateChatModal = ({
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-zinc-500" />
-          <input
-            autoFocus
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Поиск по имени или email..."
-            className="w-full rounded-xl bg-black/40 border border-white/10 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-violet-500/50"
-          />
+        <div className="mb-4 flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-zinc-500" />
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  void searchUsers(query);
+                }
+              }}
+              placeholder="Поиск по имени или email..."
+              className="w-full rounded-xl bg-black/40 border border-white/10 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-violet-500/50"
+            />
+          </div>
+          <button
+            onClick={() => void searchUsers(query)}
+            className="rounded-xl border border-violet-400/40 bg-violet-500/20 px-4 text-sm font-medium text-violet-100 hover:bg-violet-500/30 transition-colors"
+          >
+            Найти
+          </button>
         </div>
         <div className="max-h-[300px] overflow-y-auto space-y-2">
           {loading ? (
@@ -255,14 +326,14 @@ export const CreateChatModal = ({
                 onClick={() => onCreate(user.id, user.name)}
                 className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-white/5 transition-colors text-left"
               >
-                <AvatarPill label={user.name.slice(0, 2).toUpperCase()} />
+                <AvatarPill label={(user.name || "?").slice(0, 2).toUpperCase()} />
                 <div>
                   <div className="text-sm font-medium">{user.name}</div>
                   <div className="text-xs text-zinc-500">{user.email}</div>
                 </div>
               </button>
             ))
-          ) : query ? (
+          ) : hasSearched ? (
             <p className="text-center text-xs text-zinc-500 py-4">Никого не нашли :(</p>
           ) : (
             <p className="text-center text-xs text-zinc-500 py-4 italic">Введите имя для поиска</p>
@@ -324,13 +395,13 @@ export const SidebarHeader = ({
 );
 
 export const SearchBar = ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
-  <label className="mx-4 mb-4 flex items-center gap-2 rounded-2xl border border-white/15 bg-black/20 px-3 py-2">
+  <label className="mx-3 lg:mx-4 mb-3 lg:mb-4 flex items-center gap-2 rounded-2xl border border-white/20 bg-gradient-to-r from-black/30 to-violet-500/15 px-3 py-2.5 shadow-[0_12px_35px_rgba(0,0,0,0.28)] backdrop-blur-xl">
     <Search className="h-4 w-4 text-zinc-400" />
     <input
       value={value}
       onChange={(event) => onChange(event.target.value)}
       className="w-full bg-transparent text-sm outline-none placeholder:text-zinc-500"
-      placeholder="Search chats, messages, media..."
+      placeholder="Поиск чатов, сообщений, медиа..."
     />
   </label>
 );
@@ -369,7 +440,7 @@ export const FolderTabs = ({
 );
 
 export const ChatList = ({ children }: PropsWithChildren) => (
-  <div className="space-y-2 px-3 pb-3">{children}</div>
+  <div className="space-y-2.5 px-2.5 lg:px-3 pb-3">{children}</div>
 );
 
 export const ChatListItem = ({
@@ -384,56 +455,73 @@ export const ChatListItem = ({
   onClick: () => void;
   isOnline?: boolean;
   onMute?: () => void;
-}) => (
-  <button
-    onClick={onClick}
-    onContextMenu={(e) => {
-      e.preventDefault();
-      onMute?.();
-    }}
-    className={`w-full rounded-2xl p-3 text-left transition relative group ${active ? "bg-violet-500/25" : "bg-white/5 hover:bg-white/10"}`}
-  >
-    <div className="flex items-start justify-between">
-      <div className="flex items-center gap-3">
-        <div className="relative">
-          <AvatarPill label={chat.avatar} />
-          {isOnline && (
-            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-zinc-950 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse" />
-          )}
-        </div>
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="text-sm font-semibold">{chat.title}</div>
-            {chat.isMuted && <Bell className="h-3 w-3 text-zinc-500" />}
+}) => {
+  const folderGlow = {
+    PERSONAL: "from-violet-500/30 via-fuchsia-500/20 to-transparent",
+    WORK: "from-indigo-500/30 via-violet-500/15 to-transparent",
+    AI: "from-purple-500/35 via-violet-500/20 to-transparent",
+    CHANNEL: "from-pink-500/30 via-purple-500/20 to-transparent",
+    SAVED: "from-violet-400/35 via-fuchsia-400/20 to-transparent",
+  }[chat.folder] || "from-violet-500/25 via-fuchsia-500/10 to-transparent";
+
+  return (
+    <button
+      onClick={onClick}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        onMute?.();
+      }}
+      className={`w-full rounded-2xl p-3 text-left transition-all duration-200 relative group border overflow-hidden ${active ? "bg-white/10 border-violet-300/40 shadow-[0_12px_36px_rgba(139,92,246,0.35)]" : "bg-white/5 hover:bg-white/10 border-violet-300/10 hover:border-violet-300/20"}`}
+    >
+      <div className={`absolute inset-0 bg-gradient-to-r ${folderGlow} opacity-80 pointer-events-none`} />
+      <div className="relative flex items-start justify-between">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <AvatarPill label={chat.avatar} />
+            {isOnline && (
+              <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-zinc-950 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse" />
+            )}
           </div>
-          <div className="max-w-[210px] truncate text-xs text-zinc-400">{chat.lastMessagePreview}</div>
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="text-sm font-semibold text-zinc-100">{chat.title}</div>
+              {chat.isMuted && <Bell className="h-3 w-3 text-zinc-400" />}
+            </div>
+            <div className="max-w-[210px] truncate text-xs text-zinc-200/80">{chat.lastMessagePreview}</div>
+            <div className="max-w-[210px] truncate text-[10px] text-violet-200/70 mt-0.5">
+              {chat.participants.slice(0, 3).join(" • ")}
+            </div>
+          </div>
+        </div>
+        <div className="text-right pl-2">
+          {chat.unreadCount > 0 ? (
+            <span className="rounded-full bg-violet-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-[0_0_15px_rgba(168,85,247,0.45)]">{chat.unreadCount}</span>
+          ) : null}
+          <div className="flex flex-col items-end gap-1 mt-1">
+            {chat.pinned && <Pin className="h-3.5 w-3.5 text-violet-200/80" />}
+            <div className="text-[9px] text-zinc-400">
+              {new Date(chat.updatedAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+            </div>
+            <div className="text-[9px] text-zinc-500 opacity-0 group-hover:opacity-100 transition-opacity">
+              {isOnline ? "онлайн" : "был недавно"}
+            </div>
+          </div>
         </div>
       </div>
-      <div className="text-right">
-        {chat.unreadCount > 0 ? (
-          <span className="rounded-full bg-violet-500/80 px-2 py-0.5 text-[10px]">{chat.unreadCount}</span>
-        ) : null}
-        <div className="flex flex-col items-end gap-1 mt-1">
-          {chat.pinned && <Pin className="h-3.5 w-3.5 text-zinc-400" />}
-          <div className="text-[9px] text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity">
-            {isOnline ? "онлайн" : "был недавно"}
-          </div>
-        </div>
-      </div>
-    </div>
-  </button>
-);
+    </button>
+  );
+};
 
 export const ConnectionBadge = ({ online, queued }: { online: boolean; queued: number }) => (
-  <div className="flex items-center gap-2 text-xs text-zinc-300">
+  <div className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/30 px-2 py-1 text-[10px] font-medium text-zinc-300 backdrop-blur-md">
     <StatusDot online={online} />
-    {online ? "Synced" : "Offline queueing"}
-    <span className="rounded-full border border-violet-300/25 px-2 py-0.5">{queued}</span>
+    <span>{online ? "Online" : "Offline"}</span>
+    {queued > 0 && <span className="rounded-full border border-violet-300/25 px-1.5 py-0.5 text-[9px] text-violet-200">{queued}</span>}
   </div>
 );
 
 export const MessagePane = ({ children, className = "" }: PropsWithChildren<BaseProps>) => (
-  <main className={`flex flex-col bg-zinc-950/20 backdrop-blur-md h-full overflow-hidden flex-1 ${className}`}>{children}</main>
+  <main className={`flex flex-col bg-gradient-to-b from-black/30 via-violet-950/10 to-black/30 backdrop-blur-2xl h-full overflow-hidden flex-1 border-l border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] ${className}`}>{children}</main>
 );
 
 export const ChatHeader = ({
@@ -457,7 +545,7 @@ export const ChatHeader = ({
   onSearchChange?: (val: string) => void;
   searchValue?: string;
 }) => (
-  <div className="border-b border-white/10 px-4 lg:px-6 py-4">
+  <div className="border-b border-white/10 px-3 lg:px-6 py-3.5 lg:py-4 bg-white/[0.03] backdrop-blur-xl">
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-3">
         {onBack && (
@@ -501,18 +589,27 @@ export const QuickActions = ({ onCall, onVideoCall, onShareLink }: { onCall?: ()
 );
 
 export const IconAction = ({ icon, onClick }: { icon: ReactNode; onClick?: () => void }) => (
-  <button onClick={onClick} className="rounded-xl border border-white/10 bg-white/5 p-2 text-zinc-200 hover:bg-white/10">{icon}</button>
+  <button onClick={onClick} className="rounded-xl border border-white/15 bg-white/10 p-2 text-zinc-200 hover:bg-white/20 backdrop-blur-md">{icon}</button>
 );
 
 export const PinnedBanner = ({ message }: { message: string }) => (
-  <div className="mx-4 mt-4 rounded-2xl border border-violet-300/30 bg-violet-500/10 px-4 py-2 text-sm text-violet-100">
+  <div className="mx-3 lg:mx-4 mt-3 lg:mt-4 rounded-2xl border border-violet-300/35 bg-violet-500/15 px-4 py-2 text-sm text-violet-100 backdrop-blur-md">
     <span className="mr-1 text-xs uppercase text-violet-300">Pinned</span>
     {message}
   </div>
 );
 
-export const MessageScroll = ({ children }: PropsWithChildren) => (
-  <motion.div layout className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+export const MessageScroll = ({
+  children,
+  onScroll,
+  scrollRef,
+}: PropsWithChildren<{ onScroll?: (event: React.UIEvent<HTMLDivElement>) => void; scrollRef?: React.Ref<HTMLDivElement> }>) => (
+  <motion.div
+    ref={scrollRef}
+    onScroll={onScroll}
+    layout
+    className="flex-1 space-y-3 overflow-y-auto px-3 lg:px-4 py-3 lg:py-4"
+  >
     {children}
   </motion.div>
 );
@@ -565,7 +662,7 @@ export const MoireOverlay = ({ viewerName }: { viewerName?: string }) => (
 
 export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, revealed: boolean, viewerName?: string }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number>(0);
   const frameCounter = useRef(0);
 
   useEffect(() => {
@@ -681,6 +778,116 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
   );
 };
 
+const renderInlineRichText = (text: string, keyPrefix: string): ReactNode[] => {
+  const parts: ReactNode[] = [];
+  const tokenRegex = /(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|https?:\/\/[^\s]+|\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`)/g;
+  let lastIndex = 0;
+  let index = 0;
+  for (const match of text.matchAll(tokenRegex)) {
+    const full = match[0];
+    const start = match.index ?? 0;
+    if (start > lastIndex) {
+      parts.push(text.slice(lastIndex, start));
+    }
+    if (match[3]) {
+      parts.push(
+        <a
+          key={`${keyPrefix}-mdlink-${index}`}
+          href={match[3]}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="underline decoration-violet-300/70 underline-offset-2 text-violet-200 hover:text-violet-100 break-all"
+        >
+          {match[2]}
+        </a>
+      );
+    } else if (full.startsWith("http://") || full.startsWith("https://")) {
+      const cleanUrl = full.replace(/[),.!?;:]+$/, "");
+      const trailing = full.slice(cleanUrl.length);
+      parts.push(
+        <a
+          key={`${keyPrefix}-link-${index}`}
+          href={cleanUrl}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="underline decoration-violet-300/70 underline-offset-2 text-violet-200 hover:text-violet-100 break-all"
+        >
+          {cleanUrl}
+        </a>
+      );
+      if (trailing) {
+        parts.push(trailing);
+      }
+    } else if (match[4]) {
+      parts.push(<strong key={`${keyPrefix}-bold-${index}`} className="font-bold text-white">{match[4]}</strong>);
+    } else if (match[5]) {
+      parts.push(<em key={`${keyPrefix}-italic-${index}`} className="italic text-zinc-100">{match[5]}</em>);
+    } else if (match[6]) {
+      parts.push(
+        <code key={`${keyPrefix}-code-${index}`} className="rounded-md bg-black/35 border border-white/10 px-1.5 py-0.5 font-mono text-[0.84em] text-violet-100">
+          {match[6]}
+        </code>
+      );
+    }
+    lastIndex = start + full.length;
+    index += 1;
+  }
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+  return parts;
+};
+
+const renderRichText = (text: string) => {
+  const lines = text.split("\n");
+  const blocks: ReactNode[] = [];
+  let listBuffer: string[] = [];
+  const flushList = (key: string) => {
+    if (listBuffer.length === 0) return;
+    blocks.push(
+      <ul key={key} className="my-1 space-y-0.5 list-disc pl-4 marker:text-violet-300/80">
+        {listBuffer.map((item, index) => (
+          <li key={`${key}-${index}`} className="leading-relaxed">
+            {renderInlineRichText(item, `${key}-${index}`)}
+          </li>
+        ))}
+      </ul>
+    );
+    listBuffer = [];
+  };
+  lines.forEach((line, index) => {
+    const itemMatch = line.match(/^\s*[-*]\s+(.+)$/);
+    if (itemMatch) {
+      listBuffer.push(itemMatch[1]);
+      return;
+    }
+    flushList(`list-${index}`);
+    if (!line.trim()) {
+      blocks.push(<div key={`sp-${index}`} className="h-2" />);
+      return;
+    }
+    const heading = line.match(/^(#{1,3})\s+(.+)$/);
+    if (heading) {
+      const level = heading[1].length;
+      const textValue = heading[2];
+      const headingClass = level === 1 ? "text-base font-black" : level === 2 ? "text-[15px] font-bold" : "text-sm font-semibold";
+      blocks.push(
+        <div key={`h-${index}`} className={`${headingClass} mt-1 mb-0.5`}>
+          {renderInlineRichText(textValue, `h-${index}`)}
+        </div>
+      );
+      return;
+    }
+    blocks.push(
+      <div key={`p-${index}`} className="leading-relaxed break-words">
+        {renderInlineRichText(line, `p-${index}`)}
+      </div>
+    );
+  });
+  flushList("list-end");
+  return blocks;
+};
+
 export const MessageBubble = ({ 
   message, 
   mine,
@@ -708,6 +915,39 @@ export const MessageBubble = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(message.decryptedBody || "");
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [swipeX, setSwipeX] = useState(0);
+  const swipeThreshold = 56;
+  const [touchSwipeActive, setTouchSwipeActive] = useState(false);
+  const [linkPreviews, setLinkPreviews] = useState<LinkPreviewData[]>([]);
+
+  useEffect(() => {
+    const fetchLinkPreviews = async () => {
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      const urls = (message.decryptedBody || message.encryptedBody || "").match(urlRegex);
+      if (urls && urls.length > 0) {
+        const dedupedUrls = Array.from(new Set(urls.map((url) => url.replace(/[),.!?;:]+$/, ""))));
+        const previews: LinkPreviewData[] = [];
+        for (const url of dedupedUrls) {
+          try {
+            const response = await fetch(`/api/link-preview?url=${encodeURIComponent(url)}`);
+            if (response.ok) {
+              const data = await response.json() as LinkPreviewData;
+              if (data.title || data.description || data.image) {
+                previews.push({ ...data, url });
+              }
+            }
+          } catch {
+            continue;
+          }
+        }
+        setLinkPreviews(previews);
+      } else {
+        setLinkPreviews([]);
+      }
+    };
+
+    void fetchLinkPreviews();
+  }, [message.decryptedBody]);
 
   // Обработка таймера и удаления
   useEffect(() => {
@@ -718,6 +958,8 @@ export const MessageBubble = ({
       onDelete?.();
     }
   }, [peekTimer, onDelete]);
+
+
 
   const handleStartPeek = () => {
     if (!message.isSecure || peekTimer !== null) return;
@@ -742,14 +984,62 @@ export const MessageBubble = ({
     setIsEditing(false);
   };
 
+  const handlePanStart = (event: any) => {
+    const pointerType = event?.pointerType ?? event?.nativeEvent?.pointerType;
+    setTouchSwipeActive(pointerType === "touch");
+  };
+
+  const handlePan = (event: any, info: { offset: { x: number; y: number } }) => {
+    if (!touchSwipeActive) return;
+    const directionalOffset = mine ? Math.min(0, info.offset.x) : Math.max(0, info.offset.x);
+    setSwipeX(directionalOffset);
+  };
+
+  const handlePanEnd = (event: any, info: { offset: { x: number; y: number }; velocity: { x: number; y: number } }) => {
+    if (touchSwipeActive) {
+      const directionalOffset = mine ? Math.min(0, info.offset.x) : Math.max(0, info.offset.x);
+      const directionalVelocity = mine ? Math.min(0, info.velocity.x) : Math.max(0, info.velocity.x);
+      if (Math.abs(directionalOffset) > swipeThreshold || Math.abs(directionalVelocity) > 500) {
+        onReply?.();
+      }
+    }
+    setSwipeX(0);
+    setTouchSwipeActive(false);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      className={`max-w-[85%] lg:max-w-[70%] rounded-[24px] px-5 py-3 shadow-lg shadow-black/5 group relative ${
-        mine ? "ml-auto bg-violet-600/90 text-white rounded-tr-none" : "bg-zinc-800/80 text-zinc-100 rounded-tl-none border border-white/5"
+      onPanStart={onReply ? handlePanStart : undefined}
+      onPan={onReply ? handlePan : undefined} // Only enable pan if onReply is provided
+      onPanEnd={onReply ? handlePanEnd : undefined} // Only enable pan end if onReply is provided
+      style={{ x: swipeX }}
+      className={`max-w-[90%] lg:max-w-[70%] rounded-[24px] px-4 lg:px-5 py-3 shadow-xl shadow-black/20 group relative border backdrop-blur-xl touch-pan-y ${
+        mine ? "ml-auto bg-gradient-to-br from-violet-500/70 via-violet-600/55 to-fuchsia-600/45 text-white rounded-tr-none border-violet-200/30" : "bg-white/10 text-zinc-100 rounded-tl-none border-white/15"
       }`}
     >
+      {/* Swipe-to-reply indicator */}
+      {onReply && !mine && swipeX > 8 && (
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          className="absolute -left-12 top-1/2 -translate-y-1/2 text-violet-400"
+        >
+          <Reply className="h-5 w-5" />
+        </motion.div>
+      )}
+      {onReply && mine && swipeX < -8 && (
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 20 }}
+          className="absolute -right-12 top-1/2 -translate-y-1/2 text-violet-300"
+        >
+          <Reply className="h-5 w-5 scale-x-[-1]" />
+        </motion.div>
+      )}
       <div className={`absolute ${mine ? "-left-28" : "-right-28"} top-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1`}>
         <button onClick={onReply} className="p-2 hover:bg-white/10 rounded-full transition-colors" title="Reply">
           <Share className="h-4 w-4 rotate-180" />
@@ -891,8 +1181,11 @@ export const MessageBubble = ({
           </div>
         </div>
       ) : (
-        <div className="text-sm leading-relaxed whitespace-pre-wrap font-medium">
-          {message.decryptedBody}
+        <div className="text-sm leading-relaxed font-medium">
+          {renderRichText(message.decryptedBody || "")}
+          {linkPreviews.map((preview) => (
+            <LinkPreview key={`${message.id}-${preview.url}`} data={preview} />
+          ))}
           {message.isEdited && <span className="ml-2 text-[9px] opacity-40 italic">(изм.)</span>}
         </div>
       )}
@@ -1018,7 +1311,7 @@ export const ReactionRail = ({ reactions }: { reactions: FluxMessage["reactions"
   <div className="flex flex-wrap gap-1">
     {reactions.map((reaction) => (
       <button key={reaction.emoji} className="rounded-full border border-white/10 px-2 py-0.5 text-[11px]">
-        {reaction.emoji} {reaction.count}
+        {reaction.emoji}
       </button>
     ))}
   </div>
