@@ -863,7 +863,7 @@ export const FluxApp = () => {
                 <div className="px-4 pt-3 flex items-center justify-between">
                   <ConnectionBadge online={socket.connected} queued={socket.queuedCount} />
                 </div>
-                <div className="relative flex-1 min-h-0">
+                <div className="relative flex-1 min-h-0 flex flex-col">
                   <MessageScroll scrollRef={messageScrollRef} onScroll={updateScrollState}>
                     {timelineItems.map((item) => {
                       if (item.type === "date") {
