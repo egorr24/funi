@@ -763,9 +763,6 @@ export const FluxApp = () => {
                 <PinnedBanner message="Tomorrow 09:00 UTC — ship candidate freeze with encrypted calls." />
                 <div className="px-4 pt-3 flex items-center justify-between">
                   <ConnectionBadge online={socket.connected} queued={socket.queuedCount} />
-                  <div className={`text-[10px] uppercase font-bold tracking-widest ${socket.connected ? "text-emerald-500" : "text-red-500"}`}>
-                    {socket.connected ? "Realtime Active" : "Connecting..."}
-                  </div>
                 </div>
                 <MessageScroll>
                   {visibleMessages.map((message) => (

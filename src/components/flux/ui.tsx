@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Mic, Paperclip, Phone, Pin, Search, SendHorizontal, Shield, Video, Plus, X, MessageSquare, Settings, User, Bell, Check, CheckCheck, Maximize2, MicOff, VideoOff, PhoneOff, Share } from "lucide-react";
+import { Mic, Paperclip, Phone, Pin, Search, SendHorizontal, Shield, Video, Plus, X, MessageSquare, Settings, User, Bell, Check, CheckCheck, Maximize2, MicOff, VideoOff, PhoneOff, Share, Reply } from "lucide-react";
 import { PropsWithChildren, ReactNode, useState, useEffect, useRef, useCallback } from "react";
 import { FluxChat, FluxMessage } from "@/src/types/flux";
 
@@ -481,10 +481,9 @@ export const ChatListItem = ({
 };
 
 export const ConnectionBadge = ({ online, queued }: { online: boolean; queued: number }) => (
-  <div className="flex items-center gap-2 text-xs text-zinc-300">
+  <div className="flex items-center gap-1">
     <StatusDot online={online} />
-    {online ? "Synced" : "Offline queueing"}
-    <span className="rounded-full border border-violet-300/25 px-2 py-0.5">{queued}</span>
+    {queued > 0 && <span className="rounded-full border border-violet-300/25 px-2 py-0.5 text-[10px] text-zinc-300">{queued}</span>}
   </div>
 );
 
@@ -874,6 +873,8 @@ export const MessageBubble = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(message.decryptedBody || "");
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [swipeX, setSwipeX] = useState(0);
+  const swipeThreshold = 50; // px
 
   // Обработка таймера и удаления
   useEffect(() => {
@@ -884,6 +885,8 @@ export const MessageBubble = ({
       onDelete?.();
     }
   }, [peekTimer, onDelete]);
+
+
 
   const handleStartPeek = () => {
     if (!message.isSecure || peekTimer !== null) return;
@@ -908,14 +911,40 @@ export const MessageBubble = ({
     setIsEditing(false);
   };
 
+  const handlePan = (event: any, info: { offset: { x: number; y: number } }) => {
+    setSwipeX(info.offset.x);
+  };
+
+  const handlePanEnd = (event: any, info: { offset: { x: number; y: number }; velocity: { x: number; y: number } }) => {
+    if (Math.abs(info.offset.x) > swipeThreshold || Math.abs(info.velocity.x) > 500) {
+      // Trigger reply action
+      onReply?.();
+    }
+    setSwipeX(0); // Reset swipe position
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
+      onPan={onReply ? handlePan : undefined} // Only enable pan if onReply is provided
+      onPanEnd={onReply ? handlePanEnd : undefined} // Only enable pan end if onReply is provided
+      style={{ x: swipeX }}
       className={`max-w-[90%] lg:max-w-[70%] rounded-[24px] px-4 lg:px-5 py-3 shadow-xl shadow-black/20 group relative border backdrop-blur-xl ${
         mine ? "ml-auto bg-gradient-to-br from-violet-500/70 via-violet-600/55 to-fuchsia-600/45 text-white rounded-tr-none border-violet-200/30" : "bg-white/10 text-zinc-100 rounded-tl-none border-white/15"
       }`}
     >
+      {/* Swipe-to-reply indicator */}
+      {onReply && swipeX > 0 && (
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          className="absolute -left-12 top-1/2 -translate-y-1/2 text-violet-400"
+        >
+          <Reply className="h-5 w-5" />
+        </motion.div>
+      )}
       <div className={`absolute ${mine ? "-left-28" : "-right-28"} top-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1`}>
         <button onClick={onReply} className="p-2 hover:bg-white/10 rounded-full transition-colors" title="Reply">
           <Share className="h-4 w-4 rotate-180" />
