@@ -13,13 +13,75 @@ class User {
     
     const values = [name, email, hashedPassword, avatar, publicKey, encryptedPrivKey];
     const result = await pool.query(query, values);
-    return result.rows[0];
+    const createdUser = result.rows[0];
+    try {
+      const legacyUser = await pool.query(
+        `SELECT id FROM "User" WHERE LOWER(email) = LOWER($1) LIMIT 1`,
+        [createdUser.email]
+      );
+      if (!legacyUser.rows[0]?.id) {
+        await pool.query(
+          `INSERT INTO "User" (id, name, email, avatar, "passwordHash")
+           VALUES ($1, $2, $3, $4, $5)`,
+          [createdUser.id, createdUser.name, createdUser.email, createdUser.avatar || null, hashedPassword]
+        );
+      }
+    } catch (_error) {}
+    return createdUser;
   }
 
   static async findByEmail(email) {
     const query = 'SELECT * FROM users WHERE email = $1';
     const result = await pool.query(query, [email]);
-    return result.rows[0];
+    if (result.rows[0]) {
+      return result.rows[0];
+    }
+    try {
+      const legacyResult = await pool.query(
+        `SELECT id, name, email, avatar, "passwordHash" as password_hash
+         FROM "User"
+         WHERE LOWER(email) = LOWER($1)
+         LIMIT 1`,
+        [email]
+      );
+      const legacyUser = legacyResult.rows[0];
+      if (!legacyUser?.email) {
+        return null;
+      }
+      const upserted = await pool.query(
+        `INSERT INTO users (name, email, password_hash, avatar)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (email) DO UPDATE
+         SET name = COALESCE(EXCLUDED.name, users.name),
+             avatar = COALESCE(EXCLUDED.avatar, users.avatar),
+             password_hash = COALESCE(users.password_hash, EXCLUDED.password_hash)
+         RETURNING *`,
+        [
+          legacyUser.name || legacyUser.email.split("@")[0],
+          legacyUser.email,
+          legacyUser.password_hash || "$2b$10$7EqJtq98hPqEX7fNZaFWoO5x0xYv7FpC18JNpDutLCRa14Q6gttxy",
+          legacyUser.avatar || null,
+        ]
+      );
+      return upserted.rows[0] || null;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  static async findByEmailInUser(email) {
+    try {
+      const result = await pool.query(
+        `SELECT id, name, email, avatar, "passwordHash" as password_hash
+         FROM "User"
+         WHERE LOWER(email) = LOWER($1)
+         LIMIT 1`,
+        [email]
+      );
+      return result.rows[0] || null;
+    } catch (_error) {
+      return null;
+    }
   }
 
   static async findById(id) {
@@ -67,7 +129,7 @@ class User {
       const query = `
         SELECT id, name, email, avatar, status
         FROM users 
-        WHERE id != $2
+        WHERE id::text != $2
         AND (
           $1 = ''
           OR LOWER(COALESCE(name, '')) LIKE $3
@@ -81,7 +143,7 @@ class User {
           name ASC
         LIMIT 20
       `;
-      const result = await pool.query(query, [normalizedQuery, currentUserId, wildcardQuery, compactNameQuery, compactEmailQuery]);
+      const result = await pool.query(query, [normalizedQuery, String(currentUserId), wildcardQuery, compactNameQuery, compactEmailQuery]);
       mergedUsers.push(...result.rows);
     } catch (_error) {}
     const seenEmails = new Set(
@@ -126,14 +188,14 @@ class User {
       const fallbackQuery = `
         SELECT id, name, email, avatar, status
         FROM users
-        WHERE id != $1
+        WHERE id::text != $1
         ORDER BY
           CASE WHEN status = 'online' THEN 0 ELSE 1 END,
           COALESCE(updated_at, created_at) DESC,
           name ASC
         LIMIT 20
       `;
-      const fallbackResult = await pool.query(fallbackQuery, [currentUserId]);
+      const fallbackResult = await pool.query(fallbackQuery, [String(currentUserId)]);
       return fallbackResult.rows;
     } catch (_error) {}
     try {
@@ -158,7 +220,7 @@ class User {
 
   static async resolveAppUserId(externalUserId) {
     try {
-      const ownUser = await pool.query('SELECT id FROM users WHERE id = $1 LIMIT 1', [externalUserId]);
+      const ownUser = await pool.query('SELECT id FROM users WHERE id::text = $1 LIMIT 1', [String(externalUserId)]);
       if (ownUser.rows[0]?.id) {
         return ownUser.rows[0].id;
       }
