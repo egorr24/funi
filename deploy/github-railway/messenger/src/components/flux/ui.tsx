@@ -348,6 +348,7 @@ export const EmptyState = ({ label }: { label: string }) => (
   <GlassCard className="grid place-items-center p-5 text-sm text-zinc-400">{label}</GlassCard>
 );
 
+// Sidebar Header Component
 export const SidebarHeader = ({
   title,
   onAddChat,
@@ -359,38 +360,38 @@ export const SidebarHeader = ({
   onBack?: () => void;
   onCreateGroup?: () => void;
 }) => (
-  <div className="px-5 pb-4 pt-5 flex items-center justify-between">
-    <div className="flex items-center gap-3">
-      {onBack && (
-        <button onClick={onBack} className="lg:hidden p-2 -ml-2 hover:bg-white/5 rounded-xl transition-colors">
-          <X className="h-5 w-5 rotate-90" />
-        </button>
-      )}
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        <p className="text-xs text-zinc-300/70">Hyper-Glass 2026 realtime channeling</p>
+  <div className="px-4 lg:px-5 pb-3 lg:pb-4 pt-4 lg:pt-5 flex flex-col gap-1">
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+        {onBack && (
+          <button onClick={onBack} className="lg:hidden p-2 -ml-2 hover:bg-white/5 rounded-xl transition-colors shrink-0">
+            <X className="h-5 w-5 rotate-90" />
+          </button>
+        )}
+        <h1 className="text-xl lg:text-2xl font-semibold tracking-tight truncate">{title}</h1>
+      </div>
+      <div className="flex gap-2 shrink-0">
+        {onCreateGroup && (
+          <button
+            onClick={onCreateGroup}
+            className="grid h-9 w-9 lg:h-10 lg:w-10 place-items-center rounded-xl lg:rounded-2xl bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
+            title="Создать группу"
+          >
+            <User className="h-4 w-4 lg:h-5 lg:w-5" />
+          </button>
+        )}
+        {onAddChat && (
+          <button
+            onClick={onAddChat}
+            className="grid h-9 w-9 lg:h-10 lg:w-10 place-items-center rounded-xl lg:rounded-2xl bg-violet-500/20 text-violet-400 hover:bg-violet-500/30 transition-colors"
+            title="Новый чат"
+          >
+            <Plus className="h-4 w-4 lg:h-5 lg:w-5" />
+          </button>
+        )}
       </div>
     </div>
-    <div className="flex gap-2">
-      {onCreateGroup && (
-        <button
-          onClick={onCreateGroup}
-          className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
-          title="Создать группу"
-        >
-          <User className="h-5 w-5" />
-        </button>
-      )}
-      {onAddChat && (
-        <button
-          onClick={onAddChat}
-          className="grid h-10 w-10 place-items-center rounded-2xl bg-violet-500/20 text-violet-400 hover:bg-violet-500/30 transition-colors"
-          title="Новый чат"
-        >
-          <Plus className="h-5 w-5" />
-        </button>
-      )}
-    </div>
+    <p className="text-[10px] lg:text-xs text-zinc-300/70 truncate">Hyper-Glass 2026 realtime channeling</p>
   </div>
 );
 
@@ -440,7 +441,7 @@ export const FolderTabs = ({
 );
 
 export const ChatList = ({ children }: PropsWithChildren) => (
-  <div className="space-y-2.5 px-2.5 lg:px-3 pb-3">{children}</div>
+  <div className="space-y-2.5 px-2.5 lg:px-3 pb-3 flex-1 overflow-y-auto">{children}</div>
 );
 
 export const ChatListItem = ({
@@ -608,7 +609,7 @@ export const MessageScroll = ({
     ref={scrollRef}
     onScroll={onScroll}
     layout
-    className="flex-1 space-y-3 overflow-y-auto px-3 lg:px-4 py-3 lg:py-4"
+    className="flex-1 overflow-y-auto px-3 lg:px-4 py-3 lg:py-4 flex flex-col"
   >
     {children}
   </motion.div>
@@ -891,6 +892,9 @@ const renderRichText = (text: string) => {
 export const MessageBubble = ({ 
   message, 
   mine,
+  showSender = false,
+  compactTop = false,
+  compactBottom = false,
   onImageClick,
   onReaction,
   onReply,
@@ -901,6 +905,9 @@ export const MessageBubble = ({
 }: { 
   message: FluxMessage; 
   mine: boolean;
+  showSender?: boolean;
+  compactTop?: boolean;
+  compactBottom?: boolean;
   onImageClick?: (url: string) => void;
   onReaction?: (emoji: string) => void;
   onReply?: () => void;
@@ -919,6 +926,9 @@ export const MessageBubble = ({
   const swipeThreshold = 56;
   const [touchSwipeActive, setTouchSwipeActive] = useState(false);
   const [linkPreviews, setLinkPreviews] = useState<LinkPreviewData[]>([]);
+  const bubbleShapeClass = mine
+    ? `${compactTop ? "rounded-tr-xl" : "rounded-tr-none"} ${compactBottom ? "rounded-br-xl" : "rounded-br-[24px]"}`
+    : `${compactTop ? "rounded-tl-xl" : "rounded-tl-none"} ${compactBottom ? "rounded-bl-xl" : "rounded-bl-[24px]"}`;
 
   useEffect(() => {
     const fetchLinkPreviews = async () => {
@@ -989,379 +999,190 @@ export const MessageBubble = ({
     setTouchSwipeActive(pointerType === "touch");
   };
 
-  const handlePan = (event: any, info: { offset: { x: number; y: number } }) => {
-    if (!touchSwipeActive) return;
-    const directionalOffset = mine ? Math.min(0, info.offset.x) : Math.max(0, info.offset.x);
-    setSwipeX(directionalOffset);
+  const handlePan = (event: any, info: any) => {
+    if (info.offset.x > 0) {
+      setSwipeX(Math.min(info.offset.x, swipeThreshold + 20));
+    } else {
+      setSwipeX(0);
+    }
   };
 
-  const handlePanEnd = (event: any, info: { offset: { x: number; y: number }; velocity: { x: number; y: number } }) => {
-    if (touchSwipeActive) {
-      const directionalOffset = mine ? Math.min(0, info.offset.x) : Math.max(0, info.offset.x);
-      const directionalVelocity = mine ? Math.min(0, info.velocity.x) : Math.max(0, info.velocity.x);
-      if (Math.abs(directionalOffset) > swipeThreshold || Math.abs(directionalVelocity) > 500) {
-        onReply?.();
-      }
+  const handlePanEnd = (event: any, info: any) => {
+    if (info.offset.x >= swipeThreshold) {
+      onReply?.();
     }
     setSwipeX(0);
-    setTouchSwipeActive(false);
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      onPanStart={onReply ? handlePanStart : undefined}
-      onPan={onReply ? handlePan : undefined} // Only enable pan if onReply is provided
-      onPanEnd={onReply ? handlePanEnd : undefined} // Only enable pan end if onReply is provided
-      style={{ x: swipeX }}
-      className={`max-w-[90%] lg:max-w-[70%] rounded-[24px] px-4 lg:px-5 py-3 shadow-xl shadow-black/20 group relative border backdrop-blur-xl touch-pan-y ${
-        mine ? "ml-auto bg-gradient-to-br from-violet-500/70 via-violet-600/55 to-fuchsia-600/45 text-white rounded-tr-none border-violet-200/30" : "bg-white/10 text-zinc-100 rounded-tl-none border-white/15"
-      }`}
-    >
-      {/* Swipe-to-reply indicator */}
-      {onReply && !mine && swipeX > 8 && (
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          className="absolute -left-12 top-1/2 -translate-y-1/2 text-violet-400"
+    <div className={`group relative flex items-end gap-2 px-1 lg:px-2 ${mine ? "flex-row-reverse" : "flex-row"} ${compactTop ? "mt-0.5" : "mt-3 lg:mt-4"} mb-0.5`}>
+      <motion.div
+        drag="x"
+        dragDirectionLock
+        dragConstraints={{ left: 0, right: swipeThreshold + 20 }}
+        dragElastic={0.1}
+        onDragStart={handlePanStart}
+        onDrag={handlePan}
+        onDragEnd={handlePanEnd}
+        style={{ x: swipeX }}
+        className={`relative max-w-[85%] lg:max-w-[70%] transition-transform duration-200`}
+      >
+        {/* Reply Indicator Background */}
+        <div 
+          className="absolute right-full top-1/2 -translate-y-1/2 pr-4 opacity-0 transition-opacity"
+          style={{ opacity: swipeX / swipeThreshold }}
         >
-          <Reply className="h-5 w-5" />
-        </motion.div>
-      )}
-      {onReply && mine && swipeX < -8 && (
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: 20 }}
-          className="absolute -right-12 top-1/2 -translate-y-1/2 text-violet-300"
-        >
-          <Reply className="h-5 w-5 scale-x-[-1]" />
-        </motion.div>
-      )}
-      <div className={`absolute ${mine ? "-left-28" : "-right-28"} top-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1`}>
-        <button onClick={onReply} className="p-2 hover:bg-white/10 rounded-full transition-colors" title="Reply">
-          <Share className="h-4 w-4 rotate-180" />
-        </button>
-        <button onClick={onForward} className="p-2 hover:bg-white/10 rounded-full transition-colors" title="Forward">
-          <Share className="h-4 w-4" />
+          <div className="rounded-full bg-violet-500/20 p-2 text-violet-400">
+            <Reply className="h-4 w-4" />
+          </div>
+        </div>
+
+        <div className={`relative overflow-hidden ${bubbleShapeClass} ${mine ? "bg-violet-600 text-white shadow-lg shadow-violet-600/10" : "bg-white/10 text-zinc-100 border border-white/5"} px-3.5 py-2.5 lg:px-4 lg:py-3 shadow-sm`}>
+          {showSender && !mine && (
+            <div className="text-[10px] font-bold text-violet-400 uppercase tracking-widest mb-1.5 px-0.5">
+              {message.senderName}
+            </div>
+          )}
+          
+          {message.replyTo && (
+            <div className="mb-2 border-l-2 border-white/20 bg-white/5 p-2 rounded-lg text-xs opacity-80 cursor-pointer hover:bg-white/10 transition-colors">
+              <div className="font-bold text-[10px] uppercase tracking-wider mb-0.5">В ответ на</div>
+              <div className="truncate italic">"{message.replyTo.body}"</div>
+            </div>
+          )}
+
+          {message.type === "IMAGE" && message.mediaUrl && (
+            <div className="mb-2 -mx-1 -mt-1 rounded-xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform" onClick={() => onImageClick?.(message.mediaUrl!)}>
+              {message.isSecure ? (
+                <SecureCanvasImage url={message.mediaUrl} revealed={isRevealed} viewerName={viewerName} />
+              ) : (
+                <img src={message.mediaUrl} alt="Media" className="w-full h-auto object-cover max-h-[350px]" />
+              )}
+            </div>
+          )}
+
+          {message.type === "VOICE" && message.mediaUrl && (
+            <div className="flex items-center gap-3 py-1.5 min-w-[180px]">
+              <button onClick={togglePlay} className={`h-10 w-10 rounded-full flex items-center justify-center transition-all ${mine ? "bg-white/20 text-white hover:bg-white/30" : "bg-violet-500/20 text-violet-400 hover:bg-violet-500/30"}`}>
+                {isPlaying ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+              </button>
+              <div className="flex-1 space-y-1.5">
+                <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
+                  <motion.div 
+                    className={`h-full ${mine ? "bg-white" : "bg-violet-500"}`}
+                    animate={{ width: isPlaying ? "100%" : "0%" }}
+                    transition={{ duration: 15, ease: "linear" }}
+                  />
+                </div>
+                <div className="flex justify-between text-[10px] opacity-60 font-medium">
+                  <span>0:15</span>
+                  <span>Voice message</span>
+                </div>
+              </div>
+              <audio ref={audioRef} src={message.mediaUrl} onEnded={() => setIsPlaying(false)} className="hidden" />
+            </div>
+          )}
+
+          {isEditing ? (
+            <div className="space-y-2 py-1">
+              <textarea
+                autoFocus
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                className="w-full bg-black/20 border border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:border-white/30 resize-none min-h-[60px]"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleEditSave();
+                  }
+                  if (e.key === "Escape") setIsEditing(false);
+                }}
+              />
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setIsEditing(false)} className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white/50 hover:text-white">Отмена</button>
+                <button onClick={handleEditSave} className="px-3 py-1 rounded-lg bg-white/20 text-[10px] font-bold uppercase tracking-widest hover:bg-white/30 transition-colors">Сохранить</button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-[14px] lg:text-[15px] whitespace-pre-wrap">
+              {renderRichText(message.decryptedBody || message.encryptedBody)}
+            </div>
+          )}
+
+          {linkPreviews.length > 0 && (
+            <div className="space-y-2 mt-2">
+              {linkPreviews.map((preview, idx) => (
+                <LinkPreview key={idx} data={preview} />
+              ))}
+            </div>
+          )}
+
+          <div className={`mt-1.5 flex items-center gap-2 text-[10px] font-medium ${mine ? "text-white/60" : "text-zinc-500"}`}>
+            <span>{new Date(message.createdAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</span>
+            {message.isEdited && <span className="italic">ред.</span>}
+            {mine && (
+              <span className="flex items-center">
+                {message.isRead ? <CheckCheck className="h-3.5 w-3.5 text-white" /> : <Check className="h-3.5 w-3.5" />}
+              </span>
+            )}
+          </div>
+
+          {message.reactions && message.reactions.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {message.reactions.map((r, idx) => (
+                <button 
+                  key={idx}
+                  onClick={() => onReaction?.(r.emoji)}
+                  className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] border transition-all ${r.count > 0 ? "bg-violet-500/20 border-violet-500/40 text-violet-200" : "bg-white/5 border-white/5 text-zinc-400"}`}
+                >
+                  <span>{r.emoji}</span>
+                  {r.count > 1 && <span className="font-bold">{r.count}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {message.isSecure && !isRevealed && (
+          <button 
+            onClick={handleStartPeek}
+            className="mt-2 w-full flex items-center justify-center gap-2 rounded-2xl border border-violet-500/30 bg-violet-500/10 py-3.5 text-[10px] font-black uppercase tracking-[0.2em] text-violet-300 hover:bg-violet-500/20 transition-all active:scale-95 shadow-lg shadow-violet-500/10"
+          >
+            <Shield className="h-3.5 w-3.5" />
+            Раскрыть сообщение
+          </button>
+        )}
+
+        {peekTimer !== null && (
+          <div className="mt-2 flex items-center justify-between px-3">
+            <div className="flex items-center gap-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-[10px] font-black text-red-400 uppercase tracking-widest">Самоуничтожение через:</span>
+            </div>
+            <span className="text-xs font-mono font-black text-white bg-red-500/20 px-2 py-0.5 rounded-md border border-red-500/30">{peekTimer}s</span>
+          </div>
+        )}
+      </motion.div>
+
+      {/* Message Actions Menu (Desktop Hover) */}
+      <div className={`flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity self-center ${mine ? "mr-1" : "ml-1"}`}>
+        <button onClick={() => onReply?.()} className="p-1.5 hover:bg-white/10 rounded-lg text-zinc-500 hover:text-zinc-200 transition-colors" title="Ответить">
+          <Reply className="h-3.5 w-3.5" />
         </button>
         {mine && (
           <>
-            <button onClick={() => { setIsEditing(true); setEditValue(message.decryptedBody || ""); }} className="p-2 hover:bg-white/10 rounded-full transition-colors" title="Edit">
-              <Settings className="h-4 w-4" />
+            <button onClick={() => setIsEditing(true)} className="p-1.5 hover:bg-white/10 rounded-lg text-zinc-500 hover:text-zinc-200 transition-colors" title="Изменить">
+              <Settings className="h-3.5 w-3.5" />
             </button>
-            <button onClick={onDelete} className="p-2 hover:bg-red-500/20 text-red-400 rounded-full transition-colors" title="Delete">
-              <X className="h-4 w-4" />
+            <button onClick={onDelete} className="p-1.5 hover:bg-white/10 rounded-lg text-zinc-500 hover:text-red-400 transition-colors" title="Удалить">
+              <X className="h-3.5 w-3.5" />
             </button>
           </>
         )}
       </div>
-
-      {!mine && onReaction && (
-        <div className="absolute -right-12 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
-          {["👍", "❤️", "🔥", "😂"].map(emoji => (
-            <button 
-              key={emoji}
-              onClick={() => onReaction(emoji)}
-              className="w-8 h-8 rounded-full bg-zinc-900 border border-white/10 flex items-center justify-center text-sm hover:bg-zinc-800 hover:scale-110 transition-all"
-            >
-              {emoji}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {message.isForwarded && (
-        <div className="flex items-center gap-1 mb-1 text-[10px] opacity-60 italic">
-          <Share className="h-3 w-3" />
-          Переслано от {message.forwardedFrom || "пользователя"}
-        </div>
-      )}
-
-      {message.replyTo && (
-        <div className={`mb-2 p-2 rounded-xl border-l-4 text-[11px] bg-black/20 ${mine ? "border-violet-400" : "border-zinc-500"}`}>
-          <div className="font-bold mb-0.5 text-violet-400">{message.replyTo.senderName}</div>
-          <div className="opacity-70 truncate text-zinc-300 italic">
-            «{message.replyTo.body}»
-          </div>
-        </div>
-      )}
-
-      {message.mediaType === "image" && message.mediaUrl && (
-        <div 
-          className={`relative overflow-hidden rounded-xl mb-2 group/img bg-zinc-900/50 min-h-[120px] select-none ${
-            message.isSecure ? "cursor-help pointer-events-auto" : "cursor-pointer"
-          }`}
-          onClick={handleStartPeek}
-          onContextMenu={(e) => message.isSecure && e.preventDefault()}
-        >
-          {/* СКРЫТИЕ ПРЯМОГО URL ЧЕРЕЗ CANVAS ДЛЯ ЗАЩИЩЕННЫХ ФОТО */}
-          {message.isSecure ? (
-            <SecureCanvasImage 
-              url={message.mediaUrl} 
-              revealed={isRevealed} 
-              viewerName={viewerName}
-            />
-          ) : (
-            <img 
-              src={message.mediaUrl} 
-              alt="media" 
-              className="w-full max-h-80 object-contain"
-              onClick={() => onImageClick?.(message.mediaUrl!)}
-            />
-          )}
-
-          {/* СУПЕР-ЗАЩИТА ПРИ ПРОСМОТРЕ */}
-          {message.isSecure && isRevealed && <MoireOverlay viewerName={viewerName} />}
-          
-          {/* ТАЙМЕР (ВЕРХНИЙ СЛОЙ) */}
-          {peekTimer !== null && (
-            <div className="absolute top-3 right-3 z-50 px-2 py-1 rounded-lg bg-red-600/90 backdrop-blur-md text-[9px] font-black text-white shadow-xl">
-              {peekTimer}S
-            </div>
-          )}
-        </div>
-      )}
-
-      {message.mediaType === "file" && message.mediaUrl && (
-        <div className="flex items-center gap-3 mb-2 bg-black/20 p-3 rounded-2xl border border-white/5 hover:bg-black/30 transition-colors cursor-pointer">
-          <div className="h-10 w-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400">
-            <Paperclip className="h-5 w-5" />
-          </div>
-          <div className="flex-1 overflow-hidden">
-            <div className="text-xs font-bold truncate text-blue-400">Документ</div>
-            <div className="text-[10px] text-zinc-500 italic">Нажмите для скачивания</div>
-          </div>
-          <a href={message.mediaUrl} download className="p-2 hover:bg-white/10 rounded-full transition-colors">
-            <Maximize2 className="h-4 w-4 rotate-90" />
-          </a>
-        </div>
-      )}
-
-      {message.mediaType === "audio" && message.mediaUrl && (
-        <div className="flex flex-col gap-2 mb-2 bg-black/20 p-3 rounded-2xl">
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={togglePlay}
-              className="h-10 w-10 rounded-full bg-violet-500 flex items-center justify-center hover:scale-105 transition-transform active:scale-95"
-            >
-              {isPlaying ? <X className="h-5 w-5 text-white" /> : <Mic className="h-5 w-5 text-white" />}
-            </button>
-            <div className="flex-1">
-              <VoiceWaveform points={message.waveform || Array.from({length: 20}, () => Math.random() * 20 + 5)} />
-            </div>
-            <div className="flex flex-col gap-1">
-              <button className="text-[9px] font-black bg-white/10 px-1.5 py-0.5 rounded-md hover:bg-violet-500/50 transition-colors">1.5x</button>
-              <button className="text-[9px] font-black bg-white/10 px-1.5 py-0.5 rounded-md hover:bg-violet-500/50 transition-colors">2x</button>
-            </div>
-          </div>
-          <audio 
-            ref={audioRef} 
-            src={message.mediaUrl} 
-            onEnded={() => setIsPlaying(false)}
-            className="hidden" 
-          />
-        </div>
-      )}
-
-      {isEditing ? (
-        <div className="flex flex-col gap-2">
-          <textarea
-            autoFocus
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            className="w-full bg-black/30 border border-white/10 rounded-xl p-2 text-sm outline-none focus:border-violet-400"
-            rows={2}
-          />
-          <div className="flex justify-end gap-2">
-            <button onClick={() => setIsEditing(false)} className="text-[10px] font-bold uppercase opacity-60 hover:opacity-100">Отмена</button>
-            <button onClick={handleEditSave} className="text-[10px] font-bold uppercase text-violet-400 hover:text-violet-300">Сохранить</button>
-          </div>
-        </div>
-      ) : (
-        <div className="text-sm leading-relaxed font-medium">
-          {renderRichText(message.decryptedBody || "")}
-          {linkPreviews.map((preview) => (
-            <LinkPreview key={`${message.id}-${preview.url}`} data={preview} />
-          ))}
-          {message.isEdited && <span className="ml-2 text-[9px] opacity-40 italic">(изм.)</span>}
-        </div>
-      )}
-      
-      {message.reactions && message.reactions.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {Array.from(new Set(message.reactions.map(r => r.emoji))).map(emoji => {
-            const count = message.reactions!.filter(r => r.emoji === emoji).length;
-            return (
-              <div key={emoji} className="px-1.5 py-0.5 rounded-full bg-black/20 border border-white/5 text-[10px] flex items-center gap-1">
-                <span>{emoji}</span>
-                <span className="font-bold opacity-80">{count}</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      <div className="mt-1 flex items-center justify-end gap-1.5 opacity-60">
-        <span className="text-[10px] uppercase font-bold tracking-wider">
-          {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </span>
-        {mine && (
-          <span className="text-[10px]">
-            {message.status === "READ" ? <CheckCheck className="h-3 w-3" /> : <Check className="h-3 w-3" />}
-          </span>
-        )}
-      </div>
-    </motion.div>
+    </div>
   );
 };
-
-export const PhotoViewer = ({ url, onClose, onForward }: { url: string | null; onClose: () => void; onForward?: () => void }) => (
-  <AnimatePresence>
-    {url && (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4"
-        onClick={onClose}
-      >
-        <div className="absolute top-6 right-6 flex gap-2">
-          <button 
-            onClick={(e) => { e.stopPropagation(); onForward?.(); }} 
-            className="p-3 bg-white/10 hover:bg-white/20 rounded-full transition-colors flex items-center gap-2 text-xs font-bold"
-          >
-            <Share className="h-5 w-5 text-white" />
-            ПЕРЕСЛАТЬ
-          </button>
-          <button onClick={onClose} className="p-3 bg-white/10 hover:bg-white/20 rounded-full transition-colors">
-            <X className="h-6 w-6 text-white" />
-          </button>
-        </div>
-        <motion.img
-          initial={{ scale: 0.9 }}
-          animate={{ scale: 1 }}
-          exit={{ scale: 0.9 }}
-          src={url}
-          className="max-w-full max-h-full rounded-2xl shadow-2xl"
-          onClick={(e) => e.stopPropagation()}
-        />
-      </motion.div>
-    )}
-  </AnimatePresence>
-);
-
-export const IncomingCallModal = ({ 
-  from, 
-  mode, 
-  onAccept, 
-  onReject 
-}: { 
-  from: string; 
-  mode: string; 
-  onAccept: () => void; 
-  onReject: () => void;
-}) => (
-  <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-2xl flex items-center justify-center p-4 safe-area-inset">
-    <motion.div 
-      initial={{ scale: 0.9, opacity: 0, y: 20 }}
-      animate={{ scale: 1, opacity: 1, y: 0 }}
-      className="w-full max-w-sm bg-zinc-900 border border-white/10 rounded-[32px] p-6 md:p-8 shadow-2xl text-center relative overflow-hidden"
-    >
-      <div className="absolute inset-0 bg-gradient-to-b from-violet-500/10 to-transparent pointer-events-none" />
-      
-      <div className="relative z-10">
-        <div className="h-20 w-20 md:h-24 md:w-24 rounded-full bg-violet-500/20 grid place-items-center mx-auto mb-6 border-2 border-violet-500/50 shadow-lg shadow-violet-500/20">
-          <User className="h-10 w-10 md:h-12 md:w-12 text-violet-400" />
-        </div>
-        
-        <h3 className="text-xl md:text-2xl font-bold mb-2 tracking-tight text-white">Входящий звонок</h3>
-        <p className="text-zinc-400 text-xs md:text-sm mb-8 font-medium">От: {from}</p>
-        
-        <div className="flex gap-4">
-          <button 
-            onClick={onReject}
-            className="flex-1 py-3.5 md:py-4 rounded-2xl bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all font-bold flex items-center justify-center gap-2 text-sm"
-          >
-            <PhoneOff className="h-5 w-5" />
-            <span className="hidden xs:inline">Отклонить</span>
-            <span className="xs:hidden">Нет</span>
-          </button>
-          <button 
-            onClick={onAccept}
-            className="flex-1 py-3.5 md:py-4 rounded-2xl bg-emerald-500 text-white hover:bg-emerald-600 transition-all font-bold shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 animate-bounce text-sm"
-          >
-            <Phone className="h-5 w-5" />
-            <span className="hidden xs:inline">Принять</span>
-            <span className="xs:hidden">Да</span>
-          </button>
-        </div>
-      </div>
-    </motion.div>
-  </div>
-);
-
-export const DeliveryBadge = ({ status }: { status: FluxMessage["status"] }) => (
-  <span className="text-[10px] text-zinc-300/80">{status.toLowerCase()}</span>
-);
-
-export const ReactionRail = ({ reactions }: { reactions: FluxMessage["reactions"] }) => (
-  <div className="flex flex-wrap gap-1">
-    {reactions.map((reaction) => (
-      <button key={reaction.emoji} className="rounded-full border border-white/10 px-2 py-0.5 text-[11px]">
-        {reaction.emoji}
-      </button>
-    ))}
-  </div>
-);
-
-export const VoiceWaveform = ({ points }: { points: number[] }) => (
-  <svg width="220" height="38" viewBox="0 0 220 38" className="mt-2">
-    {points.map((value, index) => (
-      <rect
-        key={`${value}-${index}`}
-        x={index * 4.4}
-        y={19 - value / 2}
-        width="3"
-        height={value}
-        rx="2"
-        className="fill-violet-300/80"
-      />
-    ))}
-  </svg>
-);
-
-export const TypingIndicator = ({ 
-  visible, 
-  userNames = [] 
-}: { 
-  visible: boolean;
-  userNames?: string[];
-}) => (
-  <AnimatePresence>
-    {visible ? (
-      <motion.div
-        initial={{ opacity: 0, y: 5 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 5 }}
-        className="px-6 py-2 text-[11px] text-zinc-500 font-medium flex items-center gap-2"
-      >
-        <div className="flex gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-bounce [animation-delay:-0.3s]" />
-          <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-bounce [animation-delay:-0.15s]" />
-          <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-bounce" />
-        </div>
-        <span>
-          {userNames.length > 0 
-            ? `${userNames.join(", ")} ${userNames.length > 1 ? "печатают" : "печатает"}...` 
-            : "Кто-то печатает..."}
-        </span>
-      </motion.div>
-    ) : null}
-  </AnimatePresence>
-);
 
 export const Composer = ({
   value,
@@ -1372,10 +1193,10 @@ export const Composer = ({
   onVoiceStart,
   isRecording = false,
   onTimerClick,
-  activeTimer = 30
+  activeTimer = 0,
 }: {
   value: string;
-  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  onChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onSend: () => void;
   onAttach?: () => void;
   onAttachSecure?: () => void;
@@ -1399,24 +1220,24 @@ export const Composer = ({
         <AnimatePresence>
           {showAttachMenu && (
             <motion.div
-              initial={{ opacity: 0, y: 10, scale: 0.9 }}
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.9 }}
-              className="absolute bottom-16 left-0 w-56 bg-zinc-900 border border-white/10 rounded-2xl p-2 shadow-2xl z-50"
+              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+              className="absolute bottom-full left-0 mb-4 w-56 rounded-3xl border border-white/10 bg-zinc-900 p-2 shadow-2xl backdrop-blur-xl z-50"
             >
               <button
                 onClick={() => {
                   onAttach?.();
                   setShowAttachMenu(false);
                 }}
-                className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors text-left"
+                className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-white/5 transition-colors text-left"
               >
-                <div className="h-8 w-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400">
-                  <Maximize2 className="h-4 w-4" />
+                <div className="h-10 w-10 rounded-xl bg-violet-500/20 flex items-center justify-center text-violet-400">
+                  <Plus className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="text-xs font-bold">Обычное фото</div>
-                  <div className="text-[10px] text-zinc-500 italic">Стандартная отправка</div>
+                  <div className="text-sm font-semibold">Обычное</div>
+                  <div className="text-[10px] text-zinc-500">Фото или документ</div>
                 </div>
               </button>
               <button
@@ -1424,56 +1245,14 @@ export const Composer = ({
                   onAttachSecure?.();
                   setShowAttachMenu(false);
                 }}
-                className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-violet-500/10 transition-colors text-left group"
+                className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-white/5 transition-colors text-left"
               >
-                <div className="h-8 w-8 rounded-lg bg-violet-500/20 flex items-center justify-center text-violet-400 group-hover:bg-violet-500 group-hover:text-white transition-colors">
-                  <Shield className="h-4 w-4" />
+                <div className="h-10 w-10 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                  <Shield className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-violet-400">Скрытое (Муар)</div>
-                  <div className="text-[10px] text-zinc-500 italic">Защита от пересъемки</div>
-                </div>
-              </button>
-              <button
-                onClick={() => {
-                  const input = document.createElement('input');
-                  input.type = 'file';
-                  input.onchange = (e: any) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                      // Логика загрузки файла будет в flux-app.tsx через пропс onAttach
-                      onAttach?.(); 
-                    }
-                  };
-                  input.click();
-                  setShowAttachMenu(false);
-                }}
-                className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors text-left"
-              >
-                <div className="h-8 w-8 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400">
-                  <Paperclip className="h-4 w-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold">Документ</div>
-                  <div className="text-[10px] text-zinc-500 italic">PDF, DOCX, ZIP...</div>
-                </div>
-              </button>
-              
-              <div className="h-px bg-white/5 my-1" />
-              
-              <button
-                onClick={() => {
-                  onTimerClick?.();
-                  setShowAttachMenu(false);
-                }}
-                className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-red-500/10 transition-colors text-left group"
-              >
-                <div className="h-8 w-8 rounded-lg bg-red-500/20 flex items-center justify-center text-red-400 group-hover:bg-red-500 group-hover:text-white transition-colors">
-                  <Bell className="h-4 w-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-red-400">Таймер удаления</div>
-                  <div className="text-[10px] text-zinc-500 italic">Сейчас: {activeTimer}с</div>
+                  <div className="text-sm font-semibold">Защищенное</div>
+                  <div className="text-[10px] text-zinc-500">Temporal Phantom v8</div>
                 </div>
               </button>
             </motion.div>
@@ -1499,7 +1278,7 @@ export const Composer = ({
 
     {value.trim() ? (
       <button
-        onClick={onSend}
+        onClick={() => onSend()}
         className="p-3 md:p-3.5 bg-violet-600 hover:bg-violet-500 text-white rounded-2xl shadow-lg shadow-violet-600/20 transition-all active:scale-95"
       >
         <SendHorizontal className="w-5 h-5" />
@@ -1508,7 +1287,7 @@ export const Composer = ({
       <button 
         onClick={onVoiceStart}
         className={`p-3 md:p-3.5 rounded-2xl transition-all active:scale-95 ${
-          isRecording ? "bg-red-500 text-white animate-pulse" : "bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10"
+          isRecording ? "bg-red-500 text-white animate-pulse" : "bg-white/5 text-zinc-400 hover:text-white"
         }`}
       >
         <Mic className="w-5 h-5" />
@@ -1518,396 +1297,47 @@ export const Composer = ({
   );
 };
 
-export const MessageInput = ({
-  value,
-  onChange,
-  onSend,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  onSend?: () => void;
-}) => (
-  <input
-    value={value}
-    onChange={(event) => onChange(event.target.value)}
-    onKeyDown={(e) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        onSend?.();
-      }
-    }}
-    className="h-11 flex-1 rounded-2xl border border-white/10 bg-black/20 px-4 text-sm outline-none"
-    placeholder="Write encrypted message…"
-  />
-);
-
-export const SendButton = ({ onClick }: { onClick: () => void }) => (
-  <button onClick={onClick} className="grid h-11 w-11 place-items-center rounded-2xl bg-violet-500/80 hover:bg-violet-600 transition-colors">
-    <SendHorizontal className="h-4 w-4" />
-  </button>
-);
-
-export const AttachmentButton = ({ onClick }: { onClick?: () => void }) => (
-  <button onClick={onClick} className="grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors">
-    <Paperclip className="h-4 w-4" />
-  </button>
-);
-
-export const VoiceButton = ({ onClick }: { onClick?: () => void }) => (
-  <button onClick={onClick} className="grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors">
-    <Mic className="h-4 w-4" />
-  </button>
-);
-
-export const ThreadPanel = ({ children }: PropsWithChildren) => <GlassCard className="p-4">{children}</GlassCard>;
-
-export const ThreadReplyInput = ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
-  <input
-    value={value}
-    onChange={(event) => onChange(event.target.value)}
-    className="mt-3 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm outline-none"
-    placeholder="Reply in thread..."
-  />
-);
-
-export const AIInsightCard = ({ summary }: { summary: string }) => (
-  <GlassCard className="p-4">
-    <div className="mb-2 flex items-center gap-2 text-sm">
-      <Shield className="h-4 w-4 text-violet-300" />
-      AI Helper
-    </div>
-    <p className="text-xs leading-5 text-zinc-300">{summary}</p>
-  </GlassCard>
-);
-
-export const CallOverlay = ({
-  active,
-  mode,
-  onEnd,
-  onShare,
-  localStream,
-  remoteStream,
-  muted,
-  cameraOff,
-  toggleMute,
-  toggleCamera,
-  callStatus = "idle",
-  failReason,
-}: {
-  active: boolean;
-  mode: string;
-  onEnd: () => void;
-  onShare: () => void;
-  localStream: MediaStream | null;
-  remoteStream: MediaStream | null;
-  muted: boolean;
-  cameraOff: boolean;
-  toggleMute: () => void;
-  toggleCamera: () => void;
-  callStatus?: "idle" | "ringing" | "connecting" | "active" | "failed";
-  failReason?: string | null;
+export const VideoCallOverlay = ({ 
+  isOpen, 
+  onClose, 
+  peerName,
+  peerAvatar,
+  isVideo = true
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  peerName: string;
+  peerAvatar: string;
+  isVideo?: boolean;
 }) => {
-  const localVideoRef = useRef<HTMLVideoElement>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const [audioBlocked, setAudioBlocked] = useState(false);
-
-  useEffect(() => {
-    if (localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream;
-    }
-  }, [localStream, active]);
-
-  useEffect(() => {
-    if (remoteVideoRef.current && remoteStream) {
-      remoteVideoRef.current.srcObject = remoteStream;
-      // ВАЖНО для iOS: Попытка автоматического воспроизведения
-      remoteVideoRef.current.play().catch(e => {
-        console.warn("[CALL] Remote audio/video blocked by browser", e);
-        setAudioBlocked(true);
-      });
-    }
-  }, [remoteStream, active]);
-
-  const resumeAudio = () => {
-    if (remoteVideoRef.current) {
-      remoteVideoRef.current.play();
-      setAudioBlocked(false);
-    }
-  };
-
+  if (!isOpen) return null;
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[110] bg-zinc-950/95 backdrop-blur-2xl flex flex-col safe-area-inset"
-    >
-        <div className="flex-1 relative p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 items-center overflow-y-auto">
-          {/* Remote Video / Status */}
-          <div className="relative aspect-[4/3] md:aspect-video rounded-[24px] md:rounded-3xl bg-zinc-900 border border-white/5 overflow-hidden shadow-2xl">
-            {callStatus === "active" && remoteStream ? (
-              <video 
-                ref={remoteVideoRef} 
-                autoPlay 
-                playsInline 
-                className="w-full h-full object-cover" 
-              />
-            ) : (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-                <div className="h-20 w-20 md:h-24 md:w-24 rounded-full bg-violet-500/20 grid place-items-center relative">
-                  <User className="h-10 w-10 md:h-12 md:w-12 text-violet-400" />
-                  <motion.div 
-                    className="absolute inset-0 rounded-full border-2 border-violet-500/50"
-                    animate={{ scale: [1, 1.5], opacity: [1, 0] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  />
-                </div>
-                <div className="text-center px-4">
-                  <p className="text-base md:text-lg font-bold text-white mb-1">
-                    {callStatus === "ringing" ? "Вызов..." : 
-                     callStatus === "connecting" ? "Подключение..." : 
-                     callStatus === "failed" ? "Сбой вызова" : "Ожидание..."}
-                  </p>
-                  <p className="text-[10px] md:text-xs text-zinc-500 uppercase tracking-widest animate-pulse">
-                    {callStatus === "failed" 
-                      ? (failReason === "busy" ? "Собеседник занят" : "Собеседник офлайн") 
-                      : "Ждем ответа собеседника"}
-                  </p>
-                </div>
-              </div>
-            )}
-            <div className="absolute bottom-4 left-4 px-3 py-1 bg-black/40 backdrop-blur-md rounded-lg text-[10px] font-medium">
-              Собеседник
-            </div>
-
-            {audioBlocked && (
-              <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 text-center">
-                <div className="bg-zinc-900/80 p-6 rounded-3xl border border-white/10 shadow-2xl">
-                  <p className="text-sm font-bold text-white mb-4">Браузер заблокировал звук</p>
-                  <button 
-                    onClick={resumeAudio}
-                    className="px-6 py-3 bg-violet-600 rounded-xl text-xs font-bold hover:bg-violet-500 transition-all active:scale-95"
-                  >
-                    ВКЛЮЧИТЬ ЗВУК
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Local Video */}
-          <div className="relative aspect-[4/3] md:aspect-video rounded-[24px] md:rounded-3xl bg-zinc-900 border border-white/5 overflow-hidden shadow-2xl">
-            <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
-            <div className="absolute bottom-4 left-4 px-3 py-1 bg-black/40 backdrop-blur-md rounded-lg text-[10px] font-medium">
-              Вы
-            </div>
-            {cameraOff && (
-              <div className="absolute inset-0 bg-zinc-900 flex items-center justify-center">
-                <VideoOff className="h-10 w-10 md:h-12 md:w-12 text-zinc-700" />
-              </div>
-            )}
-          </div>
+    <div className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-3xl flex flex-col items-center justify-center p-6">
+      <div className="relative mb-12">
+        <div className="h-32 w-32 rounded-[48px] bg-violet-500/20 flex items-center justify-center border border-violet-500/30">
+          <AvatarPill label={peerAvatar} />
         </div>
-
-        <div className="pb-8 md:pb-0 h-32 md:h-32 flex items-center justify-center gap-4 md:gap-6 px-6">
-          <CallControlBtn onClick={toggleMute} active={!muted} icon={muted ? <MicOff className="w-5 h-5 md:w-6 md:h-6" /> : <Mic className="w-5 h-5 md:w-6 md:h-6" />} label={muted ? "Вкл" : "Выкл"} />
-          <CallControlBtn onClick={toggleCamera} active={!cameraOff} icon={cameraOff ? <VideoOff className="w-5 h-5 md:w-6 md:h-6" /> : <Video className="w-5 h-5 md:w-6 md:h-6" />} label={cameraOff ? "Вкл" : "Выкл"} />
-          <CallControlBtn onClick={onShare} active={mode === "screen"} icon={<Share className="w-5 h-5 md:w-6 md:h-6" />} label="Экран" />
-          <button
-            onClick={onEnd}
-            className="h-14 w-14 md:h-16 md:w-16 rounded-full bg-red-500 hover:bg-red-600 transition-colors grid place-items-center shadow-xl shadow-red-500/20 active:scale-95"
-          >
-            <PhoneOff className="h-6 w-6 md:h-7 md:w-7 text-white" />
-          </button>
+        <div className="absolute -bottom-2 -right-2 h-10 w-10 rounded-2xl bg-emerald-500 flex items-center justify-center border-4 border-black animate-pulse">
+          <Phone className="h-5 w-5 text-white" />
         </div>
-      </motion.div>
-  );
-};
-
-const CallControlBtn = ({ onClick, active, icon, label }: { onClick: () => void; active: boolean; icon: ReactNode; label: string }) => (
-  <div className="flex flex-col items-center gap-2">
-    <button
-      onClick={onClick}
-      className={`h-14 w-14 rounded-2xl grid place-items-center transition-all ${
-        active ? "bg-white/10 text-white hover:bg-white/20" : "bg-red-500/20 text-red-400 border border-red-500/20"
-      }`}
-    >
-      {icon}
-    </button>
-    <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">{label}</span>
-  </div>
-);
-
-export const GlobalSearchPanel = ({ query }: { query: string }) => (
-  <GlassCard className="p-4">
-    <h3 className="mb-2 text-sm font-semibold">Global Search</h3>
-    <p className="text-xs text-zinc-400">Searching across encrypted index for “{query || "..." }”</p>
-  </GlassCard>
-);
-
-export const SecurityPanel = () => (
-  <GlassCard className="space-y-3 p-4">
-    <h3 className="text-sm font-semibold">Privacy</h3>
-    <EncryptionBadge />
-    <SyncBadge />
-  </GlassCard>
-);
-
-export const EncryptionBadge = () => (
-  <div className="rounded-xl border border-emerald-400/25 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">
-    End-to-end encryption enabled (RSA-OAEP + AES-GCM)
-  </div>
-);
-
-export const SyncBadge = () => (
-  <div className="rounded-xl border border-violet-400/25 bg-violet-500/10 px-3 py-2 text-xs">
-    Delivery/read synchronization active
-  </div>
-);
-
-export const SmartFolderPanel = () => (
-  <GlassCard className="space-y-2 p-4">
-    <h3 className="text-sm font-semibold">Smart Folders</h3>
-    <div className="flex flex-wrap gap-2">
-      <StatChip label="Personal" value="14" />
-      <StatChip label="Work" value="23" />
-      <StatChip label="AI" value="5" />
-      <StatChip label="Channels" value="9" />
-    </div>
-  </GlassCard>
-);
-
-export const MediaPicker = () => (
-  <GlassCard className="p-4">
-    <h3 className="mb-3 text-sm font-semibold">Media Engine</h3>
-    <p className="text-xs text-zinc-300">4K images, HLS streams, waveform voice clips, and secure upload pipeline.</p>
-  </GlassCard>
-);
-
-export const ProfileSheet = ({ name, email, onSignOut }: { name?: string; email?: string; onSignOut?: () => void }) => (
-  <GlassCard className="space-y-3 p-4">
-    <h3 className="text-sm font-semibold">Profile</h3>
-    <div className="flex items-center gap-3">
-      <AvatarPill label={(name || "U").slice(0, 2).toUpperCase()} />
-      <div>
-        <p className="text-sm font-medium">{name || "You"}</p>
-        <p className="text-xs text-zinc-400">{email || "sovereign@flux.app"}</p>
       </div>
-    </div>
-    {onSignOut && (
-      <button
-        onClick={onSignOut}
-        className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/10"
-      >
-        Sign Out
-      </button>
-    )}
-  </GlassCard>
-);
+      
+      <h2 className="text-3xl font-black mb-2 tracking-tight text-white uppercase">{peerName}</h2>
+      <p className="text-violet-400 font-bold tracking-[0.3em] text-xs uppercase mb-16 animate-pulse">
+        {isVideo ? "Входящий видеозвонок..." : "Входящий аудиозвонок..."}
+      </p>
 
-export const ToggleField = ({ label, enabled }: { label: string; enabled: boolean }) => (
-  <div className="flex items-center justify-between rounded-xl border border-white/10 px-3 py-2 text-xs">
-    {label}
-    <span className={`h-5 w-9 rounded-full ${enabled ? "bg-violet-500/80" : "bg-zinc-500/40"}`} />
-  </div>
-);
-
-export const SliderField = ({ label, value }: { label: string; value: number }) => (
-  <div className="rounded-xl border border-white/10 px-3 py-2 text-xs">
-    <div className="mb-2 flex justify-between">
-      <span>{label}</span>
-      <span>{value}</span>
-    </div>
-    <div className="h-2 rounded-full bg-white/10">
-      <div className="h-2 rounded-full bg-violet-400" style={{ width: `${value}%` }} />
-    </div>
-  </div>
-);
-
-export const SettingsPanel = () => (
-  <GlassCard className="space-y-2 p-4">
-    <h3 className="text-sm font-semibold">Settings</h3>
-    <ToggleField label="Adaptive theme engine" enabled />
-    <ToggleField label="Offline queueing" enabled />
-    <ToggleField label="Auto summarize unread" enabled />
-    <SliderField label="Blur intensity" value={88} />
-  </GlassCard>
-);
-
-export const VoiceRecorder = ({ onSend, onCancel }: { onSend: (blob: Blob) => void; onCancel: () => void }) => {
-  const [recording, setRecording] = useState(false);
-  const [duration, setDuration] = useState(0);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (recording) {
-      interval = setInterval(() => setDuration(d => d + 1), 1000);
-    }
-    return () => clearInterval(interval);
-  }, [recording]);
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
-      chunksRef.current = [];
-
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
-
-      recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        onSend(blob);
-        stream.getTracks().forEach(t => t.stop());
-      };
-
-      recorder.start();
-      setRecording(true);
-      setDuration(0);
-    } catch (err) {
-      console.error("Failed to start recording:", err);
-    }
-  };
-
-  const stopRecording = () => {
-    mediaRecorderRef.current?.stop();
-    setRecording(false);
-  };
-
-  const formatTime = (s: number) => {
-    const mins = Math.floor(s / 60);
-    const secs = s % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  return (
-    <div className="flex items-center gap-4 bg-violet-600/20 px-4 py-2 rounded-2xl border border-violet-500/30 animate-in slide-in-from-bottom-2">
-      <div className="flex items-center gap-2">
-        <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-        <span className="text-sm font-mono text-violet-100">{formatTime(duration)}</span>
-      </div>
-      <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
-        <motion.div 
-          className="h-full bg-violet-400"
-          animate={{ width: ["0%", "100%"] }}
-          transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
-        />
-      </div>
-      <div className="flex items-center gap-2">
-        <button onClick={onCancel} className="p-2 hover:bg-white/10 rounded-xl transition-colors text-zinc-400">
-          <X className="h-5 w-5" />
+      <div className="flex gap-8">
+        <button 
+          onClick={onClose}
+          className="h-20 w-20 rounded-[32px] bg-red-500 flex items-center justify-center text-white shadow-2xl shadow-red-500/20 hover:scale-110 active:scale-95 transition-all"
+        >
+          <PhoneOff className="h-8 w-8" />
         </button>
         <button 
-          onClick={recording ? stopRecording : startRecording}
-          className={`h-10 w-10 rounded-xl grid place-items-center transition-all ${
-            recording ? "bg-red-500 shadow-lg shadow-red-500/20" : "bg-violet-500"
-          }`}
+          className="h-20 w-20 rounded-[32px] bg-emerald-500 flex items-center justify-center text-white shadow-2xl shadow-emerald-500/20 hover:scale-110 active:scale-95 transition-all"
         >
-          {recording ? <Check className="h-5 w-5 text-white" /> : <Mic className="h-5 w-5 text-white" />}
+          {isVideo ? <Video className="h-8 w-8" /> : <Phone className="h-8 w-8" />}
         </button>
       </div>
     </div>
