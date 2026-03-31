@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@color/flux_dark_bg"
+    android:gravity="center">
+
+    <TextView
+        android:id="@+id/loginTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Login"
+        android:textSize="36sp"
+        android:textStyle="bold"
+        android:textAlignment="center"
+        android:textColor="@color/flux_light_fg"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Welcome back to Flux"
+        android:textSize="14sp"
+        android:textAlignment="center"
+        android:textColor="@color/flux_on_surface_variant"
+        android:layout_marginBottom="48dp" />
+
+    <EditText
+        android:id="@+id/emailInput"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:hint="Email"
+        android:inputType="textEmailAddress"
+        android:paddingHorizontal="16dp"
+        android:layout_marginBottom="16dp"
+        android:textColor="@color/flux_light_fg"
+        android:textColorHint="@color/flux_on_surface_variant"
+        android:background="@drawable/edit_text_background" />
+
+    <EditText
+        android:id="@+id/passwordInput"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:hint="Password"
+        android:inputType="textPassword"
+        android:paddingHorizontal="16dp"
+        android:layout_marginBottom="32dp"
+        android:textColor="@color/flux_light_fg"
+        android:textColorHint="@color/flux_on_surface_variant"
+        android:background="@drawable/edit_text_background" />
+
+    <Button
+        android:id="@+id/loginButton"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:text="Login"
+        android:textSize="16sp"
+        android:textColor="@color/flux_light_fg"
+        android:background="@drawable/button_background" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="24dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Don't have account? "
+            android:textColor="@color/flux_on_surface_variant" />
+
+        <TextView
+            android:id="@+id/signupLink"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Sign Up"
+            android:textColor="@color/flux_primary_purple"
+            android:textStyle="bold" />
+    </LinearLayout>
+</LinearLayout>

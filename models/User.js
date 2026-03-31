@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { pool } from './database.js';
 import bcrypt from 'bcryptjs';
 
@@ -82,6 +83,18 @@ class User {
     } catch (_error) {
       return null;
     }
+  }
+
+  static async createInUser({ name, email, password, avatar = null, publicKey = null, encryptedPrivKey = null }) {
+    const hashedPassword = await bcrypt.hash(password, 12);
+    const id = randomUUID().replace(/-/g, '');
+    const result = await pool.query(
+      `INSERT INTO "User" (id, name, email, avatar, "passwordHash", "publicKey", "encryptedPrivKey", "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+       RETURNING id, name, email, avatar, "createdAt" as created_at`,
+      [id, name, email, avatar, hashedPassword, publicKey, encryptedPrivKey]
+    );
+    return result.rows[0];
   }
 
   static async findById(id) {

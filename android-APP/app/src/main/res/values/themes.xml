@@ -1,0 +1,35 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Flux Theme - Dark Mode with Purple Accents -->
+    <style name="Theme.Flux" parent="Theme.MaterialComponents.NoActionBar">
+        <!-- Primary Brand Colors -->
+        <item name="colorPrimary">@color/flux_primary_purple</item>
+        <item name="colorPrimaryVariant">@color/flux_secondary_purple</item>
+        <item name="colorOnPrimary">@color/flux_light_fg</item>
+        
+        <!-- Secondary Brand Colors -->
+        <item name="colorSecondary">@color/flux_accent_purple</item>
+        <item name="colorSecondaryVariant">@color/flux_secondary_purple</item>
+        <item name="colorOnSecondary">@color/flux_light_fg</item>
+        
+        <!-- Background & Surface -->
+        <item name="android:colorBackground">@color/flux_dark_bg</item>
+        <item name="android:windowBackground">@color/flux_dark_bg</item>
+        <item name="colorSurface">@color/flux_surface</item>
+        <item name="colorOnSurface">@color/flux_light_fg</item>
+        
+        <!-- Text Colors -->
+        <item name="android:textColorPrimary">@color/flux_light_fg</item>
+        <item name="android:textColorSecondary">@color/flux_on_surface_variant</item>
+        <item name="android:textColorHint">@color/flux_on_surface_variant</item>
+        <item name="android:textColorLink">@color/flux_primary_purple</item>
+        
+        <!-- Status & Navigation Bar -->
+        <item name="android:statusBarColor">@color/flux_dark_bg</item>
+        <item name="android:navigationBarColor">@color/flux_surface</item>
+        <item name="android:windowLightStatusBar">false</item>
+        
+        <!-- Error Color -->
+        <item name="colorError">@color/flux_error</item>
+        <item name="colorOnError">@color/white</item>
+    </style>
+</resources>

@@ -1,0 +1,26 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Theme.Flux" parent="Theme.Material3.Dark">
+        <!-- Primary Brand Colors -->
+        <item name="colorPrimary">@color/flux_primary_purple</item>
+        <item name="colorOnPrimary">@color/flux_light_fg</item>
+        <item name="colorPrimaryContainer">@color/flux_secondary_purple</item>
+        <item name="colorOnPrimaryContainer">@color/flux_light_fg</item>
+        
+        <!-- Secondary Brand Colors -->
+        <item name="colorSecondary">@color/flux_accent_purple</item>
+        <item name="colorOnSecondary">@color/flux_light_fg</item>
+        <item name="colorSecondaryContainer">@color/flux_secondary_purple</item>
+        <item name="colorOnSecondaryContainer">@color/flux_light_fg</item>
+        
+        <!-- Surface Colors -->
+        <item name="colorSurface">@color/flux_surface</item>
+        <item name="colorOnSurface">@color/flux_on_surface</item>
+        <item name="colorSurfaceVariant">@color/flux_surface_variant</item>
+        <item name="colorOnSurfaceVariant">@color/flux_on_surface_variant</item>
+        
+        <!-- Status bar color. -->
+        <item name="android:statusBarColor">@color/flux_dark_bg</item>
+        <!-- Customize your theme here. -->
+    </style>
+</resources>

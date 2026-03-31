@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Flux Brand Colors (из веб-версии) -->
+    <color name="flux_dark_bg">#050308</color>
+    <color name="flux_light_fg">#ece7ff</color>
+    <color name="flux_primary_purple">#b756ff</color>
+    <color name="flux_secondary_purple">#844bff</color>
+    <color name="flux_accent_purple">#7c3aed</color>
+    
+    <!-- Additional Colors -->
+    <color name="flux_surface">#1a1624</color>
+    <color name="flux_surface_variant">#2d2539</color>
+    <color name="flux_outline">#3d354d</color>
+    <color name="flux_on_surface">#e8e4f0</color>
+    <color name="flux_on_surface_variant">#c8c3d4</color>
+    
+    <!-- Status Colors -->
+    <color name="flux_success">#10b981</color>
+    <color name="flux_warning">#f59e0b</color>
+    <color name="flux_error">#ef4444</color>
+    <color name="flux_info">#3b82f6</color>
+    
+    <!-- Legacy colors for compatibility -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="transparent">#00000000</color>
+</resources>

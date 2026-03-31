@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="24dp"
+    android:background="@color/flux_dark_bg">
+
+    <ImageView
+        android:id="@+id/callerAvatarImageView"
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:src="@android:drawable/ic_menu_report_image"
+        android:scaleType="centerCrop"
+        android:layout_marginBottom="24dp"
+        android:background="@color/flux_surface" />
+
+    <TextView
+        android:id="@+id/callerNameTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Username"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:textAlignment="center"
+        android:textColor="@color/flux_light_fg"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:id="@+id/callTypeTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Incoming call..."
+        android:textSize="16sp"
+        android:textAlignment="center"
+        android:textColor="@color/flux_on_surface_variant"
+        android:layout_marginBottom="48dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <Button
+            android:id="@+id/rejectButton"
+            android:layout_width="70dp"
+            android:layout_height="70dp"
+            android:text="Reject"
+            android:textColor="@color/white"
+            android:background="@color/flux_error"
+            android:layout_marginEnd="20dp" />
+
+        <Button
+            android:id="@+id/answerButton"
+            android:layout_width="70dp"
+            android:layout_height="70dp"
+            android:text="Answer"
+            android:textColor="@color/flux_light_fg"
+            android:background="@color/flux_success"
+            android:layout_marginEnd="20dp" />
+
+        <Button
+            android:id="@+id/endCallButton"
+            android:layout_width="70dp"
+            android:layout_height="70dp"
+            android:text="End"
+            android:textColor="@color/white"
+            android:background="@color/flux_error"
+            android:enabled="false" />
+    </LinearLayout>
+</LinearLayout>

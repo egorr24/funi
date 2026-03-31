@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Flux Button Styles -->
+    <style name="FluxButton">
+        <item name="android:textColor">@color/flux_light_fg</item>
+        <item name="android:background">@drawable/button_background</item>
+        <item name="android:padding">16dp</item>
+    </style>
+
+    <!-- Flux EditText Styles -->
+    <style name="FluxEditText">
+        <item name="android:textColor">@color/flux_light_fg</item>
+        <item name="android:textColorHint">@color/flux_on_surface_variant</item>
+        <item name="android:background">@drawable/edit_text_background</item>
+        <item name="android:padding">12dp</item>
+    </style>
+
+    <!-- Flux CardView Styles -->
+    <style name="FluxCardView">
+        <item name="android:background">@color/flux_surface</item>
+        <item name="android:padding">8dp</item>
+    </style>
+
+    <!-- Flux TextView Styles -->
+    <style name="FluxTextView">
+        <item name="android:textColor">@color/flux_light_fg</item>
+    </style>
+
+    <style name="FluxTextViewHint">
+        <item name="android:textColor">@color/flux_on_surface_variant</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <!-- Flux Message Bubble Sent -->
+    <style name="MessageBubbleSent">
+        <item name="android:background">@color/flux_primary_purple</item>
+        <item name="android:padding">12dp</item>
+    </style>
+
+    <!-- Flux Message Bubble Received -->
+    <style name="MessageBubbleReceived">
+        <item name="android:background">@color/flux_surface_variant</item>
+        <item name="android:padding">12dp</item>
+    </style>
+</resources>
