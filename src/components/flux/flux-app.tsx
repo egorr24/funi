@@ -63,6 +63,7 @@ export const FluxApp = () => {
   const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isDesktop, setIsDesktop] = useState(true);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
   
   const { 
     variables, 
@@ -385,6 +386,7 @@ export const FluxApp = () => {
     return chatsData.find((chat) => chat.id === chatId) ?? null;
   }, [chatsData, chatId]);
 
+
   const typingInActiveChat = useMemo(() => {
     if (!activeChat) return [];
     return typingUsers[activeChat.id] || [];
@@ -426,7 +428,11 @@ export const FluxApp = () => {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleTyping = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value);
+    const nextValue = e.target.value;
+    setInput(nextValue);
+    if (activeChat) {
+      setDrafts((current) => ({ ...current, [activeChat.id]: nextValue }));
+    }
     
     if (socket.socket && activeChat) {
       // Отправляем событие начала печатания только если раньше не печатали
@@ -602,7 +608,15 @@ export const FluxApp = () => {
       return;
     }
 
-    if (!customText) setInput("");
+    if (!customText) {
+      setInput("");
+      setDrafts((current) => {
+        if (!activeChat) return current;
+        const next = { ...current };
+        delete next[activeChat.id];
+        return next;
+      });
+    }
     const currentReply = replyTo;
     setReplyTo(null);
 
@@ -675,6 +689,7 @@ export const FluxApp = () => {
     }
   }, [input, activeChat, session?.user, socket.socket, replyTo, scrollToBottom]);
 
+
   const sendCallLink = useCallback(() => {
     if (!activeChat) return;
     const callLink = `📞 Присоединяйтесь к звонку FLUX: https://${window.location.host}/?call=${activeChat.id}`;
@@ -697,11 +712,53 @@ export const FluxApp = () => {
   }, [activeChat?.id, scrollToBottom]);
 
   useEffect(() => {
+    if (!activeChat) return;
+    setInput(drafts[activeChat.id] ?? "");
+  }, [activeChat?.id, drafts, activeChat]);
+
+  useEffect(() => {
     if (visibleMessages.length === 0) return;
     if (isAtBottomRef.current) {
       requestAnimationFrame(() => scrollToBottom(false));
     }
   }, [visibleMessages.length, scrollToBottom]);
+
+  const timelineItems = useMemo(() => {
+    if (!session?.user?.id) return [];
+    const firstUnreadIndex = visibleMessages.findIndex(
+      (message) => message.senderId !== session.user.id && message.status !== "READ"
+    );
+    const items: Array<
+      | { type: "date"; key: string; label: string }
+      | { type: "unread"; key: string }
+      | { type: "message"; key: string; message: FluxMessage; index: number }
+    > = [];
+    const now = new Date();
+    const todayKey = now.toDateString();
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    const yesterdayKey = yesterday.toDateString();
+    visibleMessages.forEach((message, index) => {
+      const currentDate = new Date(message.createdAt);
+      const prevDate = index > 0 ? new Date(visibleMessages[index - 1].createdAt) : null;
+      const currentDayKey = currentDate.toDateString();
+      const prevDayKey = prevDate?.toDateString();
+      if (index === 0 || currentDayKey !== prevDayKey) {
+        const label =
+          currentDayKey === todayKey
+            ? "Сегодня"
+            : currentDayKey === yesterdayKey
+              ? "Вчера"
+              : currentDate.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
+        items.push({ type: "date", key: `date-${currentDayKey}-${index}`, label });
+      }
+      if (index === firstUnreadIndex) {
+        items.push({ type: "unread", key: `unread-${message.id}` });
+      }
+      items.push({ type: "message", key: message.id, message, index });
+    });
+    return items;
+  }, [visibleMessages, session?.user?.id]);
 
   if (status === "loading") {
     return (
@@ -808,20 +865,49 @@ export const FluxApp = () => {
                 </div>
                 <div className="relative flex-1 min-h-0">
                   <MessageScroll scrollRef={messageScrollRef} onScroll={updateScrollState}>
-                    {visibleMessages.map((message) => (
-                      <MessageBubble
-                        key={message.id}
-                        message={{ ...message, waveform, decryptedBody: message.decryptedBody || message.encryptedBody }}
-                        mine={message.senderId === session?.user?.id}
-                        viewerName={session?.user?.name || "ENCRYPTED"}
-                        onImageClick={(url) => setViewingPhoto(url)}
-                        onReaction={(emoji) => addReaction(message.id, emoji)}
-                        onReply={() => setReplyTo(message)}
-                        onDelete={() => deleteMessage(message.id)}
-                        onEdit={(newBody) => editMessage(message.id, newBody)}
-                        onForward={() => handleForward(message)}
-                      />
-                    ))}
+                    {timelineItems.map((item) => {
+                      if (item.type === "date") {
+                        return (
+                          <div key={item.key} className="my-3 flex justify-center">
+                            <div className="rounded-full border border-white/15 bg-black/35 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-300 backdrop-blur-md">
+                              {item.label}
+                            </div>
+                          </div>
+                        );
+                      }
+                      if (item.type === "unread") {
+                        return (
+                          <div key={item.key} className="my-3 flex items-center gap-2">
+                            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-violet-400/50 to-transparent" />
+                            <div className="rounded-full border border-violet-300/35 bg-violet-500/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-violet-200 backdrop-blur-md">
+                              Непрочитанные
+                            </div>
+                            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-violet-400/50 to-transparent" />
+                          </div>
+                        );
+                      }
+                      const message = item.message;
+                      const prevMessage = item.index > 0 ? visibleMessages[item.index - 1] : null;
+                      const nextMessage = item.index < visibleMessages.length - 1 ? visibleMessages[item.index + 1] : null;
+                      const prevGap = prevMessage ? Math.abs(new Date(message.createdAt).getTime() - new Date(prevMessage.createdAt).getTime()) : Number.MAX_SAFE_INTEGER;
+                      const nextGap = nextMessage ? Math.abs(new Date(nextMessage.createdAt).getTime() - new Date(message.createdAt).getTime()) : Number.MAX_SAFE_INTEGER;
+                      const compactTop = Boolean(prevMessage && prevMessage.senderId === message.senderId && prevGap < 5 * 60 * 1000);
+                      return (
+                        <div key={message.id} className={`${compactTop ? "mt-1" : "mt-3"}`}>
+                          <MessageBubble
+                            message={{ ...message, waveform, decryptedBody: message.decryptedBody || message.encryptedBody }}
+                            mine={message.senderId === session?.user?.id}
+                            viewerName={session?.user?.name || "ENCRYPTED"}
+                            onImageClick={(url) => setViewingPhoto(url)}
+                            onReaction={(emoji) => addReaction(message.id, emoji)}
+                            onReply={() => setReplyTo(message)}
+                            onDelete={() => deleteMessage(message.id)}
+                            onEdit={(newBody) => editMessage(message.id, newBody)}
+                            onForward={() => handleForward(message)}
+                          />
+                        </div>
+                      );
+                    })}
                   </MessageScroll>
                   {showScrollToBottom && (
                     <button
