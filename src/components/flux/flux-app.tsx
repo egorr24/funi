@@ -66,6 +66,7 @@ export const FluxApp = () => {
   const [activeTab, setActiveTab] = useState("chats");
   const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(true);
   
   const { 
     variables, 
@@ -118,6 +119,15 @@ export const FluxApp = () => {
     }
   }, [status, router]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(min-width: 1024px)");
+    const apply = () => setIsDesktop(media.matches);
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, []);
+
   // Fetch chats function (reusable)
   const fetchChats = useCallback(async () => {
     try {
@@ -156,10 +166,17 @@ export const FluxApp = () => {
       }
       return;
     }
-    if (!chatId || !chatsData.some((chat) => chat.id === chatId)) {
-      setChatId(chatsData[0].id);
+    if (chatId && chatsData.some((chat) => chat.id === chatId)) {
+      return;
     }
-  }, [chatsData, chatId]);
+    if (isDesktop) {
+      setChatId(chatsData[0].id);
+      return;
+    }
+    if (chatId !== null) {
+      setChatId(null);
+    }
+  }, [chatsData, chatId, isDesktop]);
 
   // Handle chat creation
   const handleCreateChat = useCallback(async (userId: string, name: string) => {
