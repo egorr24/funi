@@ -118,7 +118,7 @@ export const FluxShell = ({
   showRightPanel = true,
 }: PropsWithChildren<{ showRightPanel?: boolean }>) => (
   <div
-    className={`mx-auto flex h-screen h-screen-safe max-w-[1600px] text-zinc-100 overflow-hidden relative w-full bg-[#050308]`}
+    className={`mx-auto flex h-screen h-screen-safe max-w-[1600px] text-zinc-100 overflow-hidden relative w-full bg-[radial-gradient(circle_at_15%_20%,rgba(168,85,247,0.2),transparent_30%),radial-gradient(circle_at_80%_0%,rgba(99,102,241,0.18),transparent_35%),linear-gradient(160deg,#070510_0%,#0b0816_45%,#050308_100%)]`}
   >
     {children}
   </div>
@@ -133,7 +133,7 @@ export const NavSidebar = ({
   onTabChange: (tab: string) => void;
   className?: string;
 }) => (
-  <div className={`flex lg:flex-col items-center lg:py-8 bg-[#0a0a0c] border-r border-white/5 gap-6 fixed bottom-0 left-0 right-0 h-20 lg:static lg:h-auto lg:w-[100px] z-50 safe-area-inset pb-safe ${className}`}>
+  <div className={`flex lg:flex-col items-center lg:py-8 bg-black/35 border-r border-white/10 gap-6 fixed bottom-0 left-0 right-0 h-20 lg:static lg:h-auto lg:w-[100px] z-50 safe-area-inset pb-safe backdrop-blur-2xl supports-[backdrop-filter]:bg-black/25 shadow-[0_-8px_30px_rgba(0,0,0,0.45)] lg:shadow-none ${className}`}>
     <div className="flex lg:flex-col items-center justify-around lg:justify-start gap-8 w-full lg:w-auto px-4 lg:px-0">
       <NavIcon
         active={activeTab === "chats"}
@@ -194,7 +194,7 @@ const NavIcon = ({
 );
 
 export const Sidebar = ({ children, className = "" }: PropsWithChildren<BaseProps>) => (
-  <aside className={`flex flex-col border-r border-violet-300/10 bg-gradient-to-b from-[#130a24]/90 via-[#0b0816]/85 to-[#07050d]/90 lg:w-[360px] shrink-0 backdrop-blur-2xl ${className}`}>{children}</aside>
+  <aside className={`flex flex-col border-r border-violet-300/20 bg-gradient-to-b from-[#1a1030]/55 via-[#100b1f]/50 to-[#090713]/65 lg:w-[360px] shrink-0 backdrop-blur-3xl shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ${className}`}>{children}</aside>
 );
 
 export const CreateChatModal = ({
@@ -363,7 +363,7 @@ export const SidebarHeader = ({
 );
 
 export const SearchBar = ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
-  <label className="mx-4 mb-4 flex items-center gap-2 rounded-2xl border border-white/15 bg-gradient-to-r from-black/30 to-violet-500/10 px-3 py-2.5 shadow-[0_10px_30px_rgba(0,0,0,0.2)]">
+  <label className="mx-3 lg:mx-4 mb-3 lg:mb-4 flex items-center gap-2 rounded-2xl border border-white/20 bg-gradient-to-r from-black/30 to-violet-500/15 px-3 py-2.5 shadow-[0_12px_35px_rgba(0,0,0,0.28)] backdrop-blur-xl">
     <Search className="h-4 w-4 text-zinc-400" />
     <input
       value={value}
@@ -408,7 +408,7 @@ export const FolderTabs = ({
 );
 
 export const ChatList = ({ children }: PropsWithChildren) => (
-  <div className="space-y-2.5 px-3 pb-3">{children}</div>
+  <div className="space-y-2.5 px-2.5 lg:px-3 pb-3">{children}</div>
 );
 
 export const ChatListItem = ({
@@ -489,7 +489,7 @@ export const ConnectionBadge = ({ online, queued }: { online: boolean; queued: n
 );
 
 export const MessagePane = ({ children, className = "" }: PropsWithChildren<BaseProps>) => (
-  <main className={`flex flex-col bg-zinc-950/20 backdrop-blur-md h-full overflow-hidden flex-1 ${className}`}>{children}</main>
+  <main className={`flex flex-col bg-gradient-to-b from-black/30 via-violet-950/10 to-black/30 backdrop-blur-2xl h-full overflow-hidden flex-1 border-l border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] ${className}`}>{children}</main>
 );
 
 export const ChatHeader = ({
@@ -513,7 +513,7 @@ export const ChatHeader = ({
   onSearchChange?: (val: string) => void;
   searchValue?: string;
 }) => (
-  <div className="border-b border-white/10 px-4 lg:px-6 py-4">
+  <div className="border-b border-white/10 px-3 lg:px-6 py-3.5 lg:py-4 bg-white/[0.03] backdrop-blur-xl">
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-3">
         {onBack && (
@@ -557,18 +557,18 @@ export const QuickActions = ({ onCall, onVideoCall, onShareLink }: { onCall?: ()
 );
 
 export const IconAction = ({ icon, onClick }: { icon: ReactNode; onClick?: () => void }) => (
-  <button onClick={onClick} className="rounded-xl border border-white/10 bg-white/5 p-2 text-zinc-200 hover:bg-white/10">{icon}</button>
+  <button onClick={onClick} className="rounded-xl border border-white/15 bg-white/10 p-2 text-zinc-200 hover:bg-white/20 backdrop-blur-md">{icon}</button>
 );
 
 export const PinnedBanner = ({ message }: { message: string }) => (
-  <div className="mx-4 mt-4 rounded-2xl border border-violet-300/30 bg-violet-500/10 px-4 py-2 text-sm text-violet-100">
+  <div className="mx-3 lg:mx-4 mt-3 lg:mt-4 rounded-2xl border border-violet-300/35 bg-violet-500/15 px-4 py-2 text-sm text-violet-100 backdrop-blur-md">
     <span className="mr-1 text-xs uppercase text-violet-300">Pinned</span>
     {message}
   </div>
 );
 
 export const MessageScroll = ({ children }: PropsWithChildren) => (
-  <motion.div layout className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+  <motion.div layout className="flex-1 space-y-3 overflow-y-auto px-3 lg:px-4 py-3 lg:py-4">
     {children}
   </motion.div>
 );
@@ -737,6 +737,116 @@ export const SecureCanvasImage = ({ url, revealed, viewerName }: { url: string, 
   );
 };
 
+const renderInlineRichText = (text: string, keyPrefix: string): ReactNode[] => {
+  const parts: ReactNode[] = [];
+  const tokenRegex = /(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|https?:\/\/[^\s]+|\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`)/g;
+  let lastIndex = 0;
+  let index = 0;
+  for (const match of text.matchAll(tokenRegex)) {
+    const full = match[0];
+    const start = match.index ?? 0;
+    if (start > lastIndex) {
+      parts.push(text.slice(lastIndex, start));
+    }
+    if (match[3]) {
+      parts.push(
+        <a
+          key={`${keyPrefix}-mdlink-${index}`}
+          href={match[3]}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="underline decoration-violet-300/70 underline-offset-2 text-violet-200 hover:text-violet-100 break-all"
+        >
+          {match[2]}
+        </a>
+      );
+    } else if (full.startsWith("http://") || full.startsWith("https://")) {
+      const cleanUrl = full.replace(/[),.!?;:]+$/, "");
+      const trailing = full.slice(cleanUrl.length);
+      parts.push(
+        <a
+          key={`${keyPrefix}-link-${index}`}
+          href={cleanUrl}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="underline decoration-violet-300/70 underline-offset-2 text-violet-200 hover:text-violet-100 break-all"
+        >
+          {cleanUrl}
+        </a>
+      );
+      if (trailing) {
+        parts.push(trailing);
+      }
+    } else if (match[4]) {
+      parts.push(<strong key={`${keyPrefix}-bold-${index}`} className="font-bold text-white">{match[4]}</strong>);
+    } else if (match[5]) {
+      parts.push(<em key={`${keyPrefix}-italic-${index}`} className="italic text-zinc-100">{match[5]}</em>);
+    } else if (match[6]) {
+      parts.push(
+        <code key={`${keyPrefix}-code-${index}`} className="rounded-md bg-black/35 border border-white/10 px-1.5 py-0.5 font-mono text-[0.84em] text-violet-100">
+          {match[6]}
+        </code>
+      );
+    }
+    lastIndex = start + full.length;
+    index += 1;
+  }
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+  return parts;
+};
+
+const renderRichText = (text: string) => {
+  const lines = text.split("\n");
+  const blocks: ReactNode[] = [];
+  let listBuffer: string[] = [];
+  const flushList = (key: string) => {
+    if (listBuffer.length === 0) return;
+    blocks.push(
+      <ul key={key} className="my-1 space-y-0.5 list-disc pl-4 marker:text-violet-300/80">
+        {listBuffer.map((item, index) => (
+          <li key={`${key}-${index}`} className="leading-relaxed">
+            {renderInlineRichText(item, `${key}-${index}`)}
+          </li>
+        ))}
+      </ul>
+    );
+    listBuffer = [];
+  };
+  lines.forEach((line, index) => {
+    const itemMatch = line.match(/^\s*[-*]\s+(.+)$/);
+    if (itemMatch) {
+      listBuffer.push(itemMatch[1]);
+      return;
+    }
+    flushList(`list-${index}`);
+    if (!line.trim()) {
+      blocks.push(<div key={`sp-${index}`} className="h-2" />);
+      return;
+    }
+    const heading = line.match(/^(#{1,3})\s+(.+)$/);
+    if (heading) {
+      const level = heading[1].length;
+      const textValue = heading[2];
+      const headingClass = level === 1 ? "text-base font-black" : level === 2 ? "text-[15px] font-bold" : "text-sm font-semibold";
+      blocks.push(
+        <div key={`h-${index}`} className={`${headingClass} mt-1 mb-0.5`}>
+          {renderInlineRichText(textValue, `h-${index}`)}
+        </div>
+      );
+      return;
+    }
+    blocks.push(
+      <div key={`p-${index}`} className="leading-relaxed break-words">
+        {renderInlineRichText(line, `p-${index}`)}
+      </div>
+    );
+  });
+  flushList("list-end");
+  return blocks;
+};
+
 export const MessageBubble = ({ 
   message, 
   mine,
@@ -802,8 +912,8 @@ export const MessageBubble = ({
     <motion.div
       initial={{ opacity: 0, y: 10, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      className={`max-w-[85%] lg:max-w-[70%] rounded-[24px] px-5 py-3 shadow-lg shadow-black/5 group relative ${
-        mine ? "ml-auto bg-violet-600/90 text-white rounded-tr-none" : "bg-zinc-800/80 text-zinc-100 rounded-tl-none border border-white/5"
+      className={`max-w-[90%] lg:max-w-[70%] rounded-[24px] px-4 lg:px-5 py-3 shadow-xl shadow-black/20 group relative border backdrop-blur-xl ${
+        mine ? "ml-auto bg-gradient-to-br from-violet-500/70 via-violet-600/55 to-fuchsia-600/45 text-white rounded-tr-none border-violet-200/30" : "bg-white/10 text-zinc-100 rounded-tl-none border-white/15"
       }`}
     >
       <div className={`absolute ${mine ? "-left-28" : "-right-28"} top-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1`}>
@@ -947,8 +1057,8 @@ export const MessageBubble = ({
           </div>
         </div>
       ) : (
-        <div className="text-sm leading-relaxed whitespace-pre-wrap font-medium">
-          {message.decryptedBody}
+        <div className="text-sm leading-relaxed font-medium">
+          {renderRichText(message.decryptedBody || "")}
           {message.isEdited && <span className="ml-2 text-[9px] opacity-40 italic">(изм.)</span>}
         </div>
       )}
