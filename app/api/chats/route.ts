@@ -8,12 +8,14 @@ const isUuid = (value: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    console.log("Fetching chats for user:", session.user.id);
+
     const preferPrisma = !isUuid(session.user.id);
     let savedChatResult;
     if (!preferPrisma) {
@@ -197,20 +199,27 @@ export async function GET() {
     });
 
     return NextResponse.json(chats);
-  } catch (error) {
-    console.error("Error fetching chats:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  } catch (error: any) {
+    console.error("GET /api/chats error:", error);
+    return NextResponse.json({ 
+      error: "Failed to fetch chats", 
+      details: error.message || error.toString() 
+    }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    console.log("Creating chat - user:", session.user.id);
+    
     const { userId, title, kind = "PERSONAL" } = await request.json();
+    console.log("Chat creation params:", { userId, title, kind });
+    
     const normalizedKind = kind === "CHAT" ? "PERSONAL" : kind;
     const preferPrisma = !isUuid(session.user.id);
 
@@ -229,24 +238,31 @@ export async function POST(request: NextRequest) {
     if (normalizedKind === "PERSONAL") {
       const existingChat = await Chat.findPersonalChat(session.user.id, resolvedUserId, preferPrisma);
       if (existingChat) {
+        console.log("Existing chat found:", existingChat.id);
         return NextResponse.json({ id: existingChat.id });
       }
     }
 
     // Create new chat
+    console.log("Creating new chat...");
     const chat = await Chat.create({
       title: title || "Private Chat",
       kind: normalizedKind,
       preferPrisma,
     });
 
+    console.log("Chat created:", chat.id);
     // Add members
     await Chat.addMember(chat.id, session.user.id, "member", preferPrisma);
     await Chat.addMember(chat.id, resolvedUserId, "member", preferPrisma);
 
+    console.log("Members added successfully");
     return NextResponse.json({ id: chat.id });
-  } catch (error) {
-    console.error("Error creating chat:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  } catch (error: any) {
+    console.error("POST /api/chats error:", error);
+    return NextResponse.json({ 
+      error: "Failed to create chat", 
+      details: error.message || error.toString() 
+    }, { status: 500 });
   }
 }
