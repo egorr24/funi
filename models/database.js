@@ -12,119 +12,90 @@ const initDatabase = async () => {
     // Enable UUID extension
     await pool.query('CREATE EXTENSION IF NOT EXISTS "pgcrypto"');
 
-    // Users table
+    // Users table (Prisma style)
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      CREATE TABLE IF NOT EXISTS "User" (
+        id TEXT PRIMARY KEY,
         name VARCHAR(100),
         email VARCHAR(100) UNIQUE NOT NULL,
-        password_hash VARCHAR(255) NOT NULL,
+        "passwordHash" VARCHAR(255) NOT NULL,
         avatar VARCHAR(255),
-        public_key TEXT,
-        encrypted_priv_key TEXT,
-        status VARCHAR(20) DEFAULT 'offline',
-        last_seen TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        "publicKey" TEXT,
+        "encryptedPrivKey" TEXT,
+        status VARCHAR(20) DEFAULT 'online',
+        "lastSeen" TIMESTAMP,
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
-    // Chats table
+    // Chats table (Prisma style)
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS chats (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      CREATE TABLE IF NOT EXISTS "Chat" (
+        id TEXT PRIMARY KEY,
         title VARCHAR(255),
         kind VARCHAR(20) DEFAULT 'PERSONAL',
-        is_pinned BOOLEAN DEFAULT false,
-        pinned_message_id UUID,
-        hls_manifest_url TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        "isPinned" BOOLEAN DEFAULT false,
+        "pinnedMessageId" TEXT,
+        "hlsManifestUrl" TEXT,
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
-    // Chat Members table
+    // Chat Members table (Prisma style)
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS chat_members (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-        chat_id UUID REFERENCES chats(id) ON DELETE CASCADE,
+      CREATE TABLE IF NOT EXISTS "ChatMember" (
+        id TEXT PRIMARY KEY,
+        "userId" TEXT REFERENCES "User"(id) ON DELETE CASCADE,
+        "chatId" TEXT REFERENCES "Chat"(id) ON DELETE CASCADE,
         role VARCHAR(20) DEFAULT 'member',
         muted BOOLEAN DEFAULT false,
-        joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(user_id, chat_id)
+        "joinedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE("userId", "chatId")
       )
     `);
 
-    // Messages table
+    // Messages table (Prisma style)
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS messages (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        chat_id UUID REFERENCES chats(id) ON DELETE CASCADE,
-        sender_id UUID REFERENCES users(id) ON DELETE CASCADE,
-        encrypted_body TEXT,
-        encrypted_aes TEXT,
+      CREATE TABLE IF NOT EXISTS "Message" (
+        id TEXT PRIMARY KEY,
+        "chatId" TEXT REFERENCES "Chat"(id) ON DELETE CASCADE,
+        "senderId" TEXT REFERENCES "User"(id) ON DELETE CASCADE,
+        "encryptedBody" TEXT,
+        "encryptedAes" TEXT,
         iv TEXT,
-        media_url TEXT,
-        media_type VARCHAR(50),
+        "mediaUrl" TEXT,
+        "mediaType" VARCHAR(50),
         waveform TEXT,
-        reply_to_id UUID REFERENCES messages(id) ON DELETE SET NULL,
+        "replyToId" TEXT REFERENCES "Message"(id) ON DELETE SET NULL,
         status VARCHAR(20) DEFAULT 'QUEUED',
-        delivered_at TIMESTAMP,
-        read_at TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        "deliveredAt" TIMESTAMP,
+        "readAt" TIMESTAMP,
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
-    // Reactions table
+    // Reactions table (Prisma style)
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS reactions (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      CREATE TABLE IF NOT EXISTS "Reaction" (
+        id TEXT PRIMARY KEY,
         emoji VARCHAR(10) NOT NULL,
-        message_id UUID REFERENCES messages(id) ON DELETE CASCADE,
-        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(message_id, user_id, emoji)
-      )
-    `);
-
-    // NextAuth: Accounts table
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS accounts (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-        type VARCHAR(255) NOT NULL,
-        provider VARCHAR(255) NOT NULL,
-        provider_account_id VARCHAR(255) NOT NULL,
-        refresh_token TEXT,
-        access_token TEXT,
-        expires_at INTEGER,
-        token_type VARCHAR(255),
-        scope TEXT,
-        id_token TEXT,
-        session_state TEXT,
-        UNIQUE(provider, provider_account_id)
-      )
-    `);
-
-    // NextAuth: Sessions table
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS sessions (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        session_token VARCHAR(255) UNIQUE NOT NULL,
-        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-        expires TIMESTAMP NOT NULL
+        "messageId" TEXT REFERENCES "Message"(id) ON DELETE CASCADE,
+        "userId" TEXT REFERENCES "User"(id) ON DELETE CASCADE,
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE("messageId", "userId", emoji)
       )
     `);
 
     // Create indexes for better performance
     await pool.query(`
-      CREATE INDEX IF NOT EXISTS idx_messages_chat ON messages(chat_id);
-      CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
-      CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
-      CREATE INDEX IF NOT EXISTS idx_chat_members_user ON chat_members(user_id);
-      CREATE INDEX IF NOT EXISTS idx_chat_members_chat ON chat_members(chat_id);
+      CREATE INDEX IF NOT EXISTS idx_messages_chat ON "Message"("chatId");
+      CREATE INDEX IF NOT EXISTS idx_messages_sender ON "Message"("senderId");
+      CREATE INDEX IF NOT EXISTS idx_messages_created_at ON "Message"("createdAt");
+      CREATE INDEX IF NOT EXISTS idx_chat_members_user ON "ChatMember"("userId");
+      CREATE INDEX IF NOT EXISTS idx_chat_members_chat ON "ChatMember"("chatId");
     `);
 
     console.log('Database initialized successfully');
