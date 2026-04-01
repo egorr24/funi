@@ -1,10 +1,19 @@
 import pg from 'pg';
 const { Pool } = pg;
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+// Безопасное подключение через отдельные переменные окружения
+const dbConfig = {
+  host: process.env.DB_HOST || process.env.PGHOST || 'localhost',
+  port: process.env.DB_PORT || process.env.PGPORT || 5432,
+  user: process.env.DB_USER || process.env.PGUSER || 'postgres',
+  password: process.env.DB_PASSWORD || process.env.PGPASSWORD || '',
+  database: process.env.DB_NAME || process.env.PGDATABASE || 'railway',
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
+};
+
+console.log(`[DB] Connecting to ${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`);
+
+const pool = new Pool(dbConfig);
 
 // Initialize database tables
 const initDatabase = async () => {
