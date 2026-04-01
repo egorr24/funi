@@ -157,19 +157,6 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 5. API ROUTES
-import authRoutes from './routes/auth.js';
-import usersRoutes from './routes/users.js';
-import messagesRoutes from './routes/messages.js';
-import callsRoutes from './routes/calls.js';
-import filesRoutes from './routes/files.js';
-
-app.use('/api/auth', authRoutes);
-app.use('/api/users', usersRoutes);
-app.use('/api/messages', messagesRoutes);
-app.use('/api/calls', callsRoutes);
-app.use('/api/files', filesRoutes);
-
 // 6. NEXT.JS ПРЕПАРАЦИЯ (В ФОНЕ)
 let nextReady = false;
 nextApp.prepare().then(() => {
