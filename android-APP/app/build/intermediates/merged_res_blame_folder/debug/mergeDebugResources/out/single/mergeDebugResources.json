@@ -1,0 +1,102 @@
+[
+    {
+        "merged": "com.renixst.flux.app-debug-70:/layout_message_item.xml.flat",
+        "source": "com.renixst.flux.app-main-72:/layout/message_item.xml"
+    },
+    {
+        "merged": "com.renixst.flux.app-debug-70:/mipmap-xxxhdpi_ic_launcher_round.webp.flat",
+        "source": "com.renixst.flux.app-main-72:/mipmap-xxxhdpi/ic_launcher_round.webp"
+    },
+    {
+        "merged": "com.renixst.flux.app-debug-70:/mipmap-anydpi_ic_launcher.xml.flat",
+        "source": "com.renixst.flux.app-main-72:/mipmap-anydpi/ic_launcher.xml"
+    },
+    {
+        "merged": "com.renixst.flux.app-debug-70:/drawable_ic_launcher_background.xml.flat",
+        "source": "com.renixst.flux.app-main-72:/drawable/ic_launcher_background.xml"
+    },
+    {
+        "merged": "com.renixst.flux.app-debug-70:/mipmap-xhdpi_ic_launcher.webp.flat",
+        "source": "com.renixst.flux.app-main-72:/mipmap-xhdpi/ic_launcher.webp"
+    },
+    {
+        "merged": "com.renixst.flux.app-debug-70:/layout_activity_search_users.xml.flat",
+        "source": "com.renixst.flux.app-main-72:/layout/activity_search_users.xml"
+    },
+    {
+        "merged": "com.renixst.flux.app-debug-70:/mipmap-hdpi_ic_launcher_round.webp.flat",
+        "source": "com.renixst.flux.app-main-72:/mipmap-hdpi/ic_launcher_round.webp"
+    },
+    {
+        "merged": "com.renixst.flux.app-debug-70:/mipmap-xxhdpi_ic_launcher_round.webp.flat",
+        "source": "com.renixst.flux.app-main-72:/mipmap-xxhdpi/ic_launcher_round.webp"
+    },
+    {
+        "merged": "com.renixst.flux.app-debug-70:/xml_backup_rules.xml.flat",
+        "source": "com.renixst.flux.app-main-72:/xml/backup_rules.xml"
+    },
+    {
+        "merged": "com.renixst.flux.app-debug-70:/layout_activity_call.xml.flat",
+        "source": "com.renixst.flux.app-main-72:/layout/activity_call.xml"
+    },
+    {
+        "merged": "com.renixst.flux.app-debug-70:/layout_chat_item.xml.flat",
+        "source": "com.renixst.flux.app-main-72:/layout/chat_item.xml"
+    },
+    {
+        "merged": "com.renixst.flux.app-debug-70:/layout_activity_chats.xml.flat",
+        "source": "com.renixst.flux.app-main-72:/layout/activity_chats.xml"
+    },
+    {
+        "merged": "com.renixst.flux.app-debug-70:/layout_activity_main.xml.flat",
+        "source": "com.renixst.flux.app-main-72:/layout/activity_main.xml"
+    },
+    {
+        "merged": "com.renixst.flux.app-debug-70:/xml_data_extraction_rules.xml.flat",
+        "source": "com.renixst.flux.app-main-72:/xml/data_extraction_rules.xml"
+    },
+    {
+        "merged": "com.renixst.flux.app-debug-70:/mipmap-xxxhdpi_ic_launcher.webp.flat",
+        "source": "com.renixst.flux.app-main-72:/mipmap-xxxhdpi/ic_launcher.webp"
+    },
+    {
+        "merged": "com.renixst.flux.app-debug-70:/mipmap-mdpi_ic_launcher_round.webp.flat",
+        "source": "com.renixst.flux.app-main-72:/mipmap-mdpi/ic_launcher_round.webp"
+    },
+    {
+        "merged": "com.renixst.flux.app-debug-70:/layout_activity_register.xml.flat",
+        "source": "com.renixst.flux.app-main-72:/layout/activity_register.xml"
+    },
+    {
+        "merged": "com.renixst.flux.app-debug-70:/mipmap-xxhdpi_ic_launcher.webp.flat",
+        "source": "com.renixst.flux.app-main-72:/mipmap-xxhdpi/ic_launcher.webp"
+    },
+    {
+        "merged": "com.renixst.flux.app-debug-70:/drawable_ic_launcher_foreground.xml.flat",
+        "source": "com.renixst.flux.app-main-72:/drawable/ic_launcher_foreground.xml"
+    },
+    {
+        "merged": "com.renixst.flux.app-debug-70:/mipmap-anydpi_ic_launcher_round.xml.flat",
+        "source": "com.renixst.flux.app-main-72:/mipmap-anydpi/ic_launcher_round.xml"
+    },
+    {
+        "merged": "com.renixst.flux.app-debug-70:/mipmap-mdpi_ic_launcher.webp.flat",
+        "source": "com.renixst.flux.app-main-72:/mipmap-mdpi/ic_launcher.webp"
+    },
+    {
+        "merged": "com.renixst.flux.app-debug-70:/mipmap-hdpi_ic_launcher.webp.flat",
+        "source": "com.renixst.flux.app-main-72:/mipmap-hdpi/ic_launcher.webp"
+    },
+    {
+        "merged": "com.renixst.flux.app-debug-70:/layout_user_item.xml.flat",
+        "source": "com.renixst.flux.app-main-72:/layout/user_item.xml"
+    },
+    {
+        "merged": "com.renixst.flux.app-debug-70:/mipmap-xhdpi_ic_launcher_round.webp.flat",
+        "source": "com.renixst.flux.app-main-72:/mipmap-xhdpi/ic_launcher_round.webp"
+    },
+    {
+        "merged": "com.renixst.flux.app-debug-70:/layout_activity_chat_detail.xml.flat",
+        "source": "com.renixst.flux.app-main-72:/layout/activity_chat_detail.xml"
+    }
+]

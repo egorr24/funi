@@ -30,8 +30,8 @@ router.post('/initiate', authenticateToken, async (req, res) => {
     req.app.get('io')?.to(recipientId).emit('incoming_call', {
       callId: call.id,
       callerId: req.user.id,
-      callerName: req.user.display_name,
-      callerAvatar: req.user.avatar_url,
+      callerName: req.user.name,
+      callerAvatar: req.user.avatar,
       callType,
       initiatedAt: call.started_at
     });
@@ -145,13 +145,13 @@ router.get('/history', authenticateToken, async (req, res) => {
 
     const query = `
       SELECT c.*,
-             u1.display_name as caller_name,
-             u1.avatar_url as caller_avatar,
-             u2.display_name as callee_name,
-             u2.avatar_url as callee_avatar
+             u1.name as caller_name,
+             u1.avatar as caller_avatar,
+             u2.name as callee_name,
+             u2.avatar as callee_avatar
       FROM calls c
-      JOIN users u1 ON c.caller_id = u1.id
-      JOIN users u2 ON c.callee_id = u2.id
+      JOIN "User" u1 ON c.caller_id = u1.id
+      JOIN "User" u2 ON c.callee_id = u2.id
       WHERE c.caller_id = $1 OR c.callee_id = $1
       ORDER BY c.created_at DESC
       LIMIT $2 OFFSET $3
@@ -170,13 +170,13 @@ router.get('/active', authenticateToken, async (req, res) => {
   try {
     const query = `
       SELECT c.*,
-             u1.display_name as caller_name,
-             u1.avatar_url as caller_avatar,
-             u2.display_name as callee_name,
-             u2.avatar_url as callee_avatar
+             u1.name as caller_name,
+             u1.avatar as caller_avatar,
+             u2.name as callee_name,
+             u2.avatar as callee_avatar
       FROM calls c
-      JOIN users u1 ON c.caller_id = u1.id
-      JOIN users u2 ON c.callee_id = u2.id
+      JOIN "User" u1 ON c.caller_id = u1.id
+      JOIN "User" u2 ON c.callee_id = u2.id
       WHERE (c.caller_id = $1 OR c.callee_id = $1)
       AND c.status IN ('initiated', 'answered')
       ORDER BY c.created_at DESC

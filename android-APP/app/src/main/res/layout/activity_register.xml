@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@android:color/black">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Регистрация"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:textColor="@android:color/white"
+        android:layout_marginBottom="24dp" />
+
+    <EditText
+        android:id="@+id/nameInput"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:hint="Имя"
+        android:inputType="text"
+        android:background="#1a1a1a"
+        android:textColor="@android:color/white"
+        android:paddingLeft="16dp"
+        android:layout_marginBottom="12dp"
+        android:textColorHint="#888888" />
+
+    <EditText
+        android:id="@+id/emailInput"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:hint="Email"
+        android:inputType="textEmailAddress"
+        android:background="#1a1a1a"
+        android:textColor="@android:color/white"
+        android:paddingLeft="16dp"
+        android:layout_marginBottom="12dp"
+        android:textColorHint="#888888" />
+
+    <EditText
+        android:id="@+id/passwordInput"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:hint="Пароль (минимум 8 символов)"
+        android:inputType="textPassword"
+        android:background="#1a1a1a"
+        android:textColor="@android:color/white"
+        android:paddingLeft="16dp"
+        android:layout_marginBottom="12dp"
+        android:textColorHint="#888888" />
+
+    <EditText
+        android:id="@+id/confirmPasswordInput"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:hint="Подтвердите пароль"
+        android:inputType="textPassword"
+        android:background="#1a1a1a"
+        android:textColor="@android:color/white"
+        android:paddingLeft="16dp"
+        android:layout_marginBottom="24dp"
+        android:textColorHint="#888888" />
+
+    <ProgressBar
+        android:id="@+id/loadingProgress"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:visibility="gone"
+        android:layout_marginBottom="12dp" />
+
+    <Button
+        android:id="@+id/registerButton"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="Зарегистрироваться"
+        android:textColor="@android:color/black"
+        android:background="#00ff00"
+        android:layout_marginBottom="12dp"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <Button
+        android:id="@+id/backButton"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="Вернуться"
+        android:textColor="@android:color/white"
+        android:background="#2a2a2a"
+        android:textSize="16sp" />
+
+</LinearLayout>

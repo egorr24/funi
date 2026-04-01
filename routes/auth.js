@@ -15,10 +15,12 @@ const authLimiter = rateLimit({
 // Register
 router.post('/register', authLimiter, async (req, res) => {
   try {
+    console.log('Register request body:', req.body);
     const { username, email, password, displayName } = req.body;
 
     // Validation
     if (!username || !email || !password) {
+      console.log('Missing required fields:', { username, email, password: '***' });
       return res.status(400).json({ error: 'Username, email, and password are required' });
     }
 
@@ -27,18 +29,21 @@ router.post('/register', authLimiter, async (req, res) => {
     }
 
     // Check if user already exists
+    console.log('Checking if user exists...');
     const existingUser = await User.findByEmail(email) || await User.findByUsername(username);
     if (existingUser) {
+      console.log('User already exists:', existingUser.email);
       return res.status(409).json({ error: 'User with this email or username already exists' });
     }
 
-    // Create user
+    // Create user - pass name field (not displayName) to match Prisma schema
+    console.log('Creating user with:', { name: displayName || username, email });
     const user = await User.create({
-      username,
+      name: displayName || username,
       email,
-      password,
-      displayName: displayName || username
+      password
     });
+    console.log('User created:', user);
 
     // Generate tokens
     const tokens = generateTokens(user.id);
@@ -47,35 +52,42 @@ router.post('/register', authLimiter, async (req, res) => {
       message: 'User registered successfully',
       user: {
         id: user.id,
-        username: user.username,
-        email: user.email,
-        displayName: user.display_name
+        name: user.name,
+        email: user.email
       },
       ...tokens
     });
   } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Registration error full:', error);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 });
 
 // Login
 router.post('/login', authLimiter, async (req, res) => {
   try {
+    console.log('Login request body:', req.body);
     const { email, password } = req.body;
 
     if (!email || !password) {
+      console.log('Missing email or password');
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
     // Find user
+    console.log('Finding user by email:', email);
     const user = await User.findByEmail(email);
+    console.log('User found:', user ? 'yes' : 'no');
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     // Verify password
+    console.log('Verifying password...');
     const isValidPassword = await User.verifyPassword(password, user.password_hash);
+    console.log('Password valid:', isValidPassword);
     if (!isValidPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -90,10 +102,9 @@ router.post('/login', authLimiter, async (req, res) => {
       message: 'Login successful',
       user: {
         id: user.id,
-        username: user.username,
+        name: user.name,
         email: user.email,
-        displayName: user.display_name,
-        avatarUrl: user.avatar_url,
+        avatar: user.avatar,
         status: 'online'
       },
       ...tokens
@@ -109,10 +120,9 @@ router.get('/me', authenticateToken, async (req, res) => {
   res.json({
     user: {
       id: req.user.id,
-      username: req.user.username,
+      name: req.user.name,
       email: req.user.email,
-      displayName: req.user.display_name,
-      avatarUrl: req.user.avatar_url,
+      avatar: req.user.avatar,
       status: req.user.status
     }
   });

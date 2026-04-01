@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@android:color/black">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingLeft="16dp"
+        android:paddingRight="16dp"
+        android:background="#1a1a1a"
+        android:layout_marginBottom="1dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="FLUX"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/white" />
+
+        <Button
+            android:id="@+id/newChatButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:text="+"
+            android:textSize="24sp"
+            android:background="#00ff00"
+            android:textColor="@android:color/black"
+            android:paddingLeft="0dp"
+            android:paddingRight="0dp"
+            android:paddingTop="0dp"
+            android:paddingBottom="0dp"
+            android:layout_marginRight="8dp" />
+
+        <Button
+            android:id="@+id/logoutButton"
+            android:layout_width="60dp"
+            android:layout_height="40dp"
+            android:text="Выход"
+            android:textSize="12sp"
+            android:background="#ff0000"
+            android:textColor="@android:color/white"
+            android:paddingLeft="0dp"
+            android:paddingRight="0dp" />
+
+    </LinearLayout>
+
+    <ProgressBar
+        android:id="@+id/loadingProgress"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:visibility="gone"
+        android:layout_gravity="center"
+        android:layout_marginTop="24dp" />
+
+    <ListView
+        android:id="@+id/chatsList"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:divider="#2a2a2a"
+        android:dividerHeight="1dp" />
+
+</LinearLayout>
