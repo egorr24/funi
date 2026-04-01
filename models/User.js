@@ -186,15 +186,6 @@ class User {
     } catch (_error) {}
     return externalUserId;
   }
-        legacyUser.email,
-        legacyUser.password_hash || "$2b$10$7EqJtq98hPqEX7fNZaFWoO5x0xYv7FpC18JNpDutLCRa14Q6gttxy",
-        legacyUser.avatar || null,
-      ]);
-      return inserted.rows[0]?.id || null;
-    } catch (_error) {
-      return null;
-    }
-  }
 
   static async verifyPassword(plainPassword, hashedPassword) {
     return await bcrypt.compare(plainPassword, hashedPassword);
