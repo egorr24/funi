@@ -29,7 +29,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
-        const user = await User.findByEmailInUser(parsed.data.email);
+        const user = await User.findByEmail(parsed.data.email);
         if (!user) {
           return null;
         }
