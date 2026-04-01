@@ -24,27 +24,39 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: {},
       },
       authorize: async (credentials) => {
-        const parsed = credentialsSchema.safeParse(credentials);
-        if (!parsed.success) {
-          return null;
-        }
+        try {
+          const parsed = credentialsSchema.safeParse(credentials);
+          if (!parsed.success) {
+            console.error("Credentials validation failed:", parsed.error);
+            return null;
+          }
 
-        const user = await User.findByEmail(parsed.data.email);
-        if (!user) {
-          return null;
-        }
-        
-        const valid = await compare(parsed.data.password, user.password_hash);
-        if (!valid) {
-          return null;
-        }
+          console.log("Attempting to find user:", parsed.data.email);
+          const user = await User.findByEmail(parsed.data.email);
+          
+          if (!user) {
+            console.log("User not found:", parsed.data.email);
+            return null;
+          }
+          
+          console.log("User found, verifying password...");
+          const valid = await compare(parsed.data.password, user.password_hash);
+          if (!valid) {
+            console.log("Invalid password for user:", parsed.data.email);
+            return null;
+          }
 
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          image: user.avatar ?? undefined,
-        };
+          console.log("Authentication successful for:", parsed.data.email);
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.avatar ?? undefined,
+          };
+        } catch (error: any) {
+          console.error("Authorization error:", error);
+          throw error; // Re-throw to let NextAuth handle it
+        }
       },
     }),
   ],

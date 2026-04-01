@@ -816,7 +816,16 @@ export const FluxApp = () => {
         {activeTab === "chats" && (
           <>
             <Sidebar className={`${chatId ? "hidden lg:flex" : "flex"}`}>
-              <SidebarHeader title="FLUX" onAddChat={() => setIsCreateChatOpen(true)} />
+              <SidebarHeader 
+                title="FLUX" 
+                onAddChat={() => setIsCreateChatOpen(true)}
+                onSearch={() => {
+                  const searchInput = document.querySelector('input[placeholder="Поиск чатов, сообщений, медиа..."]');
+                  if (searchInput) {
+                    (searchInput as HTMLElement).focus();
+                  }
+                }}
+              />
               <SearchBar value={search} onChange={setSearch} />
               <FolderTabs active={folder} onSelect={setFolder} />
               <NeonDivider />

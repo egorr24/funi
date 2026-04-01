@@ -11,9 +11,18 @@ const dbConfig = {
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 };
 
-console.log(`[DB] Connecting to ${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`);
+console.log(`[DB] Connecting to ${dbConfig.host}:${dbConfig.port}/${dbConfig.database} (SSL: ${dbConfig.ssl ? 'enabled' : 'disabled'})`);
 
 const pool = new Pool(dbConfig);
+
+// Test database connection
+pool.on('connect', () => {
+  console.log('[DB] Successfully connected to database');
+});
+
+pool.on('error', (err) => {
+  console.error('[DB] Unexpected database error:', err);
+});
 
 // Initialize database tables
 const initDatabase = async () => {

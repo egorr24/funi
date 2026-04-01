@@ -353,29 +353,40 @@ export const SidebarHeader = ({
   onAddChat,
   onBack,
   onCreateGroup,
+  onSearch,
 }: {
   title: string;
   onAddChat?: () => void;
   onBack?: () => void;
   onCreateGroup?: () => void;
+  onSearch?: () => void;
 }) => (
   <div className="px-5 pb-4 pt-5 flex items-center justify-between">
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2">
       {onBack && (
         <button onClick={onBack} className="lg:hidden p-2 -ml-2 hover:bg-white/5 rounded-xl transition-colors">
           <X className="h-5 w-5 rotate-90" />
         </button>
       )}
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        <p className="text-xs text-zinc-300/70">Hyper-Glass 2026 realtime channeling</p>
+        <h1 className="text-xl lg:text-2xl font-semibold tracking-tight">{title}</h1>
+        <p className="text-[10px] lg:text-xs text-zinc-300/70 hidden lg:block">Hyper-Glass 2026 realtime channeling</p>
       </div>
+      {onSearch && (
+        <button
+          onClick={onSearch}
+          className="lg:hidden grid h-8 w-8 place-items-center rounded-xl bg-violet-500/20 text-violet-400 hover:bg-violet-500/30 transition-colors"
+          title="Поиск"
+        >
+          <Search className="h-4 w-4" />
+        </button>
+      )}
     </div>
     <div className="flex gap-2">
       {onCreateGroup && (
         <button
           onClick={onCreateGroup}
-          className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
+          className="hidden lg:grid h-10 w-10 place-items-center rounded-2xl bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
           title="Создать группу"
         >
           <User className="h-5 w-5" />
@@ -384,10 +395,10 @@ export const SidebarHeader = ({
       {onAddChat && (
         <button
           onClick={onAddChat}
-          className="grid h-10 w-10 place-items-center rounded-2xl bg-violet-500/20 text-violet-400 hover:bg-violet-500/30 transition-colors"
+          className="grid h-8 w-8 lg:h-10 lg:w-10 place-items-center rounded-2xl bg-violet-500/20 text-violet-400 hover:bg-violet-500/30 transition-colors"
           title="Новый чат"
         >
-          <Plus className="h-5 w-5" />
+          <Plus className="h-4 w-4 lg:h-5 lg:w-5" />
         </button>
       )}
     </div>

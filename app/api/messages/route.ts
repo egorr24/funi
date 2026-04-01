@@ -7,19 +7,21 @@ const isUuid = (value: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
 export async function GET(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const { searchParams } = new URL(request.url);
-  let chatId = searchParams.get("chatId");
-
-  if (!chatId) {
-    return NextResponse.json({ error: "chatId is required" }, { status: 400 });
-  }
-
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    let chatId = searchParams.get("chatId");
+
+    if (!chatId) {
+      return NextResponse.json({ error: "chatId is required" }, { status: 400 });
+    }
+
+    console.log("Fetching messages for chat:", chatId, "user:", session.user.id);
+
     const preferPrisma = !isUuid(session.user.id) || !isUuid(chatId);
     // Fallback для старых клиентских версий с виртуальным ID "saved-"
     if (chatId.startsWith("saved-")) {
@@ -84,6 +86,7 @@ export async function GET(request: NextRequest) {
         `, [chatId]);
 
     const messages = messagesResult.rows;
+    console.log("Fetched", messages.length, "messages");
 
     // Fetch reactions for these messages
     const messageIds = messages.map(m => m.id);
@@ -134,24 +137,29 @@ export async function GET(request: NextRequest) {
         senderName: m.reply_sender_name
       } : undefined
     })));
-  } catch (error) {
-    console.error("Error fetching messages:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  } catch (error: any) {
+    console.error("GET /api/messages error:", error);
+    return NextResponse.json({ 
+      error: "Failed to fetch messages", 
+      details: error.message || error.toString() 
+    }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
+    console.log("Creating message with body:", body);
+    
     let { chatId, encryptedBody, encryptedAes, iv, mediaUrl, mediaType, waveform, replyToId } = body;
 
     if (!chatId || !encryptedBody || !encryptedAes || !iv) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      return NextResponse.json({ error: "Missing required fields", received: { chatId, hasEncryptedBody: !!encryptedBody, hasEncryptedAes: !!encryptedAes, hasIv: !!iv } }, { status: 400 });
     }
 
     const preferPrisma = !isUuid(session.user.id) || !isUuid(chatId);
@@ -193,6 +201,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    console.log("Creating message in database...");
     const message = await Message.create({
       chatId,
       senderId: session.user.id,
@@ -205,6 +214,7 @@ export async function POST(request: NextRequest) {
       replyToId,
     });
 
+    console.log("Message created:", message.id);
     const senderResult = preferPrisma
       ? await pool.query('SELECT name FROM "User" WHERE id = $1', [session.user.id])
       : await pool.query('SELECT name FROM users WHERE id = $1', [session.user.id]);
@@ -247,8 +257,11 @@ export async function POST(request: NextRequest) {
       reactions: [],
       replyTo
     });
-  } catch (error) {
-    console.error("Error creating message:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  } catch (error: any) {
+    console.error("POST /api/messages error:", error);
+    return NextResponse.json({ 
+      error: "Failed to create message", 
+      details: error.message || error.toString() 
+    }, { status: 500 });
   }
 }
