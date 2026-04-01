@@ -21,20 +21,24 @@ export default function LoginPage() {
         password,
         redirect: false,
         callbackUrl: "/",
-      }) as any;
+      });
 
       console.log("Login result:", result);
 
       if (result?.error) {
-        setError("Неверный email или пароль");
+        console.error("Login failed:", result.error);
+        setError(result.error || "Неверный email или пароль");
         setLoading(false);
-      } else {
+      } else if (result?.ok) {
         console.log("Login success, redirecting...");
-        window.location.assign("/");
+        window.location.href = "/";
+      } else {
+        setError("Ошибка входа");
+        setLoading(false);
       }
     } catch (err) {
       console.error("Login catch error:", err);
-      setError("Ошибка входа");
+      setError(err instanceof Error ? err.message : "Ошибка входа");
       setLoading(false);
     }
   };
