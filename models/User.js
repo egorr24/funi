@@ -72,7 +72,7 @@ class User {
       values.push(name);
       paramCount++;
     }
-    if (avatar) {
+    if (avatar !== undefined) {
       updates.push(`avatar = $${paramCount}`);
       values.push(avatar);
       paramCount++;
@@ -88,15 +88,14 @@ class User {
       paramCount++;
     }
 
-    updates.push(`"updatedAt" = CURRENT_TIMESTAMP`);
-    values.push(userId);
-
     const query = `
       UPDATE "User" 
-      SET ${updates.join(', ')}
+      SET ${updates.join(', ')}, "updatedAt" = CURRENT_TIMESTAMP
       WHERE id = $${paramCount}
       RETURNING id, name, avatar, "publicKey", "updatedAt"
     `;
+    
+    values.push(userId);
     const result = await pool.query(query, values);
     return result.rows[0];
   }
