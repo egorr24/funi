@@ -258,16 +258,10 @@ export const ProfileSettingsModal = ({
   const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const initializedRef = useRef(false);
-
   useEffect(() => {
-    if (isOpen && user && !initializedRef.current) {
+    if (isOpen && user) {
       setName(user.name || "");
       setAvatar(user.avatar || user.image || "");
-      initializedRef.current = true;
-    }
-    if (!isOpen) {
-      initializedRef.current = false;
     }
   }, [isOpen, user]); // Only reset when opening or user identity changes
 
@@ -483,7 +477,7 @@ export const CreateChatModal = ({
                 onClick={() => onCreate(user.id, user.name)}
                 className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-white/5 transition-colors text-left"
               >
-                <AvatarPill label={(user.name || "?").slice(0, 2).toUpperCase()} />
+                <AvatarPill label={(user.name || "?").slice(0, 2).toUpperCase()} avatar={user.avatar} />
                 <div>
                   <div className="text-sm font-medium">{user.name}</div>
                   <div className="text-xs text-zinc-500">{user.email}</div>
@@ -645,7 +639,7 @@ export const ChatListItem = ({
       <div className="relative flex items-start justify-between">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <AvatarPill label={chat.title.slice(0, 2).toUpperCase()} avatar={chat.otherMembers?.[0]?.avatar} />
+            <AvatarPill label={chat.title.slice(0, 2).toUpperCase()} avatar={chat.avatar} />
             {isOnline && (
               <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-zinc-950 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse" />
             )}
@@ -1952,11 +1946,11 @@ export const MediaPicker = () => (
   </GlassCard>
 );
 
-export const ProfileSheet = ({ name, email, onSignOut }: { name?: string; email?: string; onSignOut?: () => void }) => (
+export const ProfileSheet = ({ name, email, avatar, onSignOut }: { name?: string; email?: string; avatar?: string | null; onSignOut?: () => void }) => (
   <GlassCard className="space-y-3 p-4">
     <h3 className="text-sm font-semibold">Profile</h3>
     <div className="flex items-center gap-3">
-      <AvatarPill label={(name || "U").slice(0, 2).toUpperCase()} />
+      <AvatarPill label={(name || "U").slice(0, 2).toUpperCase()} avatar={avatar} />
       <div>
         <p className="text-sm font-medium">{name || "You"}</p>
         <p className="text-xs text-zinc-400">{email || "sovereign@flux.app"}</p>

@@ -843,13 +843,9 @@ export const FluxApp = () => {
               
               // Принудительно обновляем сессию через NextAuth
               await updateSession({
-                ...session,
-                user: {
-                  ...session?.user,
-                  name: updated.name,
-                  image: updated.avatar,
-                  avatar: updated.avatar
-                }
+                name: updated.name,
+                image: updated.avatar,
+                avatar: updated.avatar
               });
               
               // Для мгновенного эффекта без перезагрузки можно обновить и router, 
