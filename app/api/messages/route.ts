@@ -131,20 +131,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields", received: { chatId, hasEncryptedBody: !!encryptedBody, hasEncryptedAes: !!encryptedAes, hasIv: !!iv } }, { status: 400 });
     }
 
-    const preferPrisma = !isUuid(session.user.id) || !isUuid(chatId);
+    const preferPrisma = true; // Force use of quoted table names
     // Fallback для старых клиентских версий с виртуальным ID "saved-"
     if (chatId.startsWith("saved-")) {
-      const savedChatResult = preferPrisma
-        ? await pool.query(`
+      const savedChatResult = await pool.query(`
             SELECT c.id FROM "Chat" c
             JOIN "ChatMember" cm ON c.id = cm."chatId"
             WHERE c.title = '⭐️ Избранное' AND cm."userId" = $1
-            LIMIT 1
-          `, [session.user.id])
-        : await pool.query(`
-            SELECT c.id FROM chats c
-            JOIN chat_members cm ON c.id = cm.chat_id
-            WHERE c.kind = 'SAVED' AND cm.user_id = $1
             LIMIT 1
           `, [session.user.id]);
       
@@ -156,14 +149,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Check membership
-    const membershipResult = preferPrisma
-      ? await pool.query(`
+    const membershipResult = await pool.query(`
           SELECT 1 FROM "ChatMember" 
           WHERE "userId" = $1 AND "chatId" = $2
-        `, [session.user.id, chatId])
-      : await pool.query(`
-          SELECT 1 FROM chat_members 
-          WHERE user_id = $1 AND chat_id = $2
         `, [session.user.id, chatId]);
 
     if (membershipResult.rowCount === 0) {
@@ -184,24 +172,15 @@ export async function POST(request: NextRequest) {
     });
 
     console.log("Message created:", message.id);
-    const senderResult = preferPrisma
-      ? await pool.query('SELECT name FROM "User" WHERE id = $1', [session.user.id])
-      : await pool.query('SELECT name FROM users WHERE id = $1', [session.user.id]);
+    const senderResult = await pool.query('SELECT name FROM "User" WHERE id = $1', [session.user.id]);
     const senderName = senderResult.rows[0].name;
 
-    let replyTo = undefined;
+    let replyTo = null;
     if (replyToId) {
-      const replyResult = preferPrisma
-        ? await pool.query(`
+      const replyResult = await pool.query(`
             SELECT m.id, m."encryptedBody" as encrypted_body, u.name as sender_name
             FROM "Message" m
             JOIN "User" u ON m."senderId" = u.id
-            WHERE m.id = $1
-          `, [replyToId])
-        : await pool.query(`
-            SELECT m.id, m.encrypted_body, u.name as sender_name
-            FROM messages m
-            JOIN users u ON m.sender_id = u.id
             WHERE m.id = $1
           `, [replyToId]);
       if (replyResult.rows[0]) {
@@ -221,7 +200,7 @@ export async function POST(request: NextRequest) {
       encryptedBody: message.encrypted_body || message.encryptedBody,
       encryptedAes: message.encrypted_aes || message.encryptedAes,
       iv: message.iv,
-      createdAt: new Date(message.created_at || message.createdAt || Date.now()).toISOString(),
+      createdAt: message.created_at || message.createdAt,
       status: message.status,
       reactions: [],
       replyTo

@@ -77,6 +77,7 @@ export async function GET() {
     console.error("Chats fetch error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest) {
     console.log("Chat creation params:", { userId, title, kind });
     
     const normalizedKind = kind === "CHAT" ? "PERSONAL" : kind;
-    const preferPrisma = !isUuid(session.user.id);
+    const preferPrisma = true; // Force use of quoted table names
 
     if (!userId) {
       return NextResponse.json({ error: "userId is required" }, { status: 400 });
