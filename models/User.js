@@ -1,17 +1,19 @@
 import { pool } from './database.js';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 class User {
   static async create({ name, email, password, avatar = null, publicKey = null, encryptedPrivKey = null }) {
     const hashedPassword = await bcrypt.hash(password, 12);
+    const userId = crypto.randomUUID();
     
     const query = `
       INSERT INTO "User" (id, name, email, "passwordHash", avatar, "publicKey", "encryptedPrivKey", status, "createdAt", "updatedAt")
-      VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, 'online', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, 'online', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       RETURNING id, name, email, avatar, "publicKey", "createdAt"
     `;
     
-    const values = [name, email, hashedPassword, avatar, publicKey, encryptedPrivKey];
+    const values = [userId, name, email, hashedPassword, avatar, publicKey, encryptedPrivKey];
     const result = await pool.query(query, values);
     return result.rows[0];
   }

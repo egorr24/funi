@@ -10,8 +10,9 @@ const credentialsSchema = z.object({
 });
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  secret: process.env.AUTH_SECRET || "some-default-secret-for-development-only",
+  secret: process.env.AUTH_SECRET || "65726e69-7873-742d-666c-75782d736563", // Static fallback to prevent Configuration error
   trustHost: true,
+  basePath: "/api/auth",
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days

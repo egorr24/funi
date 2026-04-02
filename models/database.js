@@ -36,8 +36,12 @@ pool.on('error', (err) => {
 // Initialize database tables
 const initDatabase = async () => {
   try {
-    // Enable UUID extension
-    await pool.query('CREATE EXTENSION IF NOT EXISTS "pgcrypto"');
+    // Enable UUID extension (optional, as we now use JS-generated UUIDs)
+    try {
+      await pool.query('CREATE EXTENSION IF NOT EXISTS "pgcrypto"');
+    } catch (e) {
+      console.warn('[DB] Could not create pgcrypto extension (non-critical):', e.message);
+    }
 
     // Users table (Prisma style)
     await pool.query(`

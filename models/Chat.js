@@ -1,4 +1,5 @@
 import { pool } from './database.js';
+import crypto from 'crypto';
 
 class Chat {
   static generateId(prefix = 'c') {
@@ -12,12 +13,13 @@ class Chat {
   }
 
   static async create({ title, kind = 'PERSONAL', preferPrisma = false }) {
+    const chatId = crypto.randomUUID();
     const query = `
       INSERT INTO "Chat" (id, title, kind, "createdAt", "updatedAt")
-      VALUES (gen_random_uuid()::text, $1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       RETURNING *
     `;
-    const result = await pool.query(query, [title, Chat.normalizeKind(kind)]);
+    const result = await pool.query(query, [chatId, title, Chat.normalizeKind(kind)]);
     return result.rows[0];
   }
 
@@ -28,13 +30,14 @@ class Chat {
   }
 
   static async addMember(chatId, userId, role = 'member', preferPrisma = false) {
+    const memberId = crypto.randomUUID();
     const query = `
       INSERT INTO "ChatMember" (id, "chatId", "userId", role, muted, "joinedAt")
-      VALUES (gen_random_uuid()::text, $1, $2, $3, false, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, $4, false, CURRENT_TIMESTAMP)
       ON CONFLICT ("userId", "chatId") DO NOTHING
       RETURNING *
     `;
-    const result = await pool.query(query, [chatId, userId, role]);
+    const result = await pool.query(query, [memberId, chatId, userId, role]);
     return result.rows[0];
   }
 

@@ -1,4 +1,5 @@
 import { pool } from './database.js';
+import crypto from 'crypto';
 
 class Message {
   static generateId(prefix = 'm') {
@@ -10,12 +11,13 @@ class Message {
   }
 
   static async create({ chatId, senderId, encryptedBody, encryptedAes, iv, mediaUrl, mediaType, waveform, replyToId }) {
+    const messageId = crypto.randomUUID();
     const query = `
       INSERT INTO "Message" (id, "chatId", "senderId", "encryptedBody", "encryptedAes", iv, "mediaUrl", "mediaType", waveform, "replyToId", "createdAt", "updatedAt")
-      VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       RETURNING *
     `;
-    const values = [chatId, senderId, encryptedBody, encryptedAes, iv, mediaUrl, mediaType, waveform, replyToId];
+    const values = [messageId, chatId, senderId, encryptedBody, encryptedAes, iv, mediaUrl, mediaType, waveform, replyToId];
     const result = await pool.query(query, values);
     await pool.query('UPDATE "Chat" SET "updatedAt" = CURRENT_TIMESTAMP WHERE id = $1', [chatId]);
     return result.rows[0];
@@ -46,13 +48,14 @@ class Message {
   }
 
   static async addReaction(messageId, userId, emoji) {
+    const reactionId = crypto.randomUUID();
     const query = `
       INSERT INTO "Reaction" (id, "messageId", "userId", emoji, "createdAt")
-      VALUES (gen_random_uuid()::text, $1, $2, $3, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
       ON CONFLICT ("messageId", "userId", emoji) DO NOTHING
       RETURNING *
     `;
-    const result = await pool.query(query, [messageId, userId, emoji]);
+    const result = await pool.query(query, [reactionId, messageId, userId, emoji]);
     return result.rows[0];
   }
 
