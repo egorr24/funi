@@ -136,7 +136,7 @@ export const StatusDot = ({ online }: { online: boolean }) => (
 );
 
 export const AvatarPill = ({ label, avatar }: { label: string; avatar?: string | null }) => (
-  <div className="h-10 w-10 rounded-2xl bg-violet-500/30 text-sm font-semibold grid place-items-center overflow-hidden">
+  <div className="h-10 w-10 bg-violet-500/30 text-sm font-semibold grid place-items-center overflow-hidden">
     {avatar ? (
       <img src={avatar} alt={label} className="h-full w-full object-cover" />
     ) : (
@@ -186,7 +186,7 @@ export const NavSidebar = ({
         onClick={() => onTabChange("profile")}
         icon={
           userAvatar ? (
-            <div className="h-7 w-7 rounded-full overflow-hidden border border-violet-500/50">
+            <div className="h-7 w-7 overflow-hidden border border-violet-500/50">
               <img src={userAvatar} alt="Profile" className="h-full w-full object-cover" />
             </div>
           ) : (
@@ -325,7 +325,7 @@ export const ProfileSettingsModal = ({
 
         <div className="flex flex-col items-center gap-6">
           <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-            <div className="h-24 w-24 rounded-full border-2 border-violet-500/30 overflow-hidden bg-zinc-800 flex items-center justify-center">
+            <div className="h-24 w-24 border-2 border-violet-500/30 overflow-hidden bg-zinc-800 flex items-center justify-center">
               {avatar ? (
                 <img src={avatar} alt="Avatar" className="h-full w-full object-cover" />
               ) : (
@@ -337,7 +337,7 @@ export const ProfileSettingsModal = ({
                 </div>
               )}
             </div>
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-full">
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
               <span className="text-[10px] font-bold text-white uppercase tracking-wider">Сменить</span>
             </div>
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleUpload} />

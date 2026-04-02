@@ -1044,7 +1044,7 @@ export const FluxApp = () => {
         {activeTab === "profile" && (
           <div className="flex-1 p-8 flex flex-col items-center justify-center text-center">
              <div className="relative group mb-4">
-               <div className="h-32 w-32 rounded-full bg-violet-500/20 grid place-items-center border-4 border-violet-500/30 overflow-hidden shadow-2xl">
+               <div className="h-32 w-32 bg-violet-500/20 grid place-items-center border-4 border-violet-500/30 overflow-hidden shadow-2xl">
                  {session?.user?.image || session?.user?.avatar ? (
                    <img src={session.user.image || session.user.avatar} alt="Profile" className="h-full w-full object-cover" />
                  ) : (
@@ -1053,7 +1053,7 @@ export const FluxApp = () => {
                </div>
                <button 
                  onClick={() => setIsProfileOpen(true)}
-                 className="absolute bottom-1 right-1 p-2 bg-violet-600 rounded-full border-4 border-zinc-900 hover:bg-violet-500 transition-all active:scale-90"
+                 className="absolute bottom-1 right-1 p-2 bg-violet-600 border-4 border-zinc-900 hover:bg-violet-500 transition-all active:scale-90"
                >
                  <Settings className="h-4 w-4 text-white" />
                </button>
