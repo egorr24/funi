@@ -61,18 +61,27 @@ export async function GET() {
 
     const chats = chatsResult.rows
       .filter((row: any) => row.title !== "Global FLUX Chat")
-      .map((row: any) => ({
-        id: row.id,
-        title: row.title,
-        kind: row.kind,
-        isPinned: row.isPinned,
-        updatedAt: row.updatedAt,
-        muted: row.muted,
-        lastMessage: row.last_message,
-        lastActivityAt: row.last_activity_at || row.updatedAt,
-        unreadCount: row.unread_count,
-        otherMembers: row.other_members || [],
-      }));
+      .map((row: any) => {
+        const otherMembers = row.other_members || [];
+        // Для персональных чатов заголовок — это имя собеседника
+        let title = row.title;
+        if (row.kind === "PERSONAL" && otherMembers.length > 0) {
+          title = otherMembers[0].name;
+        }
+
+        return {
+          id: row.id,
+          title: title,
+          kind: row.kind,
+          isPinned: row.isPinned,
+          updatedAt: row.updatedAt,
+          muted: row.muted,
+          lastMessage: row.last_message,
+          lastActivityAt: row.last_activity_at || row.updatedAt,
+          unreadCount: row.unread_count,
+          otherMembers: otherMembers,
+        };
+      });
 
     return NextResponse.json(chats);
   } catch (error: any) {
