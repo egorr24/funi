@@ -255,11 +255,14 @@ export const ProfileSettingsModal = ({
 
     setIsUploading(true);
     try {
+      const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "dofp886ve";
+      const uploadPreset = "ml_default";
+
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("upload_preset", "ml_default");
+      formData.append("upload_preset", uploadPreset);
 
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`, {
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
         method: "POST",
         body: formData,
       });
