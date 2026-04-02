@@ -76,15 +76,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       return isLoggedIn;
     },
-    jwt: async ({ token, user }) => {
+    jwt: async ({ token, user, trigger, session }) => {
       if (user) {
         token.userId = user.id;
+        token.name = user.name;
+        token.image = user.image;
+      }
+      if (trigger === "update" && session) {
+        token.name = session.name || token.name;
+        token.image = session.image || session.avatar || token.image;
       }
       return token;
     },
     session: async ({ session, token }) => {
       if (session.user) {
         session.user.id = token.userId as string;
+        session.user.name = token.name as string;
+        session.user.image = token.image as string;
       }
       return session;
     },

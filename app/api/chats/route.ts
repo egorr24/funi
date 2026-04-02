@@ -72,6 +72,7 @@ export async function GET() {
         return {
           id: row.id,
           title: title,
+          avatar: row.kind === "PERSONAL" && otherMembers.length > 0 ? otherMembers[0].avatar : null,
           kind: row.kind,
           isPinned: row.isPinned,
           updatedAt: row.updatedAt,

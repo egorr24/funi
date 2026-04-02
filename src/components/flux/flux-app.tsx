@@ -47,7 +47,7 @@ import {
 } from "@/src/components/flux/ui";
 
 export const FluxApp = () => {
-  const { data: session, status } = useSession();
+  const { data: session, status, update: updateSession } = useSession();
   const router = useRouter();
   const [folder, setFolder] = useState("ALL");
   const [search, setSearch] = useState("");
@@ -833,8 +833,12 @@ export const FluxApp = () => {
               body: JSON.stringify(data),
             });
             if (res.ok) {
-              // Update local session data if needed, or just refresh
-              window.location.reload();
+              const updated = await res.json();
+              // Обновляем сессию NextAuth, чтобы имя и фото сразу изменились везде
+              await updateSession({
+                name: updated.name,
+                image: updated.avatar
+              });
             }
           } catch (error) {
             console.error("Update profile error:", error);
