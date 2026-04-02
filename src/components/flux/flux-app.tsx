@@ -819,12 +819,7 @@ export const FluxApp = () => {
               <SidebarHeader 
                 title="FLUX" 
                 onAddChat={() => setIsCreateChatOpen(true)}
-                onSearch={() => {
-                  const searchInput = document.querySelector('input[placeholder="Поиск чатов, сообщений, медиа..."]');
-                  if (searchInput) {
-                    (searchInput as HTMLElement).focus();
-                  }
-                }}
+                onSearch={() => setIsCreateChatOpen(true)}
               />
               <SearchBar value={search} onChange={setSearch} />
               <FolderTabs active={folder} onSelect={setFolder} />
