@@ -32,6 +32,7 @@ import {
   NeonDivider,
   PhotoViewer,
   PinnedBanner,
+  ProfileSettingsModal,
   ProfileSheet,
   SearchBar,
   SecurityPanel,
