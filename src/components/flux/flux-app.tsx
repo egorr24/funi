@@ -834,11 +834,14 @@ export const FluxApp = () => {
             });
             if (res.ok) {
               const updated = await res.json();
-              // Обновляем сессию NextAuth, чтобы имя и фото сразу изменились везде
+              console.log("Profile updated in DB:", updated);
+              // Обновляем сессию NextAuth
               await updateSession({
                 name: updated.name,
-                image: updated.avatar
+                image: updated.avatar,
+                avatar: updated.avatar // Дополнительно для надежности
               });
+              console.log("Session update triggered with:", updated.avatar);
             }
           } catch (error) {
             console.error("Update profile error:", error);

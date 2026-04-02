@@ -85,6 +85,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (trigger === "update" && session) {
         token.name = session.name || token.name;
         token.image = session.image || session.avatar || token.image;
+        console.log("JWT Update trigger:", { name: token.name, image: token.image });
       }
       return token;
     },
@@ -93,6 +94,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = token.userId as string;
         session.user.name = token.name as string;
         session.user.image = token.image as string;
+        // @ts-ignore
+        session.user.avatar = token.image as string;
       }
       return session;
     },
