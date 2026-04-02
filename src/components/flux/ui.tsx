@@ -293,11 +293,11 @@ export const ProfileSettingsModal = ({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Отправляем avatar только если он реально изменился и не пустой
-      const payload: any = { name };
-      if (avatar && avatar !== (user?.avatar || user?.image)) {
-        payload.avatar = avatar;
-      }
+      // Отправляем текущие данные профиля
+      const payload: any = { 
+        name,
+        avatar: avatar || "" 
+      };
       await onUpdate(payload);
       onClose();
     } catch (error) {
