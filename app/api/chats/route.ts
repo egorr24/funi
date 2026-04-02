@@ -59,18 +59,20 @@ export async function GET() {
         ORDER BY c."isPinned" DESC, COALESCE((SELECT "createdAt" FROM "Message" m WHERE m."chatId" = c.id ORDER BY m."createdAt" DESC LIMIT 1), c."updatedAt") DESC
       `, [session.user.id]);
 
-    const chats = chatsResult.rows.map((row: any) => ({
-      id: row.id,
-      title: row.title,
-      kind: row.kind,
-      isPinned: row.isPinned,
-      updatedAt: row.updatedAt,
-      muted: row.muted,
-      lastMessage: row.last_message,
-      lastActivityAt: row.last_activity_at || row.updatedAt,
-      unreadCount: row.unread_count,
-      otherMembers: row.other_members || [],
-    }));
+    const chats = chatsResult.rows
+      .filter((row: any) => row.title !== "Global FLUX Chat")
+      .map((row: any) => ({
+        id: row.id,
+        title: row.title,
+        kind: row.kind,
+        isPinned: row.isPinned,
+        updatedAt: row.updatedAt,
+        muted: row.muted,
+        lastMessage: row.last_message,
+        lastActivityAt: row.last_activity_at || row.updatedAt,
+        unreadCount: row.unread_count,
+        otherMembers: row.other_members || [],
+      }));
 
     return NextResponse.json(chats);
   } catch (error: any) {

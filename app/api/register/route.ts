@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import User from "@/models/User.js";
-import Chat from "@/models/Chat.js";
-import { pool } from "@/models/database.js";
 
 const registerSchema = z.object({
   name: z.string().min(2),
@@ -53,26 +51,6 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("User created, ID:", newUser.id);
-
-    try {
-      // Create or find a global chat
-      let globalChatResult = await pool.query('SELECT * FROM "Chat" WHERE title = $1 LIMIT 1', ["Global FLUX Chat"]);
-      let globalChat = globalChatResult.rows[0];
-
-      if (!globalChat) {
-        globalChat = await Chat.create({
-          title: "Global FLUX Chat",
-          kind: "PERSONAL",
-        });
-        console.log("Global chat created");
-      }
-
-      await Chat.addMember(globalChat.id, newUser.id);
-      console.log("User added to global chat");
-    } catch (chatError: any) {
-      console.error("Non-critical chat error during registration:", chatError);
-      // We don't fail registration if chat fails
-    }
 
     return NextResponse.json({ ok: true, user: { id: newUser.id, email: newUser.email } }, { status: 201 });
   } catch (error: any) {

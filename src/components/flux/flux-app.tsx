@@ -64,6 +64,7 @@ export const FluxApp = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isDesktop, setIsDesktop] = useState(true);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const creatingChatRef = useRef(false);
   
   const { 
     variables, 
@@ -157,23 +158,34 @@ export const FluxApp = () => {
   }, [session?.user?.id, fetchChats]);
 
   useEffect(() => {
+    if (loading) return;
+
     if (chatsData.length === 0) {
       if (chatId !== null) {
         setChatId(null);
       }
       return;
     }
+
     if (chatId && chatsData.some((chat) => chat.id === chatId)) {
+      creatingChatRef.current = false; // Reset ref once chat is found
       return;
     }
+
+    if (creatingChatRef.current) {
+      // Don't auto-select if we are in the middle of creating a chat
+      return;
+    }
+
     if (isDesktop) {
       setChatId(chatsData[0].id);
       return;
     }
+
     if (chatId !== null) {
       setChatId(null);
     }
-  }, [chatsData, chatId, isDesktop]);
+  }, [chatsData, chatId, isDesktop, loading]);
 
   // Handle chat creation
   const handleCreateChat = useCallback(async (userId: string, name: string) => {
@@ -191,8 +203,9 @@ export const FluxApp = () => {
       if (socket.socket) {
         socket.socket.emit("chat:new", { targetId: userId, chat: newChat });
       }
-      await fetchChats();
+      creatingChatRef.current = true;
       setChatId(newChat.id);
+      await fetchChats();
     } catch (error) {
       console.error("Failed to create chat:", error);
     }
