@@ -153,9 +153,9 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
   }
 });
 
-// 4. JSON BODY PARSER
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// 4. JSON BODY PARSER (Disabled to avoid conflicts with Next.js)
+// app.use(express.json());
+// app.use(express.urlencoded({ extended: true }));
 
 // 6. NEXT.JS ПРЕПАРАЦИЯ (В ФОНЕ)
 let nextReady = false;

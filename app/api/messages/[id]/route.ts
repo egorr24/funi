@@ -15,8 +15,8 @@ export async function DELETE(
 
   try {
     const messageResult = await pool.query(`
-      SELECT m.*, c.id as chat_id FROM messages m
-      JOIN chats c ON m.chat_id = c.id
+      SELECT m.*, c.id as chat_id FROM "Message" m
+      JOIN "Chat" c ON m."chatId" = c.id
       WHERE m.id = $1
     `, [messageId]);
     const message = messageResult.rows[0];
@@ -26,24 +26,24 @@ export async function DELETE(
     }
 
     // Only sender or chat member can delete
-    const isSender = message.sender_id === session.user.id;
+    const isSender = message.senderId === session.user.id;
     const membershipResult = await pool.query(`
-      SELECT 1 FROM chat_members 
-      WHERE user_id = $1 AND chat_id = $2
+      SELECT 1 FROM "ChatMember" 
+      WHERE "userId" = $1 AND "chatId" = $2
     `, [session.user.id, message.chat_id]);
 
     if (!isSender && membershipResult.rowCount === 0) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    await pool.query('DELETE FROM messages WHERE id = $1', [messageId]);
+    await pool.query('DELETE FROM "Message" WHERE id = $1', [messageId]);
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error deleting message:", error);
     return NextResponse.json({ 
       error: "Internal Server Error", 
-      details: error instanceof Error ? error.message : String(error) 
+      details: error.message || String(error) 
     }, { status: 500 });
   }
 }

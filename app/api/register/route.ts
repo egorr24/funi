@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     console.log("User created, ID:", newUser.id);
 
     // Create or find a global chat
-    let globalChatResult = await pool.query("SELECT * FROM chats WHERE title = $1 LIMIT 1", ["Global FLUX Chat"]);
+    let globalChatResult = await pool.query('SELECT * FROM "Chat" WHERE title = $1 LIMIT 1', ["Global FLUX Chat"]);
     let globalChat = globalChatResult.rows[0];
 
     if (!globalChat) {

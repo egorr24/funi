@@ -13,21 +13,7 @@ class User {
     
     const values = [name, email, hashedPassword, avatar, publicKey, encryptedPrivKey];
     const result = await pool.query(query, values);
-    const createdUser = result.rows[0];
-    try {
-      const legacyUser = await pool.query(
-        `SELECT id FROM "User" WHERE LOWER(email) = LOWER($1) LIMIT 1`,
-        [createdUser.email]
-      );
-      if (!legacyUser.rows[0]?.id) {
-        await pool.query(
-          `INSERT INTO "User" (id, name, email, avatar, "passwordHash")
-           VALUES ($1, $2, $3, $4, $5)`,
-          [createdUser.id, createdUser.name, createdUser.email, createdUser.avatar || null, hashedPassword]
-        );
-      }
-    } catch (_error) {}
-    return createdUser;
+    return result.rows[0];
   }
 
   static async findByEmail(email) {
@@ -39,25 +25,7 @@ class User {
       LIMIT 1
     `;
     const result = await pool.query(query, [email]);
-    if (result.rows[0]) {
-      return result.rows[0];
-    }
-    try {
-      const legacyResult = await pool.query(
-        `SELECT id, name, email, avatar, "passwordHash" as password_hash
-         FROM "User"
-         WHERE LOWER(email) = LOWER($1)
-         LIMIT 1`,
-        [email]
-      );
-      const legacyUser = legacyResult.rows[0];
-      if (!legacyUser?.email) {
-        return null;
-      }
-      return legacyUser;
-    } catch (_error) {
-      return null;
-    }
+    return result.rows[0] || null;
   }
 
   static async findByUsername(username) {
@@ -153,28 +121,6 @@ class User {
     
     const result = await pool.query(query, [currentUserId, normalizedQuery, wildcardQuery]);
     return result.rows;
-  }
-
-  static async verifyPassword(password, hashedPassword) {
-    return bcrypt.compare(password, hashedPassword);
-    try {
-      const fallbackLegacy = await pool.query(`
-        SELECT id, name, email, avatar
-        FROM "User"
-        WHERE id::text != $1
-        ORDER BY name ASC
-        LIMIT 20
-      `, [String(currentUserId)]);
-      return fallbackLegacy.rows.map((user) => ({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        avatar: user.avatar,
-        status: "offline",
-      }));
-    } catch (_error) {
-      return [];
-    }
   }
 
   static async resolveAppUserId(externalUserId) {

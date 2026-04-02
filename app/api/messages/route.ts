@@ -22,20 +22,13 @@ export async function GET(request: NextRequest) {
 
     console.log("Fetching messages for chat:", chatId, "user:", session.user.id);
 
-    const preferPrisma = !isUuid(session.user.id) || !isUuid(chatId);
+    const preferPrisma = true; // Force use of quoted table names
     // Fallback для старых клиентских версий с виртуальным ID "saved-"
     if (chatId.startsWith("saved-")) {
-      const savedChatResult = preferPrisma
-        ? await pool.query(`
+      const savedChatResult = await pool.query(`
             SELECT c.id FROM "Chat" c
             JOIN "ChatMember" cm ON c.id = cm."chatId"
             WHERE c.title = '⭐️ Избранное' AND cm."userId" = $1
-            LIMIT 1
-          `, [session.user.id])
-        : await pool.query(`
-            SELECT c.id FROM chats c
-            JOIN chat_members cm ON c.id = cm.chat_id
-            WHERE c.kind = 'SAVED' AND cm.user_id = $1
             LIMIT 1
           `, [session.user.id]);
       
@@ -47,22 +40,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user is a member of the chat
-    const membershipResult = preferPrisma
-      ? await pool.query(`
+    const membershipResult = await pool.query(`
           SELECT 1 FROM "ChatMember" 
           WHERE "userId" = $1 AND "chatId" = $2
-        `, [session.user.id, chatId])
-      : await pool.query(`
-          SELECT 1 FROM chat_members 
-          WHERE user_id = $1 AND chat_id = $2
         `, [session.user.id, chatId]);
 
     if (membershipResult.rowCount === 0) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const messagesResult = preferPrisma
-      ? await pool.query(`
+    const messagesResult = await pool.query(`
           SELECT m.id, m."chatId" as chat_id, m."senderId" as sender_id, m."encryptedBody" as encrypted_body,
                  m."encryptedAes" as encrypted_aes, m.iv, m."mediaUrl" as media_url, m."mediaType" as media_type,
                  m.waveform, m.status, m."createdAt" as created_at, u.name as sender_name,
@@ -73,16 +60,6 @@ export async function GET(request: NextRequest) {
           LEFT JOIN "User" ru ON r."senderId" = ru.id
           WHERE m."chatId" = $1
           ORDER BY m."createdAt" ASC
-        `, [chatId])
-      : await pool.query(`
-          SELECT m.*, u.name as sender_name,
-                 r.id as reply_id, r.encrypted_body as reply_body, ru.name as reply_sender_name
-          FROM messages m
-          JOIN users u ON m.sender_id = u.id
-          LEFT JOIN messages r ON m.reply_to_id = r.id
-          LEFT JOIN users ru ON r.sender_id = ru.id
-          WHERE m.chat_id = $1
-          ORDER BY m.created_at ASC
         `, [chatId]);
 
     const messages = messagesResult.rows;
@@ -93,31 +70,24 @@ export async function GET(request: NextRequest) {
     let reactionsMap: Record<string, any[]> = {};
     
     if (messageIds.length > 0) {
-      const reactionsResult = preferPrisma
-        ? await pool.query(`
+      const reactionsResult = await pool.query(`
             SELECT re.emoji, re."messageId" as message_id, re."userId" as user_id, u.name as user_name
             FROM "Reaction" re
             JOIN "User" u ON re."userId" = u.id
             WHERE re."messageId" = ANY($1)
-          `, [messageIds])
-        : await pool.query(`
-            SELECT re.*, u.name as user_name
-            FROM reactions re
-            JOIN users u ON re.user_id = u.id
-            WHERE re.message_id = ANY($1)
           `, [messageIds]);
       
-      reactionsResult.rows.forEach(r => {
-        if (!reactionsMap[r.message_id]) reactionsMap[r.message_id] = [];
-        reactionsMap[r.message_id].push({
-          emoji: r.emoji,
-          userId: r.user_id,
-          userName: r.user_name,
+      reactionsResult.rows.forEach(row => {
+        if (!reactionsMap[row.message_id]) reactionsMap[row.message_id] = [];
+        reactionsMap[row.message_id].push({
+          emoji: row.emoji,
+          userId: row.user_id,
+          userName: row.user_name,
         });
       });
     }
 
-    return NextResponse.json(messages.map(m => ({
+    const formattedMessages = messages.map(m => ({
       id: m.id,
       chatId: m.chat_id,
       senderId: m.sender_id,
@@ -128,21 +98,20 @@ export async function GET(request: NextRequest) {
       mediaUrl: m.media_url,
       mediaType: m.media_type,
       waveform: m.waveform,
-      createdAt: m.created_at.toISOString(),
       status: m.status,
-      reactions: reactionsMap[m.id] || [],
+      createdAt: m.created_at,
       replyTo: m.reply_id ? {
         id: m.reply_id,
         body: m.reply_body,
         senderName: m.reply_sender_name
-      } : undefined
-    })));
+      } : null,
+      reactions: reactionsMap[m.id] || []
+    }));
+
+    return NextResponse.json(formattedMessages);
   } catch (error: any) {
-    console.error("GET /api/messages error:", error);
-    return NextResponse.json({ 
-      error: "Failed to fetch messages", 
-      details: error.message || error.toString() 
-    }, { status: 500 });
+    console.error("Messages fetch error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 

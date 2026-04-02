@@ -1,17 +1,26 @@
 import pg from 'pg';
 const { Pool } = pg;
 
-// Безопасное подключение через отдельные переменные окружения
-const dbConfig = {
-  host: process.env.DB_HOST || process.env.PGHOST || 'localhost',
-  port: process.env.DB_PORT || process.env.PGPORT || 5432,
-  user: process.env.DB_USER || process.env.PGUSER || 'postgres',
-  password: process.env.DB_PASSWORD || process.env.PGPASSWORD || '',
-  database: process.env.DB_NAME || process.env.PGDATABASE || 'railway',
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-};
+// Безопасное подключение через DATABASE_URL или отдельные переменные окружения
+const dbConfig = process.env.DATABASE_URL 
+  ? { 
+      connectionString: process.env.DATABASE_URL.trim(),
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    }
+  : {
+      host: process.env.DB_HOST || process.env.PGHOST || 'localhost',
+      port: process.env.DB_PORT || process.env.PGPORT || 5432,
+      user: process.env.DB_USER || process.env.PGUSER || 'postgres',
+      password: process.env.DB_PASSWORD || process.env.PGPASSWORD || '',
+      database: process.env.DB_NAME || process.env.PGDATABASE || 'railway',
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    };
 
-console.log(`[DB] Connecting to ${dbConfig.host}:${dbConfig.port}/${dbConfig.database} (SSL: ${dbConfig.ssl ? 'enabled' : 'disabled'})`);
+if (process.env.DATABASE_URL) {
+  console.log(`[DB] Using DATABASE_URL for connection (SSL: ${dbConfig.ssl ? 'enabled' : 'disabled'})`);
+} else {
+  console.log(`[DB] Connecting to ${dbConfig.host}:${dbConfig.port}/${dbConfig.database} (SSL: ${dbConfig.ssl ? 'enabled' : 'disabled'})`);
+}
 
 const pool = new Pool(dbConfig);
 

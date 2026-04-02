@@ -22,8 +22,8 @@ export async function POST(
   try {
     // Находим сообщение и проверяем членство в чате
     const messageResult = await pool.query(`
-      SELECT m.*, c.id as chat_id FROM messages m
-      JOIN chats c ON m.chat_id = c.id
+      SELECT m.id, m."chatId" as chat_id FROM "Message" m
+      JOIN "Chat" c ON m."chatId" = c.id
       WHERE m.id = $1
     `, [messageId]);
     const message = messageResult.rows[0];
@@ -33,8 +33,8 @@ export async function POST(
     }
 
     const membershipResult = await pool.query(`
-      SELECT 1 FROM chat_members 
-      WHERE user_id = $1 AND chat_id = $2
+      SELECT 1 FROM "ChatMember" 
+      WHERE "userId" = $1 AND "chatId" = $2
     `, [session.user.id, message.chat_id]);
 
     if (membershipResult.rowCount === 0) {
@@ -43,23 +43,23 @@ export async function POST(
 
     // Удаляем предыдущую реакцию этого пользователя на это сообщение (если хотим один лайк на юзера)
     await pool.query(`
-      DELETE FROM reactions 
-      WHERE message_id = $1 AND user_id = $2
+      DELETE FROM "Reaction" 
+      WHERE "messageId" = $1 AND "userId" = $2
     `, [messageId, session.user.id]);
 
     const reaction = await Message.addReaction(messageId, session.user.id, emoji);
-    const userResult = await pool.query('SELECT name FROM users WHERE id = $1', [session.user.id]);
+    const userResult = await pool.query('SELECT name FROM "User" WHERE id = $1', [session.user.id]);
 
     return NextResponse.json({
       emoji: reaction.emoji,
       userId: reaction.user_id,
       userName: userResult.rows[0].name,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error toggling reaction:", error);
     return NextResponse.json({ 
       error: "Internal Server Error", 
-      details: error instanceof Error ? error.message : String(error) 
+      details: error.message || String(error) 
     }, { status: 500 });
   }
 }
