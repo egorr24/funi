@@ -10,6 +10,7 @@ const credentialsSchema = z.object({
 });
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  secret: process.env.AUTH_SECRET || "some-default-secret-for-development-only",
   trustHost: true,
   session: {
     strategy: "jwt",
