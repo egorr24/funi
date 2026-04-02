@@ -59,6 +59,7 @@ export const FluxApp = () => {
   const [loading, setLoading] = useState(true);
   const [aiSummary, setAiSummary] = useState("Unread summary will appear here.");
   const [isCreateChatOpen, setIsCreateChatOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("chats");
   const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -819,6 +820,26 @@ export const FluxApp = () => {
         onClose={() => setIsCreateChatOpen(false)}
         onCreate={handleCreateChat}
       />
+      <ProfileSettingsModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        user={session?.user}
+        onUpdate={async (data) => {
+          try {
+            const res = await fetch("/api/users", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(data),
+            });
+            if (res.ok) {
+              // Update local session data if needed, or just refresh
+              window.location.reload();
+            }
+          } catch (error) {
+            console.error("Update profile error:", error);
+          }
+        }}
+      />
       <FluxShell showRightPanel={showRightPanel}>
         <NavSidebar 
           activeTab={activeTab} 
@@ -1008,18 +1029,39 @@ export const FluxApp = () => {
         )}
 
         {activeTab === "profile" && (
-          <div className="lg:col-span-2 p-8 flex flex-col items-center justify-center text-center">
-             <div className="h-24 w-24 rounded-full bg-violet-500/20 grid place-items-center mb-4 border-2 border-violet-500/50">
-               <User className="h-12 w-12 text-violet-400" />
+          <div className="flex-1 p-8 flex flex-col items-center justify-center text-center">
+             <div className="relative group mb-4">
+               <div className="h-32 w-32 rounded-full bg-violet-500/20 grid place-items-center border-4 border-violet-500/30 overflow-hidden shadow-2xl">
+                 {session?.user?.image || session?.user?.avatar ? (
+                   <img src={session.user.image || session.user.avatar} alt="Profile" className="h-full w-full object-cover" />
+                 ) : (
+                   <User className="h-16 w-16 text-violet-400" />
+                 )}
+               </div>
+               <button 
+                 onClick={() => setIsProfileOpen(true)}
+                 className="absolute bottom-1 right-1 p-2 bg-violet-600 rounded-full border-4 border-zinc-900 hover:bg-violet-500 transition-all active:scale-90"
+               >
+                 <Settings className="h-4 w-4 text-white" />
+               </button>
              </div>
-             <h2 className="text-2xl font-bold mb-2">{session?.user?.name}</h2>
-             <p className="text-zinc-400 mb-6">{session?.user?.email}</p>
-             <button
-               onClick={() => signOut()}
-               className="px-6 py-2 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all"
-             >
-               Выйти из аккаунта
-             </button>
+             <h2 className="text-3xl font-black mb-1 text-white tracking-tight uppercase">{session?.user?.name}</h2>
+             <p className="text-zinc-500 font-mono text-sm mb-10 tracking-widest">{session?.user?.email}</p>
+             
+             <div className="flex flex-col gap-3 w-full max-w-xs">
+               <button
+                 onClick={() => setIsProfileOpen(true)}
+                 className="w-full py-4 rounded-2xl bg-white/5 border border-white/10 text-sm font-bold hover:bg-white/10 transition-all uppercase tracking-widest"
+               >
+                 Редактировать профиль
+               </button>
+               <button
+                 onClick={() => signOut()}
+                 className="w-full py-4 rounded-2xl bg-red-500/10 text-red-400 border border-red-500/20 text-sm font-bold hover:bg-red-500/20 transition-all uppercase tracking-widest"
+               >
+                 Выйти из системы
+               </button>
+             </div>
           </div>
         )}
 

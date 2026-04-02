@@ -225,6 +225,137 @@ const NavIcon = ({
   </button>
 );
 
+export const ProfileSettingsModal = ({
+  isOpen,
+  onClose,
+  user,
+  onUpdate
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  user: any;
+  onUpdate: (data: { name: string; avatar?: string }) => Promise<void>;
+}) => {
+  const [name, setName] = useState(user?.name || "");
+  const [avatar, setAvatar] = useState(user?.avatar || "");
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (user) {
+      setName(user.name || "");
+      setAvatar(user.avatar || "");
+    }
+  }, [user, isOpen]);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", "ml_default");
+
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (data.secure_url) {
+        setAvatar(data.secure_url);
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await onUpdate({ name, avatar });
+      onClose();
+    } catch (error) {
+      console.error("Save error:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[200] grid place-items-center bg-black/60 backdrop-blur-sm p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="w-full max-w-md rounded-3xl border border-white/10 bg-zinc-900 p-8 shadow-2xl relative"
+      >
+        <button onClick={onClose} className="absolute right-4 top-4 p-2 hover:bg-white/5 rounded-full">
+          <X className="h-5 w-5" />
+        </button>
+
+        <h2 className="text-2xl font-bold mb-8 text-center">Настройки профиля</h2>
+
+        <div className="flex flex-col items-center gap-6">
+          <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+            <div className="h-24 w-24 rounded-full border-2 border-violet-500/30 overflow-hidden bg-zinc-800 flex items-center justify-center">
+              {avatar ? (
+                <img src={avatar} alt="Avatar" className="h-full w-full object-cover" />
+              ) : (
+                <User className="h-10 w-10 text-zinc-500" />
+              )}
+              {isUploading && (
+                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                  <div className="h-5 w-5 border-2 border-violet-500 border-t-transparent animate-spin rounded-full" />
+                </div>
+              )}
+            </div>
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-full">
+              <span className="text-[10px] font-bold text-white uppercase tracking-wider">Сменить</span>
+            </div>
+            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleUpload} />
+          </div>
+
+          <div className="w-full space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Имя пользователя</label>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Ваше имя"
+                className="w-full rounded-2xl bg-black/40 border border-white/10 p-4 text-sm outline-none focus:border-violet-500/50 transition-all"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Email (нельзя изменить)</label>
+              <input
+                disabled
+                value={user?.email || ""}
+                className="w-full rounded-2xl bg-white/5 border border-white/5 p-4 text-sm text-zinc-500 cursor-not-allowed"
+              />
+            </div>
+          </div>
+
+          <button
+            onClick={handleSave}
+            disabled={isSaving || isUploading}
+            className="w-full py-4 rounded-2xl bg-violet-600 text-white font-bold hover:bg-violet-500 transition-all shadow-lg shadow-violet-600/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+          >
+            {isSaving ? "СОХРАНЯЕМ..." : "СОХРАНИТЬ ИЗМЕНЕНИЯ"}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
 export const Sidebar = ({ children, className = "" }: PropsWithChildren<BaseProps>) => (
   <aside className={`flex flex-col border-r border-violet-300/20 bg-gradient-to-b from-[#1a1030]/55 via-[#100b1f]/50 to-[#090713]/65 lg:w-[360px] shrink-0 backdrop-blur-3xl shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ${className}`}>{children}</aside>
 );
