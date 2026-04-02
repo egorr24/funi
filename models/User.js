@@ -10,7 +10,7 @@ class User {
     const query = `
       INSERT INTO "User" (id, name, email, "passwordHash", avatar, "publicKey", "encryptedPrivKey", status, "createdAt", "updatedAt")
       VALUES ($1, $2, $3, $4, $5, $6, $7, 'online', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-      RETURNING id, name, email, avatar, "publicKey", "createdAt"
+      RETURNING id, name, email, avatar, "publicKey", "createdAt", status
     `;
     
     const values = [userId, name, email, hashedPassword, avatar, publicKey, encryptedPrivKey];

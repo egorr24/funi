@@ -43,6 +43,27 @@ const initDatabase = async () => {
       console.warn('[DB] Could not create pgcrypto extension (non-critical):', e.message);
     }
 
+    // Initialize database tables (always run to ensure schema is up-to-date)
+    console.log('[DB] Ensuring database schema is correct...');
+    
+    // Check if status column exists in User table
+    const checkStatusColumn = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name='User' AND column_name='status'
+    `);
+
+    if (checkStatusColumn.rowCount === 0) {
+      console.log('[DB] Column "status" is missing in "User" table, adding it...');
+      try {
+        await pool.query('ALTER TABLE "User" ADD COLUMN status VARCHAR(20) DEFAULT \'online\'');
+        await pool.query('ALTER TABLE "User" ADD COLUMN "lastSeen" TIMESTAMP');
+        console.log('[DB] Added status and lastSeen columns to "User" table');
+      } catch (e) {
+        console.error('[DB] Failed to add missing columns:', e.message);
+      }
+    }
+
     // Users table (Prisma style)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS "User" (
