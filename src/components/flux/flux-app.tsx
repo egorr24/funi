@@ -139,12 +139,16 @@ export const FluxApp = () => {
       if (!Array.isArray(data)) {
         throw new Error("Invalid chats payload");
       }
-      const normalizedChats = data.map((chat: FluxChat) => ({
-        ...chat,
-        participants: Array.isArray(chat.participants) && chat.participants.length > 0
-          ? chat.participants
-          : [chat.title || "Chat", "You"],
-      }));
+      const normalizedChats = data.map((chat: FluxChat) => {
+        const otherMember = chat.otherMembers?.[0];
+        return {
+          ...chat,
+          avatar: chat.avatar || otherMember?.avatar || null,
+          participants: Array.isArray(chat.participants) && chat.participants.length > 0
+            ? chat.participants
+            : [chat.title || "Chat", "You"],
+        };
+      });
       setChatsData(normalizedChats);
     } catch (error) {
       console.error("Failed to fetch chats:", error);
@@ -852,6 +856,7 @@ export const FluxApp = () => {
         <NavSidebar 
           activeTab={activeTab} 
           onTabChange={setActiveTab} 
+          userAvatar={session?.user?.image || session?.user?.avatar}
           className={chatId ? "hidden lg:flex" : "flex"}
         />
         

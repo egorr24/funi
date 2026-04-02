@@ -165,10 +165,12 @@ export const FluxShell = ({
 export const NavSidebar = ({
   activeTab,
   onTabChange,
+  userAvatar,
   className = "",
 }: {
   activeTab: string;
   onTabChange: (tab: string) => void;
+  userAvatar?: string | null;
   className?: string;
 }) => (
   <div className={`flex lg:flex-col items-center lg:py-8 bg-black/35 border-r border-white/10 gap-6 fixed bottom-0 left-0 right-0 h-20 lg:static lg:h-auto lg:w-[100px] z-50 safe-area-inset pb-safe backdrop-blur-2xl supports-[backdrop-filter]:bg-black/25 shadow-[0_-8px_30px_rgba(0,0,0,0.45)] lg:shadow-none ${className}`}>
@@ -182,7 +184,15 @@ export const NavSidebar = ({
       <NavIcon
         active={activeTab === "profile"}
         onClick={() => onTabChange("profile")}
-        icon={<User className="h-6 w-6 lg:h-7 lg:w-7" />}
+        icon={
+          userAvatar ? (
+            <div className="h-7 w-7 rounded-full overflow-hidden border border-violet-500/50">
+              <img src={userAvatar} alt="Profile" className="h-full w-full object-cover" />
+            </div>
+          ) : (
+            <User className="h-6 w-6 lg:h-7 lg:w-7" />
+          )
+        }
         label="Профиль"
       />
       <NavIcon

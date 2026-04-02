@@ -40,7 +40,7 @@ export type FluxMessage = {
 export type FluxChat = {
   id: string;
   title: string;
-  avatar: string;
+  avatar?: string | null;
   color?: string;
   folder: ChatFolder;
   unreadCount: number;
@@ -51,6 +51,11 @@ export type FluxChat = {
   otherUserId?: string;
   lastMessagePreview: string;
   updatedAt: string;
+  otherMembers?: Array<{
+    id: string;
+    name: string;
+    avatar?: string | null;
+  }>;
 };
 
 export type SocketPayloadMap = {
