@@ -258,12 +258,18 @@ export const ProfileSettingsModal = ({
   const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const initializedRef = useRef(false);
+
   useEffect(() => {
-    if (user) {
+    if (isOpen && user && !initializedRef.current) {
       setName(user.name || "");
-      setAvatar(user.avatar || "");
+      setAvatar(user.avatar || user.image || "");
+      initializedRef.current = true;
     }
-  }, [user, isOpen]);
+    if (!isOpen) {
+      initializedRef.current = false;
+    }
+  }, [isOpen, user]); // Only reset when opening or user identity changes
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

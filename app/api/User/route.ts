@@ -9,7 +9,9 @@ export async function PATCH(request: NextRequest) {
   }
 
   try {
-    const { name, avatar } = await request.json();
+    const body = await request.json();
+    console.log("PATCH /api/User request body:", body);
+    const { name, avatar } = body;
     
     const updatedUser = await User.updateProfile(session.user.id, {
       name,
