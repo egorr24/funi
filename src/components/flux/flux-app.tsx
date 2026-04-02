@@ -827,7 +827,7 @@ export const FluxApp = () => {
         user={session?.user}
         onUpdate={async (data) => {
           try {
-            const res = await fetch("/api/users", {
+            const res = await fetch("/api/User", {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(data),

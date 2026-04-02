@@ -135,8 +135,14 @@ export const StatusDot = ({ online }: { online: boolean }) => (
   <span className={`h-2.5 w-2.5 rounded-full ${online ? "bg-emerald-400" : "bg-zinc-500"}`} />
 );
 
-export const AvatarPill = ({ label }: { label: string }) => (
-  <div className="h-10 w-10 rounded-2xl bg-violet-500/30 text-sm font-semibold grid place-items-center">{label}</div>
+export const AvatarPill = ({ label, avatar }: { label: string; avatar?: string | null }) => (
+  <div className="h-10 w-10 rounded-2xl bg-violet-500/30 text-sm font-semibold grid place-items-center overflow-hidden">
+    {avatar ? (
+      <img src={avatar} alt={label} className="h-full w-full object-cover" />
+    ) : (
+      label
+    )}
+  </div>
 );
 
 export const StatChip = ({ label, value }: { label: string; value: string | number }) => (
@@ -376,7 +382,7 @@ export const CreateChatModal = ({
   const searchUsers = useCallback(async (rawQuery: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/users?q=${encodeURIComponent(rawQuery)}`);
+      const res = await fetch(`/api/User?q=${encodeURIComponent(rawQuery)}`);
       if (res.ok) {
         const payload = await res.json();
         setUsers(Array.isArray(payload) ? payload : []);
@@ -618,7 +624,7 @@ export const ChatListItem = ({
       <div className="relative flex items-start justify-between">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <AvatarPill label={chat.avatar} />
+            <AvatarPill label={chat.title.slice(0, 2).toUpperCase()} avatar={chat.otherMembers?.[0]?.avatar} />
             {isOnline && (
               <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-zinc-950 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse" />
             )}
