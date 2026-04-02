@@ -181,7 +181,7 @@ export const FluxApp = () => {
       const res = await fetch("/api/chats", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, title: name, kind: "CHAT" }),
+        body: JSON.stringify({ userId, title: name, kind: "Chat" }),
       });
       if (!res.ok) {
         return;

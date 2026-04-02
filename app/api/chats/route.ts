@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     const { userId, title, kind = "PERSONAL" } = await request.json();
     console.log("Chat creation params:", { userId, title, kind });
     
-    const normalizedKind = kind === "CHAT" ? "PERSONAL" : kind;
+    const normalizedKind = (kind === "CHAT" || kind === "Chat") ? "PERSONAL" : kind;
     const preferPrisma = true; // Force use of quoted table names
 
     if (!userId) {

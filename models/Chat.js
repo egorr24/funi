@@ -7,7 +7,7 @@ class Chat {
   }
 
   static normalizeKind(kind = 'PERSONAL') {
-    if (kind === 'CHAT' || kind === 'SAVED') return 'PERSONAL';
+    if (kind === 'CHAT' || kind === 'Chat' || kind === 'SAVED') return 'PERSONAL';
     if (kind === 'WORK' || kind === 'AI' || kind === 'CHANNEL' || kind === 'PERSONAL') return kind;
     return 'PERSONAL';
   }
