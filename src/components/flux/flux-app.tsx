@@ -831,6 +831,7 @@ export const FluxApp = () => {
         user={session?.user}
         onUpdate={async (data) => {
           try {
+            console.log("Updating profile with data:", data);
             const res = await fetch("/api/User", {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
@@ -838,14 +839,21 @@ export const FluxApp = () => {
             });
             if (res.ok) {
               const updated = await res.json();
-              console.log("Profile updated in DB:", updated);
-              // Обновляем сессию NextAuth
+              console.log("Profile updated successfully:", updated);
+              
+              // Принудительно обновляем сессию через NextAuth
               await updateSession({
-                name: updated.name,
-                image: updated.avatar,
-                avatar: updated.avatar // Дополнительно для надежности
+                ...session,
+                user: {
+                  ...session?.user,
+                  name: updated.name,
+                  image: updated.avatar,
+                  avatar: updated.avatar
+                }
               });
-              console.log("Session update triggered with:", updated.avatar);
+              
+              // Для мгновенного эффекта без перезагрузки можно обновить и router, 
+              // но updateSession должно хватить
             }
           } catch (error) {
             console.error("Update profile error:", error);

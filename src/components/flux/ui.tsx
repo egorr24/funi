@@ -227,7 +227,7 @@ const NavIcon = ({
     className="group relative flex flex-col items-center gap-1 transition-all duration-300"
   >
     <div
-      className={`relative h-14 w-14 rounded-[22px] flex items-center justify-center transition-all duration-300 ${
+      className={`relative h-14 w-14 flex items-center justify-center transition-all duration-300 ${
         active 
           ? "bg-[#2d1b4d] text-[#a855f7] shadow-[0_0_20px_rgba(168,85,247,0.15)]" 
           : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
@@ -299,7 +299,12 @@ export const ProfileSettingsModal = ({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await onUpdate({ name, avatar });
+      // Отправляем avatar только если он реально изменился и не пустой
+      const payload: any = { name };
+      if (avatar && avatar !== (user?.avatar || user?.image)) {
+        payload.avatar = avatar;
+      }
+      await onUpdate(payload);
       onClose();
     } catch (error) {
       console.error("Save error:", error);
