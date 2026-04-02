@@ -74,8 +74,10 @@ class Chat {
       JOIN "ChatMember" cm2 ON c.id = cm2."chatId"
       WHERE c.kind = 'PERSONAL'
       AND c.title != '⭐️ Избранное'
+      AND c.title != 'Global FLUX Chat'
       AND cm1."userId" = $1
       AND cm2."userId" = $2
+      AND (SELECT COUNT(*) FROM "ChatMember" cm3 WHERE cm3."chatId" = c.id) = 2
       LIMIT 1
     `;
     const result = await pool.query(query, [userId1, userId2]);
