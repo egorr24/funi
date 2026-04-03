@@ -258,10 +258,16 @@ export const ProfileSettingsModal = ({
   const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const initializedRef = useRef(false);
+
   useEffect(() => {
-    if (isOpen && user) {
+    if (isOpen && user && !initializedRef.current) {
       setName(user.name || "");
       setAvatar(user.avatar || user.image || "");
+      initializedRef.current = true;
+    }
+    if (!isOpen) {
+      initializedRef.current = false;
     }
   }, [isOpen, user]); // Only reset when opening or user identity changes
 
@@ -270,6 +276,7 @@ export const ProfileSettingsModal = ({
     if (!file) return;
 
     setIsUploading(true);
+    console.log("Starting upload for file:", file.name);
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -280,8 +287,14 @@ export const ProfileSettingsModal = ({
       });
 
       const data = await res.json();
-      if (data.secure_url) {
-        setAvatar(data.secure_url);
+      console.log("Upload response:", data);
+      
+      const newAvatarUrl = data.secure_url || data.url;
+      if (newAvatarUrl) {
+        setAvatar(newAvatarUrl);
+        console.log("State updated with new avatar URL:", newAvatarUrl);
+      } else {
+        console.warn("Upload succeeded but no URL found in response:", data);
       }
     } catch (error) {
       console.error("Upload error:", error);
