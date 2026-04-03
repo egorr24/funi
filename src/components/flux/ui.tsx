@@ -126,7 +126,7 @@ export const TimerConfigModal = ({
 };
 
 export const GlassCard = ({ children, className = "" }: PropsWithChildren<BaseProps>) => (
-  <div className={`rounded-none border-x border-white/5 bg-zinc-950/40 backdrop-blur-3xl transition-all duration-300 ${className}`}>{children}</div>
+  <div className={`rounded-3xl border border-white/10 bg-zinc-950/40 backdrop-blur-3xl transition-all duration-300 ${className}`}>{children}</div>
 );
 
 export const NeonDivider = () => <div className="h-px bg-gradient-to-r from-transparent via-violet-400/70 to-transparent" />;
@@ -136,7 +136,7 @@ export const StatusDot = ({ online }: { online: boolean }) => (
 );
 
 export const AvatarPill = ({ label, avatar }: { label: string; avatar?: string | null }) => (
-  <div className="h-10 w-10 bg-violet-500/30 text-sm font-semibold grid place-items-center overflow-hidden">
+  <div className="h-10 w-10 bg-violet-500/30 text-sm font-semibold grid place-items-center overflow-hidden rounded-full border border-white/10">
     {avatar ? (
       <img src={avatar} alt={label} className="h-full w-full object-cover" />
     ) : (
@@ -186,7 +186,7 @@ export const NavSidebar = ({
         onClick={() => onTabChange("profile")}
         icon={
           userAvatar ? (
-            <div className="h-7 w-7 overflow-hidden border border-violet-500/50">
+            <div className="h-7 w-7 overflow-hidden rounded-full border border-violet-500/50">
               <img src={userAvatar} alt="Profile" className="h-full w-full object-cover" />
             </div>
           ) : (
@@ -227,7 +227,7 @@ const NavIcon = ({
     className="group relative flex flex-col items-center gap-1 transition-all duration-300"
   >
     <div
-      className={`relative h-14 w-14 flex items-center justify-center transition-all duration-300 ${
+      className={`relative h-14 w-14 flex items-center justify-center transition-all duration-300 rounded-2xl ${
         active 
           ? "bg-[#2d1b4d] text-[#a855f7] shadow-[0_0_20px_rgba(168,85,247,0.15)]" 
           : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
@@ -337,19 +337,19 @@ export const ProfileSettingsModal = ({
 
         <div className="flex flex-col items-center gap-6">
           <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-            <div className="h-24 w-24 border-2 border-violet-500/30 overflow-hidden bg-zinc-800 flex items-center justify-center">
+            <div className="h-24 w-24 border-2 border-violet-500/30 overflow-hidden bg-zinc-800 flex items-center justify-center rounded-full">
               {avatar ? (
                 <img src={avatar} alt="Avatar" className="h-full w-full object-cover" />
               ) : (
                 <User className="h-10 w-10 text-zinc-500" />
               )}
               {isUploading && (
-                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-full">
                   <div className="h-5 w-5 border-2 border-violet-500 border-t-transparent animate-spin rounded-full" />
                 </div>
               )}
             </div>
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-full">
               <span className="text-[10px] font-bold text-white uppercase tracking-wider">Сменить</span>
             </div>
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleUpload} />
@@ -390,7 +390,7 @@ export const ProfileSettingsModal = ({
 };
 
 export const Sidebar = ({ children, className = "" }: PropsWithChildren<BaseProps>) => (
-  <aside className={`flex flex-col border-r border-violet-300/20 bg-gradient-to-b from-[#1a1030]/55 via-[#100b1f]/50 to-[#090713]/65 lg:w-[360px] shrink-0 backdrop-blur-3xl shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ${className}`}>{children}</aside>
+  <aside className={`flex flex-col border-r border-violet-300/20 bg-gradient-to-b from-[#1a1030]/55 via-[#100b1f]/50 to-[#090713]/65 lg:w-[360px] shrink-0 backdrop-blur-3xl shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] rounded-r-3xl ${className}`}>{children}</aside>
 );
 
 export const CreateChatModal = ({
@@ -470,12 +470,12 @@ export const CreateChatModal = ({
                 }
               }}
               placeholder="Поиск по имени или email..."
-              className="w-full rounded-xl bg-black/40 border border-white/10 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-violet-500/50"
+              className="w-full rounded-2xl bg-black/40 border border-white/10 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-violet-500/50"
             />
           </div>
           <button
             onClick={() => void searchUsers(query)}
-            className="rounded-xl border border-violet-400/40 bg-violet-500/20 px-4 text-sm font-medium text-violet-100 hover:bg-violet-500/30 transition-colors"
+            className="rounded-2xl border border-violet-400/40 bg-violet-500/20 px-4 text-sm font-medium text-violet-100 hover:bg-violet-500/30 transition-colors"
           >
             Найти
           </button>
@@ -528,7 +528,7 @@ export const SidebarHeader = ({
   <div className="px-5 pb-4 pt-5 flex items-center justify-between">
     <div className="flex items-center gap-2">
       {onBack && (
-        <button onClick={onBack} className="lg:hidden p-2 -ml-2 hover:bg-white/5 rounded-xl transition-colors">
+        <button onClick={onBack} className="lg:hidden p-2 -ml-2 hover:bg-white/5 rounded-2xl transition-colors">
           <X className="h-5 w-5 rotate-90" />
         </button>
       )}
@@ -539,7 +539,7 @@ export const SidebarHeader = ({
       {onSearch && (
         <button
           onClick={onSearch}
-          className="lg:hidden grid h-8 w-8 place-items-center rounded-xl bg-violet-500/20 text-violet-400 hover:bg-violet-500/30 transition-colors"
+          className="lg:hidden grid h-8 w-8 place-items-center rounded-2xl bg-violet-500/20 text-violet-400 hover:bg-violet-500/30 transition-colors"
           title="Поиск"
         >
           <Search className="h-4 w-4" />
@@ -1256,7 +1256,7 @@ export const MessageBubble = ({
       )}
 
       {message.replyTo && (
-        <div className={`mb-2 p-2 rounded-xl border-l-4 text-[11px] bg-black/20 ${mine ? "border-violet-400" : "border-zinc-500"}`}>
+        <div className={`mb-2 p-2 rounded-2xl border-l-4 text-[11px] bg-black/20 ${mine ? "border-violet-400" : "border-zinc-500"}`}>
           <div className="font-bold mb-0.5 text-violet-400">{message.replyTo.senderName}</div>
           <div className="opacity-70 truncate text-zinc-300 italic">
             «{message.replyTo.body}»
@@ -1266,7 +1266,7 @@ export const MessageBubble = ({
 
       {message.mediaType === "image" && message.mediaUrl && (
         <div 
-          className={`relative overflow-hidden rounded-xl mb-2 group/img bg-zinc-900/50 min-h-[120px] select-none ${
+          className={`relative overflow-hidden rounded-2xl mb-2 group/img bg-zinc-900/50 min-h-[120px] select-none ${
             message.isSecure ? "cursor-help pointer-events-auto" : "cursor-pointer"
           }`}
           onClick={handleStartPeek}
@@ -1302,7 +1302,7 @@ export const MessageBubble = ({
 
       {message.mediaType === "file" && message.mediaUrl && (
         <div className="flex items-center gap-3 mb-2 bg-black/20 p-3 rounded-2xl border border-white/5 hover:bg-black/30 transition-colors cursor-pointer">
-          <div className="h-10 w-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400">
+          <div className="h-10 w-10 rounded-2xl bg-blue-500/20 flex items-center justify-center text-blue-400">
             <Paperclip className="h-5 w-5" />
           </div>
           <div className="flex-1 overflow-hidden">
